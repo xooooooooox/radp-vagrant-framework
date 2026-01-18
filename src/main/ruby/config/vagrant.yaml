@@ -1,0 +1,158 @@
+# RADP Vagrant Framework Configuration
+# This file defines multi-machine Vagrant environments using a declarative YAML structure
+#
+# Configuration Inheritance:
+#   global common -> cluster common -> guest
+#   Arrays (provisions, triggers, synced-folders) are concatenated across levels
+
+radp:
+  env: default
+  extend:
+    vagrant:
+      # Plugin Management (flat array)
+      plugins:
+        - name: vagrant-hostmanager
+          enabled: true
+          options:
+            enabled: true
+            manage-host: true
+            manage-guest: true
+            include-offline: true
+            ignore-private-ip: false
+        - name: vagrant-vbguest
+          enabled: true
+          options:
+            auto-update: true
+            no-remote: false
+
+      config:
+        # Global common configuration (inherited by all guests)
+        common:
+          synced-folders:
+            # Grouped by type: basic, nfs, rsync, smb
+            basic:
+              - enabled: true
+                host: ./shared
+                guest: /vagrant/shared
+                create: true
+          triggers:
+            - name: global-trigger-1
+              desc: 'Global startup trigger'
+              enabled: true
+              only-on:
+                - '/dev-.*/'
+              cycle: before
+              type: actions
+              action:
+                - up
+                - reload
+              run:
+                inline: |
+                  echo "=== RADP Vagrant Framework ==="
+                  echo "Starting environment..."
+          provisions:
+            - name: global-provision-1
+              desc: 'Global initialization'
+              enabled: true
+              type: shell
+              privileged: false
+              freq: once
+              inline: |
+                echo "=== Global Provision ==="
+                echo "Timestamp: $(date)"
+
+        # Cluster Definitions
+        clusters:
+          - name: dev-cluster
+            # Cluster-level common configuration
+            common:
+              box:
+                name: generic/centos9s
+                version: 4.3.12
+              provider:
+                type: virtualbox
+                mem: 2048
+                cpus: 2
+              synced-folders:
+                basic:
+                  - enabled: true
+                    host: ./cluster-shared
+                    guest: /cluster-data
+                    create: true
+              triggers:
+                - name: cluster-trigger-1
+                  desc: 'Cluster startup trigger'
+                  enabled: true
+                  cycle: before
+                  type: actions
+                  action:
+                    - up
+                  run:
+                    inline: |
+                      echo "Starting cluster: dev-cluster"
+              provisions:
+                - name: cluster-provision-1
+                  desc: 'Cluster initialization'
+                  enabled: true
+                  type: shell
+                  privileged: false
+                  freq: once
+                  inline: |
+                    echo "=== Cluster Provision ==="
+                    echo "Cluster: dev-cluster"
+
+            # Guest Definitions
+            guests:
+              - id: dev-node-1
+                provider:
+                  group-id: dev-cluster
+                  name: dev-node-1
+                  mem: 4096
+                  cpus: 2
+                network:
+                  hostname: dev-node-1.local
+                  private-network:
+                    enabled: true
+                    type: dhcp
+                  public-network:
+                    enabled: false
+                provisions:
+                  - name: dev-node-1-provision-1
+                    desc: 'Node 1 setup'
+                    enabled: true
+                    type: shell
+                    privileged: false
+                    freq: once
+                    inline: |
+                      echo "Setting up dev-node-1..."
+                      echo "Hostname: $(hostname)"
+
+              - id: dev-node-2
+                provider:
+                  group-id: dev-cluster
+                  name: dev-node-2
+                  mem: 2048
+                  cpus: 1
+                network:
+                  hostname: dev-node-2.local
+                  private-network:
+                    enabled: true
+                    type: static
+                    ip: 192.168.56.102
+                  public-network:
+                    enabled: true
+                    type: static
+                    ip: 192.168.20.100
+                    bridge:
+                      - "en0: Wi-Fi (AirPort)"
+                      - "en0: Wi-Fi"
+                provisions:
+                  - name: dev-node-2-provision-1
+                    desc: 'Node 2 setup'
+                    enabled: true
+                    type: shell
+                    privileged: false
+                    freq: once
+                    inline: |
+                      echo "Setting up dev-node-2..."
+                      echo "Hostname: $(hostname)"
