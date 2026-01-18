@@ -1,6 +1,6 @@
 src/main/shell/config/config.sh
 src/main/shell/config/completion.sh
-src/main/shell/config/vagrant-local.yaml
+src/main/ruby/config/vagrant-local.yaml
 
 ### IntelliJ IDEA ###
 .idea/modules.xml
