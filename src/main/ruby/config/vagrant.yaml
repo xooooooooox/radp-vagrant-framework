@@ -24,6 +24,15 @@ radp:
           options:
             auto-update: true
             no-remote: false
+        - name: vagrant-bindfs
+          enabled: true
+          options:
+        - name: vagrant-vbox-snapshot
+          enabled: true
+          options:
+        - name: vagrant-proxyconf
+          enabled: true
+          options:
 
       config:
         # Global common configuration (inherited by all guests)
