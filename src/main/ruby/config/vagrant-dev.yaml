@@ -1,0 +1,101 @@
+radp:
+  extend:
+    vagrant:
+      config:
+        clusters:
+          - name: cluster-1
+            # optional: cluster-1 集群的公共配置
+            common:
+              # support basic, nfs, rsync, smb
+              synced-folders:
+                basic:
+                  - enabled: true
+                    # 使用绝对路径 或者 相对路径
+                    host: /path/to/host/folder
+                    guest: /path/to/guest/folder
+              triggers:
+                - name: cluster-1-trigger-1
+                  desc: 'print trigger description'
+                  enabled: true
+                  only-on:
+                    - '/k8s-.*/'
+                  on: before
+                  # support action, hook, command
+                  type: action
+                  # 这里以 actions 为例
+                  action:
+                    - up
+                    - reload
+                  # Support run or run_remote
+                  run:
+                    # support inline, path
+                    inline: |
+                      inline script
+              provisions:
+                - name: cluster-1-provision-1
+                  desc: 'print provision description'
+                  enabled: true
+                  # support shell, file
+                  type: shell
+                  # optional: support before or after
+                  before: provision_name
+                  privileged: false
+                  # support once, always, never
+                  run: once
+                  # support inline, path
+                  inline: |
+                    inline script
+            guests:
+              - id: guest-1
+                enabled: true
+                # 这里约定如果 hostname 为空，则默认为 <guest-id>.<cluster-name>.<env>
+                hostname: guest-1.cluster-1.dev
+                # optional: 如果 plugin vagrant-hostmanager enabled, 则可以配置 hostmanager 的别名
+                hostmanager:
+                  aliases:
+                    - alias-1-hostname
+                    - alias-2-hostname
+                box:
+                  name: generic/centos9s
+                  version: 4.3.12
+                provider:
+                  # 对于 virtualbox 类型, vm name 是可以通过 xx/yy/zz 来进行分组的
+                  # 所以这里约定，如果 group-id 为空，则默认为 <env>/<cluster-name>
+                  group-id: local/cluster-1
+                  type: virtualbox
+                  # vagrant machines 唯一性控制 $VAGRANT_DOTFILE_PATH/machines/<name>
+                  # 这里约定如果 name 为空，则默认为 <group-id>-<cluster-name>-<guest-id>
+                  name: local-cluster-1-guest-1
+                  mem: 10240
+                  cpus: 2
+                network:
+                  private-network:
+                    enabled: true
+                    # support static, dhcp
+                    type: dhcp
+                  public-network:
+                    enabled: true
+                    type: static
+                    ip: 192.168.20.100
+                    bridge:
+                      - "en0: Wi-Fi (AirPort)"
+                      - "en0: Wi-Fi"
+                      - "en0: Ethernet"
+                      - "enp0s8"
+                provisions:
+                  - name: local-cluster-1-guest-1-provision-1
+                    desc: 'print provision description'
+                    enabled: true
+                    # support shell, file
+                    type: shell
+                    privileged: false
+                    # optional: support before or after
+                    before: provision_name
+                    # support once, always, never
+                    run: once
+                    # support inline, path
+                    inline: |
+                      inline script
+          - name: cluster-2
+
+

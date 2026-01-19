@@ -1,167 +1,83 @@
-# RADP Vagrant Framework Configuration
-# This file defines multi-machine Vagrant environments using a declarative YAML structure
-#
-# Configuration Inheritance:
-#   global common -> cluster common -> guest
-#   Arrays (provisions, triggers, synced-folders) are concatenated across levels
-
 radp:
-  env: default
+  # radp.env 只有配置在 vagrant.yaml (即主配置文件中) 才会生效
+  # 如果配置在 vagrant-<env>.yaml 中，是无效的
+  env: dev
   extend:
     vagrant:
-      # Plugin Management (flat array)
       plugins:
+        # see: https://github.com/devopsgroup-io/vagrant-hostmanager
         - name: vagrant-hostmanager
-          enabled: true
+          # if required: true, 则表示该插件必须安装
+          required: true
           options:
             enabled: true
-            manage-host: true
-            manage-guest: true
-            include-offline: true
-            ignore-private-ip: false
+            manage_host: true
+            manage_guest: true
+            include_internal: true
+            ignore_private_ip: false
+        # see: https://github.com/dotless-de/vagrant-vbguest
         - name: vagrant-vbguest
-          enabled: true
+          required: true
           options:
-            auto-update: true
-            no-remote: false
-        - name: vagrant-bindfs
-          enabled: true
-          options:
-        - name: vagrant-vbox-snapshot
-          enabled: true
-          options:
+            auto_update: false
+            install_options:
+              allow_kernel_upgrade: false
+        # see: https://github.com/tmatilai/vagrant-proxyconf
         - name: vagrant-proxyconf
-          enabled: true
+          required: true
           options:
-
+            # https://github.com/tmatilai/vagrant-proxyconf?tab=readme-ov-file#disabling-the-plugin
+            enabled:
+            http: "http://192.168.31.8:6152"
+            https: "http://192.168.31.8:6152"
+            no_proxy: "localhost,127.0.0.1"
+        # see: https://github.com/gael-ian/vagrant-bindfs
+        - name: vagrant-bindfs
+          required: true
+          options:
       config:
-        # Global common configuration (inherited by all guests)
+        # optional: 所有 guest 的公共配置
         common:
           synced-folders:
-            # Grouped by type: basic, nfs, rsync, smb
+            # see: https://developer.hashicorp.com/vagrant/docs/synced-folders/basic_usage
+            # support basic, nfs, rsync, smb
             basic:
               - enabled: true
-                host: ./shared
-                guest: /vagrant/shared
+                # 使用绝对路径 或者 相对路径
+                host: /path/to/host/folder
+                guest: /path/to/guest/folder
                 create: true
+          # see: https://developer.hashicorp.com/vagrant/docs/triggers/configuration
           triggers:
             - name: global-trigger-1
-              desc: 'Global startup trigger'
+              desc: 'print trigger description'
               enabled: true
               only-on:
-                - '/dev-.*/'
+                - '/k8s-.*/'
               on: before
+              # support action, command, hook
               type: action
+              # 这里以 actions 为例
               action:
                 - up
                 - reload
+              # Support run or run_remote
               run:
+                # support inline, path
                 inline: |
-                  echo "=== RADP Vagrant Framework ==="
-                  echo "Starting environment..."
+                  inline script
+          # see: https://developer.hashicorp.com/vagrant/docs/provisioning/basic_usage
           provisions:
             - name: global-provision-1
-              desc: 'Global initialization'
+              desc: 'print provision description'
               enabled: true
+              # support shell, file
               type: shell
+              # optional: support before or after
+              before: provision_name
               privileged: false
+              # support once, always, never
               run: once
+              # support inline, path
               inline: |
-                echo "=== Global Provision ==="
-                echo "Timestamp: $(date)"
-
-        # Cluster Definitions
-        clusters:
-          - name: dev-cluster
-            # Cluster-level common configuration
-            common:
-              box:
-                name: generic/centos9s
-                version: 4.3.12
-              provider:
-                type: virtualbox
-                mem: 2048
-                cpus: 2
-              synced-folders:
-                basic:
-                  - enabled: true
-                    host: ./cluster-shared
-                    guest: /cluster-data
-                    create: true
-              triggers:
-                - name: cluster-trigger-1
-                  desc: 'Cluster startup trigger'
-                  enabled: true
-                  on: before
-                  type: action
-                  action:
-                    - up
-                  run:
-                    inline: |
-                      echo "Starting cluster: dev-cluster"
-              provisions:
-                - name: cluster-provision-1
-                  desc: 'Cluster initialization'
-                  enabled: true
-                  type: shell
-                  privileged: false
-                  run: once
-                  inline: |
-                    echo "=== Cluster Provision ==="
-                    echo "Cluster: dev-cluster"
-
-            # Guest Definitions
-            guests:
-              - id: dev-node-1
-                provider:
-                  group-id: dev-cluster
-                  name: dev-node-1
-                  mem: 4096
-                  cpus: 2
-                network:
-                  hostname: dev-node-1.local
-                  private-network:
-                    enabled: true
-                    type: dhcp
-                  public-network:
-                    enabled: false
-                provisions:
-                  - name: dev-node-1-provision-1
-                    desc: 'Node 1 setup'
-                    enabled: true
-                    type: shell
-                    privileged: false
-                    run: once
-                    inline: |
-                      echo "Setting up dev-node-1..."
-                      echo "Hostname: $(hostname)"
-
-              - id: dev-node-2
-                provider:
-                  group-id: dev-cluster
-                  name: dev-node-2
-                  mem: 2048
-                  cpus: 1
-                network:
-                  hostname: dev-node-2.local
-                  private-network:
-                    enabled: true
-                    type: static
-                    ip: 192.168.56.102
-                  public-network:
-                    enabled: true
-                    type: static
-                    ip: 192.168.20.100
-                    bridge:
-                      - "en0: Wi-Fi (AirPort)"
-                      - "en0: Wi-Fi"
-                provisions:
-                  - name: dev-node-2-provision-1
-                    desc: 'Node 2 setup'
-                    enabled: true
-                    type: shell
-                    privileged: false
-                    run: once
-                    inline: |
-                      echo "Setting up dev-node-2..."
-                      echo "Hostname: $(hostname)"
+                inline script
