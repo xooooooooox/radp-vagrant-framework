@@ -3,10 +3,10 @@
 ```
     ____  ___    ____  ____     _    _____   __________  ___    _   ________
    / __ \/   |  / __ \/ __ \   | |  / /   | / ____/ __ \/   |  / | / /_  __/
-  / /_/ / /| | / / / / /_/ /   | | / / /| |/ / __/ /_/ / /| | /  |/ / / /   
- / _, _/ ___ |/ /_/ / ____/    | |/ / ___ / /_/ / _, _/ ___ |/ /|  / / /    
-/_/ |_/_/  |_/_____/_/         |___/_/  |_\____/_/ |_/_/  |_/_/ |_/ /_/     
-                                                                            
+  / /_/ / /| | / / / / /_/ /   | | / / /| |/ / __/ /_/ / /| | /  |/ / / /
+ / _, _/ ___ |/ /_/ / ____/    | |/ / ___ / /_/ / _, _/ ___ |/ /|  / / /
+/_/ |_/_/  |_/_____/_/         |___/_/  |_\____/_/ |_/_/  |_/_/ |_/ /_/
+
 ```
 
 A YAML-driven framework for managing multi-machine Vagrant environments with declarative configuration.
@@ -14,10 +14,12 @@ A YAML-driven framework for managing multi-machine Vagrant environments with dec
 ## Features
 
 - **Declarative YAML Configuration**: Define VMs, networks, provisions, and triggers in YAML
+- **Multi-File Configuration**: Base config + environment-specific overrides (`vagrant.yaml` + `vagrant-{env}.yaml`)
 - **Configuration Inheritance**: Global → Cluster → Guest with automatic merging
 - **Array Concatenation**: Provisions, triggers, and synced-folders accumulate across inheritance levels
-- **Extensible Design**: Plugin and provider registries for easy extension
-- **Multi-Cluster Support**: Organize VMs into logical clusters
+- **Modular Plugin System**: Each plugin configurator in its own file for easy maintenance
+- **Convention-Based Defaults**: Automatic hostname, provider name, and group-id generation
+- **Debug Support**: Dump final merged configuration for inspection
 
 ## Quick Start
 
@@ -34,94 +36,88 @@ vagrant status
 vagrant up
 
 # Start specific VM
-vagrant up dev-node-1
+vagrant up guest-1
+
+# Debug: dump merged configuration
+ruby -r ./lib/radp_vagrant -e "RadpVagrant.dump_config('config')"
+
+# Debug: dump specific guest configuration
+ruby -r ./lib/radp_vagrant -e "RadpVagrant.dump_config('config', 'guest-1')"
 ```
 
 ## Directory Structure
 
 ```
 src/main/ruby/
-├── Vagrantfile                 # Entry point
+├── Vagrantfile                     # Entry point
 ├── config/
-│   ├── vagrant-dev.yaml        # dev configuration
-│   ├── vagrant-test.yaml       # test configuration
-│   └── vagrant.yaml            # User configuration
+│   ├── vagrant.yaml                # Base configuration (sets env)
+│   ├── vagrant-dev.yaml            # Dev environment clusters
+│   └── vagrant-local.yaml          # Local environment clusters
 └── lib/
-    ├── radp_vagrant.rb         # Main coordinator
+    ├── radp_vagrant.rb             # Main coordinator
     └── radp_vagrant/
-        ├── config_loader.rb    # YAML loading & validation
-        ├── config_merger.rb    # Deep merge with array concatenation
+        ├── config_loader.rb        # Multi-file YAML loading
+        ├── config_merger.rb        # Deep merge with array concatenation
         └── configurators/
-            ├── box.rb          # Box configuration
-            ├── provider.rb     # Provider (VirtualBox, etc.)
-            ├── network.rb      # Network settings
-            ├── synced_folder.rb # Synced folders
-            ├── provision.rb    # Provisioners
-            ├── trigger.rb      # Triggers
-            └── plugin.rb       # Plugin management
+            ├── box.rb              # Box configuration
+            ├── provider.rb         # Provider (VirtualBox, etc.)
+            ├── network.rb          # Network & hostname
+            ├── hostmanager.rb      # Per-guest hostmanager
+            ├── synced_folder.rb    # Synced folders
+            ├── provision.rb        # Provisioners
+            ├── trigger.rb          # Triggers
+            ├── plugin.rb           # Plugin orchestrator
+            └── plugins/            # Modular plugin configurators
+                ├── base.rb         # Base class
+                ├── registry.rb     # Plugin registry
+                ├── hostmanager.rb  # vagrant-hostmanager
+                ├── vbguest.rb      # vagrant-vbguest
+                ├── proxyconf.rb    # vagrant-proxyconf
+                └── bindfs.rb       # vagrant-bindfs
 ```
 
 ## Configuration Structure
 
+### Multi-File Loading
+
+Configuration is loaded in order with deep merging:
+1. `vagrant.yaml` - Base configuration (must contain `radp.env`)
+2. `vagrant-{env}.yaml` - Environment-specific clusters
+
 ```yaml
+# vagrant.yaml - Base configuration
 radp:
-  env: default
+  env: dev  # Determines which env file to load
   extend:
     vagrant:
-      # Plugin Management
       plugins:
         - name: vagrant-hostmanager
-          enabled: true
+          required: true
           options:
             enabled: true
-            manage-host: true
-
+            manage_host: true
       config:
-        # Global common (inherited by all guests)
         common:
-          synced-folders:
-            basic:
-              - enabled: true
-                host: ./shared
-                guest: /vagrant/shared
+          # Global settings inherited by all guests
           provisions:
             - name: global-init
               enabled: true
               type: shell
               run: once
               inline: echo "Hello"
-          triggers:
-            - name: startup
-              enabled: true
-              on: before
-              type: action
-              action:
-                - up
-              run:
-                inline: echo "Starting..."
 
-        # Cluster definitions
+# vagrant-dev.yaml - Dev environment
+radp:
+  extend:
+    vagrant:
+      config:
         clusters:
           - name: my-cluster
-            common:
-              box:
-                name: generic/centos9s
-                version: 4.3.12
-              provider:
-                type: virtualbox
-                mem: 2048
-                cpus: 2
-
             guests:
               - id: node-1
-                provider:
-                  name: node-1
-                  mem: 4096
-                network:
-                  hostname: node-1.local
-                  private-network:
-                    enabled: true
-                    type: dhcp
+                box:
+                  name: generic/centos9s
 ```
 
 ## Configuration Reference
@@ -130,44 +126,53 @@ radp:
 
 ```yaml
 plugins:
-  - name: vagrant-hostmanager    # Plugin name
-    enabled: true                # Enable/disable
-    options:                     # Plugin-specific options
+  - name: vagrant-hostmanager     # Plugin name
+    required: true                # Auto-install if missing
+    options:                      # Plugin-specific options (use underscores)
       enabled: true
-      manage-host: true
-      manage-guest: true
+      manage_host: true
+      manage_guest: true
+      include_offline: true
 ```
+
+Supported plugins:
+- `vagrant-hostmanager` - Host file management
+- `vagrant-vbguest` - VirtualBox Guest Additions
+- `vagrant-proxyconf` - Proxy configuration
+- `vagrant-bindfs` - Bind mounts (per synced-folder)
 
 ### Box
 
 ```yaml
 box:
-  name: generic/centos9s         # Box name
-  version: 4.3.12                # Box version
-  check-update: false            # Disable update check
+  name: generic/centos9s          # Box name
+  version: 4.3.12                 # Box version
+  check-update: false             # Disable update check
 ```
 
 ### Provider
 
 ```yaml
 provider:
-  type: virtualbox               # Provider type
-  name: my-vm                    # VM name in provider
-  group-id: my-group             # VirtualBox group
-  mem: 2048                      # Memory in MB
-  cpus: 2                        # CPU count
-  gui: false                     # Show GUI
+  type: virtualbox                # Provider type
+  name: my-vm                     # VM name (default: {env}-{cluster}-{guest-id})
+  group-id: my-group              # VirtualBox group (default: {env}/{cluster})
+  mem: 2048                       # Memory in MB
+  cpus: 2                         # CPU count
+  gui: false                      # Show GUI
 ```
 
 ### Network
 
 ```yaml
+# Hostname at guest level (default: {guest-id}.{cluster}.{env})
+hostname: node.local
+
 network:
-  hostname: node.local           # VM hostname
   private-network:
     enabled: true
-    type: dhcp                   # dhcp or static
-    ip: 192.168.56.10            # For static type
+    type: dhcp                    # dhcp or static
+    ip: 192.168.56.10             # For static type
     netmask: 255.255.255.0
   public-network:
     enabled: true
@@ -180,10 +185,19 @@ network:
       guest: 80
       host: 8080
       protocol: tcp
-  hostmanager:
+```
+
+### Hostmanager (Per-Guest)
+
+```yaml
+hostmanager:
+  aliases:
+    - myhost.local
+    - myhost
+  ip-resolver:
     enabled: true
-    aliases:
-      - myhost.local
+    execute: "hostname -I | cut -d ' ' -f 2"
+    regex: "^(\\S+)"
 ```
 
 ### Synced Folders
@@ -192,9 +206,9 @@ network:
 synced-folders:
   basic:
     - enabled: true
-      host: ./data               # Host path
-      guest: /data               # Guest mount path
-      create: true               # Create if not exists
+      host: ./data                # Host path
+      guest: /data                # Guest mount path
+      create: true                # Create if not exists
       owner: vagrant
       group: vagrant
   nfs:
@@ -215,37 +229,39 @@ synced-folders:
 
 ```yaml
 provisions:
-  - name: setup                  # Provision name
-    desc: 'Setup script'         # Description
+  - name: setup                   # Provision name
+    desc: 'Setup script'          # Description
     enabled: true
-    type: shell                  # shell or file
-    privileged: false            # Run as root
-    run: once                    # once, always, never
-    inline: |                    # Inline script
+    type: shell                   # shell or file
+    privileged: false             # Run as root
+    run: once                     # once, always, never
+    inline: |                     # Inline script
       echo "Hello"
     # Or use path:
     # path: ./scripts/setup.sh
     # args: arg1 arg2
-    before: other-provision      # Run before
-    after: other-provision       # Run after
+    # before: other-provision     # Run before (provision must exist)
+    # after: other-provision      # Run after
 ```
 
 ### Triggers
 
+Note: The `on` key must be quoted in YAML to prevent parsing as boolean.
+
 ```yaml
 triggers:
-  - name: before-up              # Trigger name
-    desc: 'Pre-start trigger'    # Description
+  - name: before-up               # Trigger name
+    desc: 'Pre-start trigger'     # Description
     enabled: true
-    on: before                   # before or after
-    type: action                 # action, command, hook
-    action:                      # Actions to trigger on
+    "on": before                  # before or after (must be quoted!)
+    type: action                  # action, command, hook
+    action:                       # Actions to trigger on
       - up
       - reload
-    only-on:                     # Filter guests (supports regex)
+    only-on:                      # Filter guests (supports regex)
       - '/node-.*/'
     run:
-      inline: |                  # Local script
+      inline: |                   # Local script
         echo "Starting..."
     # Or run-remote for guest execution
 ```
@@ -267,27 +283,73 @@ Guest:
   - provisions: [C]
 
 Result for guest:
-  - provisions: [A, B, C]        # All accumulated
-  - synced-folders: [X, Y]       # All accumulated
+  - provisions: [A, B, C]         # All accumulated
+  - synced-folders: [X, Y]        # All accumulated
 ```
 
-## Generate Vagrantfile for Inspection
+## Convention-Based Defaults
 
-Generate a standalone Vagrantfile to inspect the resolved configuration:
+The framework applies sensible defaults based on context:
 
-```bash
-cd src/main/ruby
-ruby lib/radp_vagrant/generator.rb > Vagrantfile.generated
-
-# Or with custom config path
-ruby lib/radp_vagrant/generator.rb config/vagrant.yaml > Vagrantfile.generated
-```
+| Field | Default Value | Example |
+|-------|--------------|---------|
+| `hostname` | `{guest-id}.{cluster}.{env}` | `node-1.my-cluster.dev` |
+| `provider.name` | `{env}-{cluster}-{guest-id}` | `dev-my-cluster-node-1` |
+| `provider.group-id` | `{env}/{cluster}` | `dev/my-cluster` |
 
 ## Environment Variables
 
-- `RADP_VAGRANT_CONFIG` - Override configuration file path
+- `RADP_VAGRANT_CONFIG_DIR` - Override configuration directory path
 
 ## Extending
+
+### Add New Plugin Configurator
+
+1. Create file `lib/radp_vagrant/configurators/plugins/my_plugin.rb`:
+
+```ruby
+# frozen_string_literal: true
+
+require_relative 'base'
+
+module RadpVagrant
+  module Configurators
+    module Plugins
+      class MyPlugin < Base
+        class << self
+          def plugin_name
+            'vagrant-my-plugin'
+          end
+
+          def configure(vagrant_config, options)
+            return unless options
+
+            config = vagrant_config.my_plugin
+            set_if_present(config, :option1, options, 'option1')
+            set_if_present(config, :option2, options, 'option2')
+          end
+        end
+      end
+    end
+  end
+end
+```
+
+2. Add to `plugins/registry.rb`:
+
+```ruby
+require_relative 'my_plugin'
+
+def plugin_classes
+  [
+    Hostmanager,
+    Vbguest,
+    Proxyconf,
+    Bindfs,
+    MyPlugin  # Add here
+  ]
+end
+```
 
 ### Add Provider
 
@@ -296,15 +358,6 @@ ruby lib/radp_vagrant/generator.rb config/vagrant.yaml > Vagrantfile.generated
 RadpVagrant::Configurators::Provider::CONFIGURATORS['vmware_desktop'] = lambda { |provider, opts|
   provider.vmx['memsize'] = opts['mem']
   provider.vmx['numvcpus'] = opts['cpus']
-}
-```
-
-### Add Plugin
-
-```ruby
-# In plugin.rb
-RadpVagrant::Configurators::Plugin::CONFIGURATORS['my-plugin'] = lambda { |config, opts|
-  config.my_plugin.option = opts['value']
 }
 ```
 

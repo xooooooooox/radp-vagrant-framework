@@ -1,51 +1,21 @@
 # frozen_string_literal: true
 
+require_relative 'plugins/registry'
+
 module RadpVagrant
   module Configurators
     # Configures Vagrant plugins
     # Reference: Plugin-specific documentation
+    #
+    # Plugin configurators are modularized under configurators/plugins/
+    # Each plugin has its own file for better maintainability.
+    #
+    # To add a new plugin:
+    # 1. Create a new file in configurators/plugins/ (e.g., my_plugin.rb)
+    # 2. Inherit from Plugins::Base
+    # 3. Implement .plugin_name and .configure methods
+    # 4. Add the class to Plugins::Registry.plugin_classes
     module Plugin
-      # Extensible plugin configuration registry
-      # Each configurator receives (vagrant_config, options_hash)
-      # Options are passed as-is from YAML (matching official plugin docs)
-      CONFIGURATORS = {
-        # https://github.com/devopsgroup-io/vagrant-hostmanager
-        'vagrant-hostmanager' => lambda { |config, opts|
-          config.hostmanager.enabled = opts['enabled'] if opts.key?('enabled')
-          config.hostmanager.manage_host = opts['manage_host'] if opts.key?('manage_host')
-          config.hostmanager.manage_guest = opts['manage_guest'] if opts.key?('manage_guest')
-          config.hostmanager.include_offline = opts['include_offline'] if opts.key?('include_offline')
-          config.hostmanager.ignore_private_ip = opts['ignore_private_ip'] if opts.key?('ignore_private_ip')
-        },
-
-        # https://github.com/dotless-de/vagrant-vbguest
-        'vagrant-vbguest' => lambda { |config, opts|
-          config.vbguest.auto_update = opts['auto_update'] if opts.key?('auto_update')
-          config.vbguest.no_remote = opts['no_remote'] if opts.key?('no_remote')
-          if opts['install_options']
-            config.vbguest.installer_options = opts['install_options']
-          end
-        },
-
-        # https://github.com/tmatilai/vagrant-proxyconf
-        'vagrant-proxyconf' => lambda { |config, opts|
-          # enabled: false/nil disables the plugin
-          # https://github.com/tmatilai/vagrant-proxyconf?tab=readme-ov-file#disabling-the-plugin
-          if opts.key?('enabled')
-            config.proxy.enabled = opts['enabled']
-          end
-          config.proxy.http = opts['http'] if opts.key?('http')
-          config.proxy.https = opts['https'] if opts.key?('https')
-          config.proxy.no_proxy = opts['no_proxy'] if opts.key?('no_proxy')
-        },
-
-        # https://github.com/gael-ian/vagrant-bindfs
-        'vagrant-bindfs' => lambda { |config, opts|
-          # vagrant-bindfs is configured per synced_folder, not globally
-          # Options here are just for reference/validation
-        }
-      }.freeze
-
       class << self
         def configure(vagrant_config, plugins)
           return unless plugins
@@ -79,12 +49,13 @@ module RadpVagrant
         def configure_plugin(vagrant_config, plugin_name, options)
           return unless options
 
-          configurator = CONFIGURATORS[plugin_name]
+          # Look up configurator in registry
+          configurator = Plugins::Registry.find(plugin_name)
+
           if configurator
-            configurator.call(vagrant_config, options)
+            configurator.configure(vagrant_config, options)
           else
-            # For unknown plugins, try generic configuration if the plugin
-            # follows standard naming convention (config.plugin_name.option)
+            # For unknown plugins, try generic configuration
             configure_generic_plugin(vagrant_config, plugin_name, options)
           end
         end
@@ -105,9 +76,10 @@ module RadpVagrant
         end
       end
 
-      # Register a new plugin configurator
-      def self.register(plugin_name, &block)
-        CONFIGURATORS[plugin_name] = block
+      # Register a new plugin configurator at runtime
+      # @param configurator_class [Class] Class that extends Plugins::Base
+      def self.register(configurator_class)
+        Plugins::Registry.register(configurator_class)
       end
     end
   end
