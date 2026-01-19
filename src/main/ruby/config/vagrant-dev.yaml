@@ -19,7 +19,7 @@ radp:
                   enabled: true
                   only-on:
                     - '/k8s-.*/'
-                  on: before
+                  "on": before
                   # support action, hook, command
                   type: action
                   # 这里以 actions 为例
@@ -38,7 +38,7 @@ radp:
                   # support shell, file
                   type: shell
                   # optional: support before or after
-                  before: provision_name
+                  # before: provision_name (commented: provision must exist)
                   privileged: false
                   # support once, always, never
                   run: once
@@ -90,12 +90,10 @@ radp:
                     type: shell
                     privileged: false
                     # optional: support before or after
-                    before: provision_name
+                    # before: provision_name (commented: provision must exist)
                     # support once, always, never
                     run: once
                     # support inline, path
                     inline: |
                       inline script
           - name: cluster-2
-
-

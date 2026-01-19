@@ -13,7 +13,7 @@ radp:
             enabled: true
             manage_host: true
             manage_guest: true
-            include_internal: true
+            include_offline: true
             ignore_private_ip: false
         # see: https://github.com/dotless-de/vagrant-vbguest
         - name: vagrant-vbguest
@@ -54,7 +54,7 @@ radp:
               enabled: true
               only-on:
                 - '/k8s-.*/'
-              on: before
+              "on": before
               # support action, command, hook
               type: action
               # 这里以 actions 为例
@@ -74,7 +74,7 @@ radp:
               # support shell, file
               type: shell
               # optional: support before or after
-              before: provision_name
+              # before: provision_name (commented: provision must exist)
               privileged: false
               # support once, always, never
               run: once
