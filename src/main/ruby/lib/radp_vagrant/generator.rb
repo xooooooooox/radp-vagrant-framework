@@ -307,7 +307,7 @@ module RadpVagrant
       lines = []
       lines << header
       lines << ""
-      lines << "Vagrant.require_version '>=2.0.0'"
+      lines << "Vagrant.require_version '>=1.6.0'"
       lines << ""
       lines << "Vagrant.configure('2') do |config|"
       @indent = 1
