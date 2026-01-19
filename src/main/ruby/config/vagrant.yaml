@@ -50,8 +50,8 @@ radp:
               enabled: true
               only-on:
                 - '/dev-.*/'
-              cycle: before
-              type: actions
+              on: before
+              type: action
               action:
                 - up
                 - reload
@@ -65,7 +65,7 @@ radp:
               enabled: true
               type: shell
               privileged: false
-              freq: once
+              run: once
               inline: |
                 echo "=== Global Provision ==="
                 echo "Timestamp: $(date)"
@@ -92,8 +92,8 @@ radp:
                 - name: cluster-trigger-1
                   desc: 'Cluster startup trigger'
                   enabled: true
-                  cycle: before
-                  type: actions
+                  on: before
+                  type: action
                   action:
                     - up
                   run:
@@ -105,7 +105,7 @@ radp:
                   enabled: true
                   type: shell
                   privileged: false
-                  freq: once
+                  run: once
                   inline: |
                     echo "=== Cluster Provision ==="
                     echo "Cluster: dev-cluster"
@@ -131,7 +131,7 @@ radp:
                     enabled: true
                     type: shell
                     privileged: false
-                    freq: once
+                    run: once
                     inline: |
                       echo "Setting up dev-node-1..."
                       echo "Hostname: $(hostname)"
@@ -161,7 +161,7 @@ radp:
                     enabled: true
                     type: shell
                     privileged: false
-                    freq: once
+                    run: once
                     inline: |
                       echo "Setting up dev-node-2..."
                       echo "Hostname: $(hostname)"

@@ -42,6 +42,8 @@ module RadpVagrant
         private
 
         def install_plugin(plugin_name)
+          # Skip installation if not running within Vagrant
+          return unless defined?(Vagrant) && Vagrant.respond_to?(:has_plugin?)
           return if Vagrant.has_plugin?(plugin_name)
 
           system("vagrant plugin install #{plugin_name}")

@@ -87,14 +87,15 @@ radp:
             - name: global-init
               enabled: true
               type: shell
-              freq: once
+              run: once
               inline: echo "Hello"
           triggers:
             - name: startup
               enabled: true
-              cycle: before
-              type: actions
-              action: [:up]
+              on: before
+              type: action
+              action:
+                - up
               run:
                 inline: echo "Starting..."
 
@@ -218,7 +219,7 @@ provisions:
     enabled: true
     type: shell                  # shell 或 file
     privileged: false            # 是否以 root 运行
-    freq: once                   # once, always, never
+    run: once                    # once, always, never
     inline: |                    # 内联脚本
       echo "Hello"
     # 或使用文件路径:
@@ -235,17 +236,17 @@ triggers:
   - name: before-up              # 名称
     desc: '启动前触发器'          # 描述
     enabled: true
-    cycle: before                # before 或 after
-    type: actions                # actions, hooks, commands
+    on: before                   # before 或 after
+    type: action                 # action, command, hook
     action:                      # 触发的动作
-      - :up
-      - :reload
+      - up
+      - reload
     only-on:                     # 过滤 guest（支持正则）
       - '/node-.*/'
     run:
       inline: |                  # 本地脚本
         echo "Starting..."
-    # 或 run_remote 在虚拟机内执行
+    # 或 run-remote 在虚拟机内执行
 ```
 
 ## 配置继承

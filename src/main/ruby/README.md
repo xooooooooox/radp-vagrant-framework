@@ -86,14 +86,15 @@ radp:
             - name: global-init
               enabled: true
               type: shell
-              freq: once
+              run: once
               inline: echo "Hello"
           triggers:
             - name: startup
               enabled: true
-              cycle: before
-              type: actions
-              action: [:up]
+              on: before
+              type: action
+              action:
+                - up
               run:
                 inline: echo "Starting..."
 
@@ -217,7 +218,7 @@ provisions:
     enabled: true
     type: shell                  # shell or file
     privileged: false            # Run as root
-    freq: once                   # once, always, never
+    run: once                    # once, always, never
     inline: |                    # Inline script
       echo "Hello"
     # Or use path:
@@ -234,17 +235,17 @@ triggers:
   - name: before-up              # Trigger name
     desc: 'Pre-start trigger'    # Description
     enabled: true
-    cycle: before                # before or after
-    type: actions                # actions, hooks, commands
+    on: before                   # before or after
+    type: action                 # action, command, hook
     action:                      # Actions to trigger on
-      - :up
-      - :reload
+      - up
+      - reload
     only-on:                     # Filter guests (supports regex)
       - '/node-.*/'
     run:
       inline: |                  # Local script
         echo "Starting..."
-    # Or run_remote for guest execution
+    # Or run-remote for guest execution
 ```
 
 ## Configuration Inheritance

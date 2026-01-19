@@ -3,6 +3,7 @@
 module RadpVagrant
   module Configurators
     # Configures VM synced folders (basic, nfs, rsync, smb)
+    # Reference: https://developer.hashicorp.com/vagrant/docs/synced-folders/basic_usage
     module SyncedFolder
       class << self
         def configure(vm_config, guest)
@@ -10,7 +11,8 @@ module RadpVagrant
           return unless folders
 
           folders.each do |folder|
-            next unless folder['enabled']
+            # Skip if explicitly disabled via 'enabled: false'
+            next if folder['enabled'] == false
 
             configure_folder(vm_config, folder)
           end
@@ -30,8 +32,14 @@ module RadpVagrant
         end
 
         def build_options(folder, folder_type)
-          options = { create: folder['create'] || false }
+          options = {}
 
+          # Common options for all types
+          options[:create] = folder['create'] if folder.key?('create')
+          options[:disabled] = folder['disabled'] if folder.key?('disabled')
+          options[:id] = folder['id'] if folder['id']
+
+          # Type-specific options
           case folder_type
           when 'basic'
             build_basic_options(options, folder)

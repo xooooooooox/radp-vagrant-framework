@@ -3,6 +3,7 @@
 module RadpVagrant
   module Configurators
     # Configures VM provisioners (shell, file)
+    # Reference: https://developer.hashicorp.com/vagrant/docs/provisioning/shell
     module Provision
       class << self
         def configure(vm_config, guest)
@@ -31,28 +32,48 @@ module RadpVagrant
         end
 
         def configure_shell(vm_config, name, provision)
-          options = { name: name }
+          options = {}
+          options[:name] = name if name
+
+          # run: once, always, never (renamed from freq)
+          options[:run] = provision['run'] if provision['run']
+
+          # privileged: run as root (default: true)
           options[:privileged] = provision['privileged'] if provision.key?('privileged')
 
-          # freq maps to run (once, always, never)
-          options[:run] = provision['freq'] if provision['freq']
-
-          # inline or path
+          # Script content - one of inline or path required
           options[:inline] = provision['inline'] if provision['inline']
           options[:path] = provision['path'] if provision['path']
+
+          # args: arguments to pass to the script
           options[:args] = provision['args'] if provision['args']
 
-          # ordering
+          # env: environment variables
+          options[:env] = provision['env'] if provision['env']
+
+          # Ordering options
           options[:before] = provision['before'] if provision['before']
           options[:after] = provision['after'] if provision['after']
+
+          # Additional shell options
+          options[:binary] = provision['binary'] if provision.key?('binary')
+          options[:keep_color] = provision['keep-color'] if provision.key?('keep-color')
+          options[:upload_path] = provision['upload-path'] if provision['upload-path']
+          options[:reboot] = provision['reboot'] if provision.key?('reboot')
+          options[:reset] = provision['reset'] if provision.key?('reset')
+          options[:sensitive] = provision['sensitive'] if provision.key?('sensitive')
 
           vm_config.vm.provision 'shell', **options
         end
 
         def configure_file(vm_config, name, provision)
-          options = { name: name }
+          options = {}
+          options[:name] = name if name
           options[:source] = provision['source']
           options[:destination] = provision['destination']
+
+          # run: once, always, never
+          options[:run] = provision['run'] if provision['run']
 
           vm_config.vm.provision 'file', **options
         end
