@@ -21,7 +21,8 @@ module RadpVagrant
 
         def configure_trigger(vagrant_config, trigger, guest_id, all_guest_ids)
           # on: before or after (renamed from cycle)
-          timing = trigger['on'] || 'before'
+          # Note: YAML parses bare 'on' as boolean true, so check for both
+          timing = trigger['on'] || trigger[true] || 'before'
 
           # type: action, command, hook (scope of trigger)
           # - :action - fires around Vagrant actions

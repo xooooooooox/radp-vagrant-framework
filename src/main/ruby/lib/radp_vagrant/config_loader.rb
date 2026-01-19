@@ -3,22 +3,93 @@
 require 'yaml'
 
 module RadpVagrant
-  # Loads and validates YAML configuration
+  # Loads and validates YAML configuration with multi-file support
+  # Supports: vagrant.yaml (base) + vagrant-{env}.yaml (environment-specific)
   module ConfigLoader
     class ConfigError < StandardError; end
 
     class << self
-      def load(config_path)
+      # Load configuration with environment-based merging
+      # @param config_dir [String] Directory containing config files
+      # @param base_filename [String] Base config filename (default: vagrant.yaml)
+      # @return [Hash] Merged configuration
+      def load(config_dir, base_filename = 'vagrant.yaml')
+        base_path = File.join(config_dir, base_filename)
+        raise ConfigError, "Base configuration file not found: #{base_path}" unless File.exist?(base_path)
+
+        # Load base config
+        base_config = load_yaml_file(base_path)
+        validate!(base_config)
+
+        # Determine active environment
+        env = base_config.dig('radp', 'env') || 'default'
+
+        # Load environment-specific config if exists
+        env_filename = base_filename.sub('.yaml', "-#{env}.yaml")
+        env_path = File.join(config_dir, env_filename)
+
+        if File.exist?(env_path)
+          env_config = load_yaml_file(env_path)
+          final_config = deep_merge(base_config, env_config)
+        else
+          final_config = base_config
+        end
+
+        # Store resolved env for reference
+        final_config['radp'] ||= {}
+        final_config['radp']['_resolved_env'] = env
+        final_config['radp']['_config_dir'] = config_dir
+
+        validate!(final_config)
+        final_config
+      end
+
+      # Load single file (for backward compatibility)
+      def load_file(config_path)
         raise ConfigError, "Configuration file not found: #{config_path}" unless File.exist?(config_path)
 
-        config = YAML.load_file(config_path, permitted_classes: [Symbol])
+        config = load_yaml_file(config_path)
         validate!(config)
         config
-      rescue Psych::SyntaxError => e
-        raise ConfigError, "YAML syntax error in #{config_path}: #{e.message}"
+      end
+
+      # Deep merge two hashes (arrays concatenate, hashes merge, scalars override)
+      def deep_merge(base, override)
+        return deep_dup(override) if base.nil?
+        return deep_dup(base) if override.nil?
+
+        return base + override if base.is_a?(Array) && override.is_a?(Array)
+        return override unless base.is_a?(Hash) && override.is_a?(Hash)
+
+        result = base.dup
+        override.each do |key, value|
+          result[key] = if result.key?(key)
+                          deep_merge(result[key], value)
+                        else
+                          deep_dup(value)
+                        end
+        end
+        result
       end
 
       private
+
+      def load_yaml_file(path)
+        YAML.load_file(path, permitted_classes: [Symbol])
+      rescue Psych::SyntaxError => e
+        raise ConfigError, "YAML syntax error in #{path}: #{e.message}"
+      end
+
+      def deep_dup(obj)
+        case obj
+        when Hash
+          obj.transform_values { |v| deep_dup(v) }
+        when Array
+          obj.map { |v| deep_dup(v) }
+        else
+          obj
+        end
+      end
 
       def validate!(config)
         raise ConfigError, 'Configuration must be a Hash' unless config.is_a?(Hash)
@@ -34,6 +105,10 @@ module RadpVagrant
       def validate_plugins!(plugins)
         return if plugins.nil?
         raise ConfigError, "'plugins' must be an array" unless plugins.is_a?(Array)
+
+        plugins.each_with_index do |plugin, idx|
+          raise ConfigError, "Plugin at index #{idx} must have a 'name'" unless plugin['name']
+        end
       end
 
       def validate_clusters!(clusters)
