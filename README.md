@@ -19,7 +19,9 @@ A YAML-driven framework for managing multi-machine Vagrant environments with dec
 - **Array Concatenation**: Provisions, triggers, and synced-folders accumulate across inheritance levels
 - **Modular Plugin System**: Each plugin configurator in its own file for easy maintenance
 - **Convention-Based Defaults**: Automatic hostname, provider name, and group-id generation
-- **Debug Support**: Dump final merged configuration for inspection
+- **Dry-Run Preview**: Generate standalone Vagrantfile to inspect final configuration
+- **Configuration Validation**: Detect duplicate cluster names and guest IDs
+- **Debug Support**: Dump final merged configuration for inspection (JSON/YAML)
 
 ## Quick Start
 
@@ -35,14 +37,24 @@ vagrant status
 # Start all VMs
 vagrant up
 
-# Start specific VM
-vagrant up guest-1
+# Start specific VM (use machine_name: <env>-<cluster>-<guest-id>)
+vagrant up dev-my-cluster-node-1
 
-# Debug: dump merged configuration
+# Debug: dump merged configuration (JSON)
 ruby -r ./lib/radp_vagrant -e "RadpVagrant.dump_config('config')"
 
-# Debug: dump specific guest configuration
-ruby -r ./lib/radp_vagrant -e "RadpVagrant.dump_config('config', 'guest-1')"
+# Filter by guest_id or machine_name
+ruby -r ./lib/radp_vagrant -e "RadpVagrant.dump_config('config', 'node-1')"
+ruby -r ./lib/radp_vagrant -e "RadpVagrant.dump_config('config', 'dev-my-cluster-node-1')"
+
+# Output as YAML
+ruby -r ./lib/radp_vagrant -e "RadpVagrant.dump_config('config', nil, format: :yaml)"
+
+# Generate standalone Vagrantfile (dry-run preview)
+ruby -r ./lib/radp_vagrant -e "puts RadpVagrant.generate_vagrantfile('config')"
+
+# Save generated Vagrantfile
+ruby -r ./lib/radp_vagrant -e "RadpVagrant.generate_vagrantfile('config', 'Vagrantfile.generated')"
 ```
 
 ## Directory Structure
@@ -59,6 +71,7 @@ src/main/ruby/
     └── radp_vagrant/
         ├── config_loader.rb        # Multi-file YAML loading
         ├── config_merger.rb        # Deep merge with array concatenation
+        ├── generator.rb            # Vagrantfile generator (dry-run)
         └── configurators/
             ├── box.rb              # Box configuration
             ├── provider.rb         # Provider (VirtualBox, etc.)
@@ -296,6 +309,18 @@ The framework applies sensible defaults based on context:
 | `hostname` | `{guest-id}.{cluster}.{env}` | `node-1.my-cluster.dev` |
 | `provider.name` | `{env}-{cluster}-{guest-id}` | `dev-my-cluster-node-1` |
 | `provider.group-id` | `{env}/{cluster}` | `dev/my-cluster` |
+
+## Validation Rules
+
+The framework validates configurations and will raise errors for:
+
+- **Duplicate cluster names**: No two clusters in the same environment file can have the same name
+- **Duplicate guest IDs**: No two guests within the same cluster can have the same ID
+- **Clusters in base config**: Clusters must be defined in `vagrant-{env}.yaml`, not in base `vagrant.yaml`
+
+## Machine Naming
+
+Vagrant machine names use `provider.name` (default: `{env}-{cluster}-{guest-id}`) to ensure uniqueness in `$VAGRANT_DOTFILE_PATH/machines/<name>`. This prevents conflicts when multiple clusters have guests with the same ID.
 
 ## Environment Variables
 

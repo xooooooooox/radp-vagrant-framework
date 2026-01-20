@@ -1,35 +1,39 @@
-#!/usr/bin/env ruby
 # frozen_string_literal: true
 
 # RADP Vagrant Framework - Vagrantfile Generator
-# Generates a standalone Vagrantfile from YAML configuration for inspection
-# Uses the same configurator logic as the main framework
+# Generates a standalone Vagrantfile from YAML configuration
+# Reuses the same configuration logic as the main framework
 
-require 'yaml'
 require_relative 'config_loader'
 require_relative 'config_merger'
+require_relative 'configurators/box'
+require_relative 'configurators/provider'
+require_relative 'configurators/network'
+require_relative 'configurators/hostmanager'
+require_relative 'configurators/synced_folder'
+require_relative 'configurators/provision'
+require_relative 'configurators/trigger'
+require_relative 'configurators/plugin'
 
 module RadpVagrant
   # Mock objects that capture Vagrant configuration calls
   module MockVagrant
-    # Captures method calls and stores them for code generation
-    class CallRecorder
-      attr_reader :calls
+    # Mock plugin config that captures settings
+    class MockPluginConfig
+      attr_reader :settings
 
-      def initialize(name = nil)
+      def initialize(name)
         @name = name
-        @calls = []
+        @settings = {}
       end
 
-      def method_missing(method, *args, **kwargs, &block)
-        call = { method: method, args: args, kwargs: kwargs }
-        if block
-          sub_recorder = CallRecorder.new
-          block.call(sub_recorder)
-          call[:block] = sub_recorder.calls
+      def method_missing(method, *args)
+        if method.to_s.end_with?('=')
+          attr = method.to_s.chomp('=')
+          @settings[attr] = args.first
+        else
+          @settings[method.to_s]
         end
-        @calls << call
-        self
       end
 
       def respond_to_missing?(*)
@@ -37,80 +41,61 @@ module RadpVagrant
       end
     end
 
-    # Mock VM config
-    class MockVmConfig
-      attr_reader :vm
+    # Mock provider recorder
+    class MockProvider
+      attr_reader :config
 
       def initialize
-        @vm = CallRecorder.new('vm')
+        @config = {}
       end
 
-      def hostmanager
-        @hostmanager ||= CallRecorder.new('hostmanager')
+      def name=(value)
+        @config[:name] = value
+      end
+
+      def memory=(value)
+        @config[:memory] = value
+      end
+
+      def cpus=(value)
+        @config[:cpus] = value
+      end
+
+      def gui=(value)
+        @config[:gui] = value
+      end
+
+      def customize(args)
+        @config[:customize] ||= []
+        @config[:customize] << args
       end
     end
 
-    # Mock Vagrant config (top level)
-    class MockVagrantConfig
-      attr_reader :calls
+    # Mock hostmanager for per-guest settings
+    class MockHostmanager
+      attr_reader :config
 
       def initialize
-        @calls = []
-        @vm_defines = []
-        @plugin_configs = {}
+        @config = {}
       end
 
-      def vm
-        @vm ||= MockVm.new(@vm_defines)
+      def aliases=(value)
+        @config[:aliases] = value
       end
 
-      def trigger
-        @trigger ||= MockTrigger.new(@calls)
-      end
-
-      def hostmanager
-        @hostmanager ||= MockPluginConfig.new('hostmanager', @plugin_configs)
-      end
-
-      def vbguest
-        @vbguest ||= MockPluginConfig.new('vbguest', @plugin_configs)
-      end
-
-      def proxy
-        @proxy ||= MockPluginConfig.new('proxy', @plugin_configs)
-      end
-
-      def vm_defines
-        @vm_defines
-      end
-
-      def plugin_configs
-        @plugin_configs
-      end
-
-      def trigger_calls
-        @calls
+      def ip_resolver=(value)
+        @config[:ip_resolver] = value
       end
     end
 
-    class MockVm
-      def initialize(defines)
-        @defines = defines
-      end
-
-      def define(name, &block)
-        vm_config = MockVmInstance.new(name)
-        block.call(vm_config) if block
-        @defines << vm_config
-      end
-    end
-
+    # Mock VM instance (per guest)
     class MockVmInstance
-      attr_reader :name, :calls
+      attr_reader :name, :calls, :hostmanager_config
 
       def initialize(name)
         @name = name
         @calls = []
+        @hostmanager = MockHostmanager.new
       end
 
       def vm
@@ -146,62 +131,45 @@ module RadpVagrant
       end
 
       def provider(type, &block)
-        recorder = ProviderRecorder.new
+        recorder = MockProvider.new
         block.call(recorder) if block
         @calls << { type: :provider, provider_type: type, config: recorder.config }
       end
 
       def hostmanager
-        @hostmanager ||= HostmanagerRecorder.new(@calls)
+        @hostmanager
+      end
+
+      def hostmanager_config
+        @hostmanager.config
       end
     end
 
-    class ProviderRecorder
+    # Mock trigger config recorder
+    class MockTriggerConfig
       attr_reader :config
 
       def initialize
         @config = {}
       end
 
-      def name=(value)
-        @config[:name] = value
+      %i[name info warn on_error ignore only_on abort run run_remote].each do |attr|
+        define_method("#{attr}=") do |value|
+          @config[attr] = value
+        end
       end
 
-      def memory=(value)
-        @config[:memory] = value
-      end
-
-      def cpus=(value)
-        @config[:cpus] = value
-      end
-
-      def gui=(value)
-        @config[:gui] = value
-      end
-
-      def customize(args)
-        @config[:customize] ||= []
-        @config[:customize] << args
+      def ruby(&block)
+        @config[:ruby] = block
       end
     end
 
-    class HostmanagerRecorder
-      def initialize(calls)
-        @calls = calls
-      end
-
-      def aliases=(value)
-        @calls << { type: :hostmanager_aliases, value: value }
-      end
-
-      def ip_resolver=(value)
-        @calls << { type: :hostmanager_ip_resolver, value: value }
-      end
-    end
-
+    # Mock trigger that captures before/after calls
     class MockTrigger
-      def initialize(calls)
-        @calls = calls
+      attr_reader :calls
+
+      def initialize
+        @calls = []
       end
 
       def before(*actions, **kwargs, &block)
@@ -215,80 +183,62 @@ module RadpVagrant
       private
 
       def record_trigger(timing, actions, kwargs, &block)
-        trigger_config = TriggerConfigRecorder.new
-        block.call(trigger_config) if block
+        config = MockTriggerConfig.new
+        block.call(config) if block
         @calls << {
           type: :trigger,
           timing: timing,
           actions: actions,
           kwargs: kwargs,
-          config: trigger_config.config
+          config: config.config
         }
       end
     end
 
-    class TriggerConfigRecorder
-      attr_reader :config
+    # Mock VM that records define calls
+    class MockVm
+      attr_reader :defines
 
       def initialize
-        @config = {}
+        @defines = []
       end
 
-      def name=(value)
-        @config[:name] = value
-      end
-
-      def info=(value)
-        @config[:info] = value
-      end
-
-      def warn=(value)
-        @config[:warn] = value
-      end
-
-      def on_error=(value)
-        @config[:on_error] = value
-      end
-
-      def ignore=(value)
-        @config[:ignore] = value
-      end
-
-      def only_on=(value)
-        @config[:only_on] = value
-      end
-
-      def abort=(value)
-        @config[:abort] = value
-      end
-
-      def run=(value)
-        @config[:run] = value
-      end
-
-      def run_remote=(value)
-        @config[:run_remote] = value
-      end
-
-      def ruby(&block)
-        @config[:ruby] = block
+      def define(name, &block)
+        vm_instance = MockVmInstance.new(name)
+        block.call(vm_instance) if block
+        @defines << vm_instance
       end
     end
 
-    class MockPluginConfig
-      def initialize(name, store)
-        @name = name
-        @store = store
-        @store[@name] ||= {}
+    # Top-level mock Vagrant config
+    class MockVagrantConfig
+      attr_reader :vm, :trigger, :plugin_configs
+
+      def initialize
+        @vm = MockVm.new
+        @trigger = MockTrigger.new
+        @plugin_configs = {}
       end
 
+      def hostmanager
+        @plugin_configs['hostmanager'] ||= MockPluginConfig.new('hostmanager')
+      end
+
+      def vbguest
+        @plugin_configs['vbguest'] ||= MockPluginConfig.new('vbguest')
+      end
+
+      def proxy
+        @plugin_configs['proxy'] ||= MockPluginConfig.new('proxy')
+      end
+
+      def bindfs
+        @plugin_configs['bindfs'] ||= MockPluginConfig.new('bindfs')
+      end
+
+      # Generic plugin config accessor
       def method_missing(method, *args)
-        if method.to_s.end_with?('=')
-          attr = method.to_s.chomp('=')
-          @store[@name][attr] = args.first
-        else
-          @store[@name][method.to_s]
-        end
+        @plugin_configs[method.to_s] ||= MockPluginConfig.new(method.to_s)
       end
 
       def respond_to_missing?(*)
@@ -297,32 +247,25 @@ module RadpVagrant
     end
   end
 
-  # Code generator that converts captured calls to Ruby code
+  # Converts captured mock calls to Ruby code
   class CodeGenerator
-    def initialize
+    def initialize(merged_config, mock_config)
+      @merged_config = merged_config
+      @mock_config = mock_config
       @indent = 0
     end
 
-    def generate(mock_config)
+    def generate
       lines = []
       lines << header
       lines << ""
-      lines << "Vagrant.require_version '>=1.6.0'"
+      lines << "Vagrant.require_version '>= 2.0.0'"
       lines << ""
       lines << "Vagrant.configure('2') do |config|"
       @indent = 1
 
-      # Plugin configurations
-      generate_plugin_configs(lines, mock_config.plugin_configs)
-
-      # Triggers (global)
-      generate_triggers(lines, mock_config.trigger_calls)
-
-      # VM defines
-      mock_config.vm_defines.each do |vm|
-        lines << ""
-        generate_vm_define(lines, vm)
-      end
+      generate_plugin_configs(lines)
+      generate_vm_defines(lines)
 
       @indent = 0
       lines << "end"
@@ -337,77 +280,64 @@ module RadpVagrant
         # vi: set ft=ruby :
         #
         # Generated by RADP Vagrant Framework
-        # Generated at: #{Time.now}
+        # Source: #{@merged_config['config_dir']}
+        # Environment: #{@merged_config['env']}
+        # Generated at: #{Time.now.strftime('%Y-%m-%d %H:%M:%S')}
         #
         # This is a standalone Vagrantfile that does not require the framework.
+        # It shows the final configuration that would be applied to Vagrant.
       HEADER
     end
 
-    def generate_plugin_configs(lines, configs)
-      return if configs.empty?
+    def generate_plugin_configs(lines)
+      return if @mock_config.plugin_configs.empty?
 
       lines << ""
+      lines << indent("# ===================")
       lines << indent("# Plugin Configuration")
+      lines << indent("# ===================")
 
-      configs.each do |plugin, settings|
-        settings.each do |attr, value|
-          lines << indent("config.#{plugin}.#{attr} = #{value.inspect}")
+      @mock_config.plugin_configs.each do |plugin, config|
+        next if config.settings.empty?
+
+        lines << ""
+        lines << indent("# #{plugin}")
+        config.settings.each do |attr, value|
+          lines << indent("config.#{plugin}.#{attr} = #{ruby_literal(value)}")
         end
       end
     end
 
-    def generate_triggers(lines, trigger_calls)
-      triggers = trigger_calls.select { |c| c[:type] == :trigger }
-      return if triggers.empty?
+    def generate_vm_defines(lines)
+      @mock_config.vm.defines.each_with_index do |vm, idx|
+        lines << ""
+        lines << indent("# " + "=" * 50)
+        lines << indent("# Guest: #{vm.name}")
+        lines << indent("# " + "=" * 50)
 
-      lines << ""
-      lines << indent("# Global Triggers")
-      triggers.each do |trigger|
-        generate_trigger(lines, trigger, 'config')
+        var = safe_var(vm.name)
+        lines << indent("config.vm.define '#{vm.name}' do |#{var}|")
+        @indent += 1
+
+        generate_vm_calls(lines, var, vm)
+        generate_vm_triggers(lines, var, vm)
+
+        @indent -= 1
+        lines << indent("end")
       end
     end
 
-    def generate_trigger(lines, trigger, var)
-      timing = trigger[:timing]
-      actions = trigger[:actions].map(&:inspect).join(', ')
-      config = trigger[:config]
-
-      type_opt = trigger[:kwargs][:type] ? ", type: #{trigger[:kwargs][:type].inspect}" : ""
-      lines << indent("#{var}.trigger.#{timing} #{actions}#{type_opt} do |t|")
-      @indent += 1
-
-      lines << indent("t.name = #{config[:name].inspect}") if config[:name]
-      lines << indent("t.info = #{config[:info].inspect}") if config[:info]
-      lines << indent("t.warn = #{config[:warn].inspect}") if config[:warn]
-      lines << indent("t.on_error = #{config[:on_error].inspect}") if config[:on_error]
-      lines << indent("t.only_on = #{config[:only_on].inspect}") if config[:only_on]
-
-      if config[:run]
-        lines << indent("t.run = #{config[:run].inspect}")
-      elsif config[:run_remote]
-        lines << indent("t.run_remote = #{config[:run_remote].inspect}")
-      end
-
-      @indent -= 1
-      lines << indent("end")
-    end
-
-    def generate_vm_define(lines, vm)
-      var = safe_var(vm.name)
-      lines << indent("# Guest: #{vm.name}")
-      lines << indent("config.vm.define '#{vm.name}' do |#{var}|")
-      @indent += 1
-
+    def generate_vm_calls(lines, var, vm)
       vm.calls.each do |call|
         case call[:type]
         when :box
-          lines << indent("#{var}.vm.box = #{call[:value].inspect}")
+          lines << indent("#{var}.vm.box = #{ruby_literal(call[:value])}")
         when :box_version
-          lines << indent("#{var}.vm.box_version = #{call[:value].inspect}")
+          lines << indent("#{var}.vm.box_version = #{ruby_literal(call[:value])}")
         when :box_check_update
-          lines << indent("#{var}.vm.box_check_update = #{call[:value].inspect}")
+          lines << indent("#{var}.vm.box_check_update = #{call[:value]}")
         when :hostname
-          lines << indent("#{var}.vm.hostname = #{call[:value].inspect}")
+          lines << indent("#{var}.vm.hostname = #{ruby_literal(call[:value])}")
         when :network
           generate_network(lines, var, call)
         when :synced_folder
@@ -416,55 +346,119 @@ module RadpVagrant
           generate_provision(lines, var, call)
         when :provider
           generate_provider(lines, var, call)
-        when :hostmanager_aliases
-          lines << indent("#{var}.hostmanager.aliases = #{call[:value].inspect}")
         end
+      end
+
+      # Hostmanager per-guest config
+      generate_hostmanager(lines, var, vm.hostmanager_config)
+    end
+
+    def generate_network(lines, var, call)
+      opts = format_options(call[:options])
+      if opts.empty?
+        lines << indent("#{var}.vm.network '#{call[:network_type]}'")
+      else
+        lines << indent("#{var}.vm.network '#{call[:network_type]}', #{opts}")
+      end
+    end
+
+    def generate_synced_folder(lines, var, call)
+      opts = format_options(call[:options])
+      opts_str = opts.empty? ? "" : ", #{opts}"
+      lines << indent("#{var}.vm.synced_folder #{ruby_literal(call[:host])}, #{ruby_literal(call[:guest])}#{opts_str}")
+    end
+
+    def generate_provision(lines, var, call)
+      opts = call[:options].dup
+      inline = opts.delete(:inline)
+      name = opts[:name]
+
+      if inline && inline.include?("\n")
+        # Multi-line inline script
+        opts_str = format_options(opts)
+        opts_prefix = opts_str.empty? ? "" : "#{opts_str}, "
+        lines << indent("#{var}.vm.provision '#{call[:provision_type]}', #{opts_prefix}inline: <<~SHELL")
+        @indent += 1
+        inline.each_line { |l| lines << indent(l.rstrip) }
+        @indent -= 1
+        lines << indent("SHELL")
+      else
+        # Single line or path-based
+        opts[:inline] = inline if inline
+        opts_str = format_options(opts)
+        lines << indent("#{var}.vm.provision '#{call[:provision_type]}', #{opts_str}")
+      end
+    end
+
+    def generate_provider(lines, var, call)
+      config = call[:config]
+      return if config.empty?
+
+      lines << ""
+      lines << indent("#{var}.vm.provider '#{call[:provider_type]}' do |vb|")
+      @indent += 1
+
+      lines << indent("vb.name = #{ruby_literal(config[:name])}") if config[:name]
+      lines << indent("vb.memory = #{config[:memory]}") if config[:memory]
+      lines << indent("vb.cpus = #{config[:cpus]}") if config[:cpus]
+      lines << indent("vb.gui = #{config[:gui]}") if config.key?(:gui)
+
+      config[:customize]&.each do |cmd|
+        lines << indent("vb.customize #{ruby_literal(cmd)}")
       end
 
       @indent -= 1
       lines << indent("end")
     end
 
-    def generate_network(lines, var, call)
-      opts = call[:options].map { |k, v| "#{k}: #{v.inspect}" }.join(', ')
-      lines << indent("#{var}.vm.network '#{call[:network_type]}', #{opts}")
-    end
+    def generate_hostmanager(lines, var, config)
+      return if config.empty?
 
-    def generate_synced_folder(lines, var, call)
-      opts = call[:options].map { |k, v| "#{k}: #{v.inspect}" }.join(', ')
-      opts_str = opts.empty? ? "" : ", #{opts}"
-      lines << indent("#{var}.vm.synced_folder '#{call[:host]}', '#{call[:guest]}'#{opts_str}")
-    end
+      lines << ""
+      lines << indent("# Hostmanager per-guest settings")
+      lines << indent("#{var}.hostmanager.aliases = #{ruby_literal(config[:aliases])}") if config[:aliases]
 
-    def generate_provision(lines, var, call)
-      opts = call[:options].dup
-      inline = opts.delete(:inline)
-
-      if inline
-        opts_str = opts.map { |k, v| "#{k}: #{v.inspect}" }.join(', ')
-        opts_prefix = opts_str.empty? ? "" : "#{opts_str}, "
-        lines << indent("#{var}.vm.provision '#{call[:provision_type]}', #{opts_prefix}inline: <<~SHELL")
-        inline.each_line { |l| lines << indent("  #{l.rstrip}") }
-        lines << indent("SHELL")
-      else
-        opts_str = opts.map { |k, v| "#{k}: #{v.inspect}" }.join(', ')
-        lines << indent("#{var}.vm.provision '#{call[:provision_type]}', #{opts_str}")
+      if config[:ip_resolver]
+        lines << indent("# Note: ip_resolver contains a proc, shown as placeholder")
+        lines << indent("# #{var}.hostmanager.ip_resolver = proc { |vm, resolving_vm| ... }")
       end
     end
 
-    def generate_provider(lines, var, call)
+    def generate_vm_triggers(lines, var, vm)
+      # Triggers are recorded at the config level, filter by machine name
+      triggers = @mock_config.trigger.calls.select do |t|
+        only_on = t[:config][:only_on]
+        only_on.nil? || only_on.include?(vm.name)
+      end
+
+      return if triggers.empty?
+
       lines << ""
-      lines << indent("#{var}.vm.provider '#{call[:provider_type]}' do |vb|")
+      lines << indent("# Triggers")
+      triggers.each do |trigger|
+        generate_trigger(lines, 'config', trigger)
+      end
+    end
+
+    def generate_trigger(lines, var, trigger)
+      timing = trigger[:timing]
+      actions = trigger[:actions].map { |a| ":#{a}" }.join(', ')
+      config = trigger[:config]
+
+      type_opt = trigger[:kwargs][:type] ? ", type: :#{trigger[:kwargs][:type]}" : ""
+      lines << indent("#{var}.trigger.#{timing} #{actions}#{type_opt} do |t|")
       @indent += 1
 
-      config = call[:config]
-      lines << indent("vb.name = #{config[:name].inspect}") if config[:name]
-      lines << indent("vb.memory = #{config[:memory]}") if config[:memory]
-      lines << indent("vb.cpus = #{config[:cpus]}") if config[:cpus]
-      lines << indent("vb.gui = #{config[:gui]}") if config.key?(:gui)
+      lines << indent("t.name = #{ruby_literal(config[:name])}") if config[:name]
+      lines << indent("t.info = #{ruby_literal(config[:info])}") if config[:info]
+      lines << indent("t.warn = #{ruby_literal(config[:warn])}") if config[:warn]
+      lines << indent("t.on_error = :#{config[:on_error]}") if config[:on_error]
+      lines << indent("t.only_on = #{ruby_literal(config[:only_on])}") if config[:only_on]
 
-      config[:customize]&.each do |cmd|
-        lines << indent("vb.customize #{cmd.inspect}")
+      if config[:run]
+        lines << indent("t.run = #{ruby_literal(config[:run])}")
+      elsif config[:run_remote]
+        lines << indent("t.run_remote = #{ruby_literal(config[:run_remote])}")
       end
 
       @indent -= 1
@@ -478,79 +472,95 @@ module RadpVagrant
     def safe_var(name)
       name.to_s.gsub(/[^a-zA-Z0-9_]/, '_')
     end
+
+    def ruby_literal(value)
+      case value
+      when String
+        value.inspect
+      when Symbol
+        ":#{value}"
+      when Array
+        "[#{value.map { |v| ruby_literal(v) }.join(', ')}]"
+      when Hash
+        pairs = value.map { |k, v| "#{ruby_key(k)} => #{ruby_literal(v)}" }
+        "{ #{pairs.join(', ')} }"
+      when NilClass
+        'nil'
+      when TrueClass, FalseClass
+        value.to_s
+      else
+        value.inspect
+      end
+    end
+
+    def ruby_key(key)
+      case key
+      when Symbol
+        ":#{key}"
+      when String
+        key.inspect
+      else
+        key.inspect
+      end
+    end
+
+    def format_options(opts)
+      return "" if opts.nil? || opts.empty?
+
+      opts.map { |k, v| "#{k}: #{ruby_literal(v)}" }.join(', ')
+    end
   end
 
   # Generator that uses the actual configurators with mock objects
+  # Reuses build_merged_config for consistency
   class Generator
-    def initialize(config_path)
-      @config_path = config_path
-      @config = ConfigLoader.load(config_path)
+    def initialize(config_dir)
+      @config_dir = config_dir
     end
 
     def generate
-      # Load configurators
-      require_relative 'configurators/box'
-      require_relative 'configurators/provider'
-      require_relative 'configurators/network'
-      require_relative 'configurators/synced_folder'
-      require_relative 'configurators/provision'
-      require_relative 'configurators/trigger'
-      require_relative 'configurators/plugin'
+      # Reuse the same merged config logic as the main framework
+      merged = RadpVagrant.build_merged_config(@config_dir)
+      return "# No vagrant configuration found" unless merged
 
-      # Create mock config
+      # Create mock config to capture calls
       mock_config = MockVagrant::MockVagrantConfig.new
 
-      # Configure using the same logic as the main framework
-      vagrant_section = @config.dig('radp', 'extend', 'vagrant')
-      return "# No vagrant configuration found" unless vagrant_section
+      # Configure plugins (same as main framework)
+      Configurators::Plugin.configure(mock_config, merged['plugins'])
 
-      # Configure plugins
-      Configurators::Plugin.configure(mock_config, vagrant_section['plugins'])
-
-      # Process clusters
-      common_config = vagrant_section.dig('config', 'common')
-      clusters = vagrant_section.dig('config', 'clusters') || []
-
-      # Collect all guest IDs
-      all_guest_ids = clusters.flat_map { |c| c['guests']&.map { |g| g['id'] } || [] }
-
-      clusters.each do |cluster|
-        process_cluster(mock_config, cluster, common_config, all_guest_ids)
+      # Collect all machine names (same as main framework)
+      all_machine_names = merged['clusters'].flat_map do |cluster|
+        cluster['guests'].map { |g| g.dig('provider', 'name') || g['id'] }
       end
 
-      # Generate code from captured calls
-      CodeGenerator.new.generate(mock_config)
+      # Process each cluster (same as main framework)
+      merged['clusters'].each do |cluster|
+        cluster['guests'].each do |guest|
+          define_guest(mock_config, guest, all_machine_names)
+        end
+      end
+
+      # Generate Ruby code from captured calls
+      CodeGenerator.new(merged, mock_config).generate
     end
 
     private
 
-    def process_cluster(mock_config, cluster, global_common, all_guest_ids)
-      cluster_name = cluster['name'] || 'default'
-      cluster_common = cluster['common']
-      guests = cluster['guests'] || []
+    # Same logic as RadpVagrant.define_guest
+    def define_guest(mock_config, guest, all_machine_names)
+      env = guest['_env']
+      # Use provider.name as machine name (same convention as main framework)
+      machine_name = guest.dig('provider', 'name') || guest['id']
 
-      guests.each do |guest|
-        next if guest['enabled'] == false
-
-        merged = ConfigMerger.merge_guest_config(global_common, cluster_common, guest)
-        merged['cluster-name'] = cluster_name
-        merged['provider'] ||= {}
-        merged['provider']['group-id'] ||= cluster_name
-
-        define_guest(mock_config, merged, all_guest_ids)
-      end
-    end
-
-    def define_guest(mock_config, guest, all_guest_ids)
-      guest_id = guest['id']
-
-      mock_config.vm.define(guest_id) do |vm_config|
+      mock_config.vm.define(machine_name) do |vm_config|
         Configurators::Box.configure(vm_config, guest)
         Configurators::Provider.configure(vm_config, guest)
-        Configurators::Network.configure(vm_config, guest)
+        Configurators::Network.configure(vm_config, guest, env: env)
+        Configurators::Hostmanager.configure(vm_config, guest)
         Configurators::SyncedFolder.configure(vm_config, guest)
         Configurators::Provision.configure(vm_config, guest)
-        Configurators::Trigger.configure(mock_config, guest, all_guest_ids: all_guest_ids)
+        Configurators::Trigger.configure(mock_config, guest, all_machine_names: all_machine_names)
       end
     end
   end
@@ -558,14 +568,16 @@ end
 
 # CLI execution
 if __FILE__ == $PROGRAM_NAME
-  config_path = ARGV[0] || File.join(File.dirname(__FILE__), '..', '..', 'config', 'vagrant.yaml')
+  require_relative '../radp_vagrant'
 
-  unless File.exist?(config_path)
-    warn "Error: Configuration file not found: #{config_path}"
-    warn "Usage: ruby #{$PROGRAM_NAME} [config_path]"
+  config_dir = ARGV[0] || File.join(File.dirname(__FILE__), '..', '..', 'config')
+
+  unless File.directory?(config_dir)
+    warn "Error: Configuration directory not found: #{config_dir}"
+    warn "Usage: ruby #{$PROGRAM_NAME} [config_dir]"
     exit 1
   end
 
-  generator = RadpVagrant::Generator.new(config_path)
+  generator = RadpVagrant::Generator.new(config_dir)
   puts generator.generate
 end

@@ -30,6 +30,12 @@ ruby -r ./lib/radp_vagrant -e "RadpVagrant.dump_config('config', 'local-cluster-
 
 # Output as YAML
 ruby -r ./lib/radp_vagrant -e "RadpVagrant.dump_config('config', nil, format: :yaml)"
+
+# Generate standalone Vagrantfile (dry-run preview)
+ruby -r ./lib/radp_vagrant -e "puts RadpVagrant.generate_vagrantfile('config')"
+
+# Generate and save to file
+ruby -r ./lib/radp_vagrant -e "RadpVagrant.generate_vagrantfile('config', 'Vagrantfile.generated')"
 ```
 
 ## Architecture

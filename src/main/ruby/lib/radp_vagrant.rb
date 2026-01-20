@@ -83,6 +83,24 @@ module RadpVagrant
       output_config(merged, format)
     end
 
+    # Generate standalone Vagrantfile from YAML configuration
+    # @param config_dir [String] Directory containing config files
+    # @param output_path [String, nil] Path to write Vagrantfile, or nil to return string
+    # @return [String] Generated Vagrantfile content
+    def generate_vagrantfile(config_dir, output_path = nil)
+      require_relative 'radp_vagrant/generator'
+
+      generator = Generator.new(config_dir)
+      content = generator.generate
+
+      if output_path
+        File.write(output_path, content)
+        puts "Generated Vagrantfile: #{output_path}"
+      end
+
+      content
+    end
+
     # Build fully merged configuration (single source of truth)
     # @param config_dir [String] Directory containing config files
     # @return [Hash, nil] Merged configuration or nil if no vagrant config

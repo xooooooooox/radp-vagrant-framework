@@ -19,7 +19,9 @@
 - **数组连接**: provisions、triggers、synced-folders 在继承时累加而非覆盖
 - **模块化插件系统**: 每个插件配置器独立文件，便于维护
 - **约定优于配置**: 自动生成 hostname、provider name 和 group-id
-- **调试支持**: 可导出最终合并后的配置用于检查
+- **Dry-Run 预览**: 生成独立 Vagrantfile 以检查最终配置
+- **配置校验**: 检测重复的集群名称和 guest ID
+- **调试支持**: 可导出最终合并后的配置（JSON/YAML）
 
 ## 快速开始
 
@@ -35,14 +37,24 @@ vagrant status
 # 启动所有虚拟机
 vagrant up
 
-# 启动指定虚拟机
-vagrant up guest-1
+# 启动指定虚拟机（使用 machine_name: <env>-<cluster>-<guest-id>）
+vagrant up dev-my-cluster-node-1
 
-# 调试: 导出合并后的配置
+# 调试: 导出合并后的配置（JSON）
 ruby -r ./lib/radp_vagrant -e "RadpVagrant.dump_config('config')"
 
-# 调试: 导出指定 guest 的配置
-ruby -r ./lib/radp_vagrant -e "RadpVagrant.dump_config('config', 'guest-1')"
+# 按 guest_id 或 machine_name 过滤
+ruby -r ./lib/radp_vagrant -e "RadpVagrant.dump_config('config', 'node-1')"
+ruby -r ./lib/radp_vagrant -e "RadpVagrant.dump_config('config', 'dev-my-cluster-node-1')"
+
+# 输出为 YAML 格式
+ruby -r ./lib/radp_vagrant -e "RadpVagrant.dump_config('config', nil, format: :yaml)"
+
+# 生成独立 Vagrantfile（预览最终配置）
+ruby -r ./lib/radp_vagrant -e "puts RadpVagrant.generate_vagrantfile('config')"
+
+# 保存生成的 Vagrantfile
+ruby -r ./lib/radp_vagrant -e "RadpVagrant.generate_vagrantfile('config', 'Vagrantfile.generated')"
 ```
 
 ## 目录结构
@@ -59,6 +71,7 @@ src/main/ruby/
     └── radp_vagrant/
         ├── config_loader.rb        # 多文件 YAML 加载
         ├── config_merger.rb        # 深度合并（数组连接）
+        ├── generator.rb            # Vagrantfile 生成器（dry-run）
         └── configurators/
             ├── box.rb              # Box 配置
             ├── provider.rb         # Provider 配置（VirtualBox 等）
@@ -296,6 +309,18 @@ Guest 最终结果:
 | `hostname` | `{guest-id}.{cluster}.{env}` | `node-1.my-cluster.dev` |
 | `provider.name` | `{env}-{cluster}-{guest-id}` | `dev-my-cluster-node-1` |
 | `provider.group-id` | `{env}/{cluster}` | `dev/my-cluster` |
+
+## 配置校验规则
+
+框架会验证配置并在以下情况抛出错误：
+
+- **重复的集群名称**: 同一环境文件中不允许存在同名集群
+- **重复的 guest ID**: 同一集群内不允许存在相同的 guest ID
+- **基础配置中定义集群**: 集群必须在 `vagrant-{env}.yaml` 中定义，不能在基础 `vagrant.yaml` 中定义
+
+## 机器命名
+
+Vagrant 机器名称使用 `provider.name`（默认: `{env}-{cluster}-{guest-id}`）以确保在 `$VAGRANT_DOTFILE_PATH/machines/<name>` 中的唯一性。这可以防止多个集群中存在相同 guest ID 时产生冲突。
 
 ## 环境变量
 
