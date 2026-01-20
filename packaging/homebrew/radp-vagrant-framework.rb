@@ -18,14 +18,15 @@ class RadpVagrantFramework < Formula
   version "%%VERSION%%"
   license "MIT"
 
-  depends_on "ruby"
+  # Use system ruby on macOS instead of forcing Homebrew's ruby
+  uses_from_macos "ruby"
 
   def install
     # Install Ruby framework files
     libexec.install Dir["src/main/ruby/*"]
 
-    # Install CLI script and create symlink
-    libexec.install "src/main/shell/bin/radp-vf" => "bin/radp-vf"
+    # Install CLI script to libexec/bin and create symlink
+    (libexec/"bin").install "src/main/shell/bin/radp-vf"
     bin.install_symlink libexec/"bin/radp-vf"
   end
 
