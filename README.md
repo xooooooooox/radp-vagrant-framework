@@ -84,49 +84,6 @@ git clone https://github.com/xooooooooox/radp-vagrant-framework.git
 cd radp-vagrant-framework/src/main/ruby
 ```
 
-### Quick Start Usage
-
-```shell
-# After installation via script or Homebrew
-radp-vf init myproject
-cd myproject
-vagrant status
-```
-
-### Use from Git Clone
-
-```bash
-cd src/main/ruby
-
-# Validate configuration
-vagrant validate
-
-# Show VM status
-vagrant status
-
-# Start all VMs
-vagrant up
-
-# Start specific VM (use machine_name: <env>-<cluster>-<guest-id>)
-vagrant up dev-my-cluster-node-1
-
-# Debug: dump merged configuration (JSON)
-ruby -r ./lib/radp_vagrant -e "RadpVagrant.dump_config('config')"
-
-# Filter by guest_id or machine_name
-ruby -r ./lib/radp_vagrant -e "RadpVagrant.dump_config('config', 'node-1')"
-ruby -r ./lib/radp_vagrant -e "RadpVagrant.dump_config('config', 'dev-my-cluster-node-1')"
-
-# Output as YAML
-ruby -r ./lib/radp_vagrant -e "RadpVagrant.dump_config('config', nil, format: :yaml)"
-
-# Generate standalone Vagrantfile (dry-run preview)
-ruby -r ./lib/radp_vagrant -e "puts RadpVagrant.generate_vagrantfile('config')"
-
-# Save generated Vagrantfile
-ruby -r ./lib/radp_vagrant -e "RadpVagrant.generate_vagrantfile('config', 'Vagrantfile.generated')"
-```
-
 ### Upgrade
 
 #### Script
@@ -142,6 +99,141 @@ brew upgrade radp-vagrant-framework
 #### Manual
 
 Download the new release archive from the latest release and extract it, or `git pull` if using a cloned repository.
+
+## How to Use
+
+### Initialize a New Project
+
+After installation, create a new project with sample configuration:
+
+```shell
+radp-vf init myproject
+cd myproject
+```
+
+This creates the following structure:
+
+```
+myproject/
+├── Vagrantfile           # Entry point (loads framework)
+├── lib -> $RADP_VF_HOME/lib  # Symlink to framework
+└── config/
+    ├── vagrant.yaml      # Base configuration (sets env)
+    └── vagrant-sample.yaml   # Environment-specific clusters
+```
+
+### Configuration Files
+
+The framework uses a two-file configuration approach:
+
+1. **`config/vagrant.yaml`** - Base configuration (required)
+   - Must contain `radp.env` to specify the environment
+   - Defines global settings, plugins, and common configurations
+
+2. **`config/vagrant-{env}.yaml`** - Environment-specific clusters
+   - `{env}` matches the value of `radp.env` in the base config
+   - Defines clusters and guests for this environment
+
+Example minimal configuration:
+
+```yaml
+# config/vagrant.yaml
+radp:
+  env: dev    # Will load config/vagrant-dev.yaml
+  extend:
+    vagrant:
+      config:
+        common:
+          box:
+            name: generic/ubuntu2204
+```
+
+```yaml
+# config/vagrant-dev.yaml
+radp:
+  extend:
+    vagrant:
+      config:
+        clusters:
+          - name: my-cluster
+            guests:
+              - id: node-1
+                provider:
+                  mem: 2048
+                  cpus: 2
+```
+
+### Environment Variables
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `RADP_VF_HOME` | Framework installation directory | Auto-detected from script location |
+| `RADP_VAGRANT_CONFIG_DIR` | Override configuration directory | `./config` (relative to Vagrantfile) |
+
+**RADP_VF_HOME defaults:**
+- Script/Homebrew install: `~/.local/lib/radp-vagrant-framework` or `/opt/homebrew/Cellar/radp-vagrant-framework/<version>/libexec`
+- Git clone: `<repo>/src/main/ruby` (auto-detected)
+
+### Common Commands
+
+```shell
+# Show VM status
+vagrant status
+
+# Start all VMs
+vagrant up
+
+# Start specific VM (format: <env>-<cluster>-<guest-id>)
+vagrant up dev-my-cluster-node-1
+
+# SSH into a VM
+vagrant ssh dev-my-cluster-node-1
+
+# Stop all VMs
+vagrant halt
+
+# Destroy all VMs
+vagrant destroy
+```
+
+### Debug Commands
+
+```shell
+# Dump merged configuration (JSON)
+radp-vf dump-config
+
+# Filter by guest ID or machine name
+radp-vf dump-config node-1
+
+# Generate standalone Vagrantfile (dry-run preview)
+radp-vf generate
+
+# Save generated Vagrantfile
+radp-vf generate Vagrantfile.preview
+```
+
+### Use from Git Clone (Development)
+
+For framework development or direct use from source:
+
+```bash
+cd radp-vagrant-framework/src/main/ruby
+
+# Validate configuration
+vagrant validate
+
+# Show VM status
+vagrant status
+
+# Debug: dump merged configuration
+ruby -r ./lib/radp_vagrant -e "RadpVagrant.dump_config('config')"
+
+# Output as YAML
+ruby -r ./lib/radp_vagrant -e "RadpVagrant.dump_config('config', nil, format: :yaml)"
+
+# Generate standalone Vagrantfile
+ruby -r ./lib/radp_vagrant -e "puts RadpVagrant.generate_vagrantfile('config')"
+```
 
 ## Directory Structure
 

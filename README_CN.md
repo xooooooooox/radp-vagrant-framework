@@ -84,49 +84,6 @@ git clone https://github.com/xooooooooox/radp-vagrant-framework.git
 cd radp-vagrant-framework/src/main/ruby
 ```
 
-### 快速开始使用
-
-```shell
-# 脚本或 Homebrew 安装后
-radp-vf init myproject
-cd myproject
-vagrant status
-```
-
-### 从 Git Clone 使用
-
-```bash
-cd src/main/ruby
-
-# 验证配置
-vagrant validate
-
-# 查看虚拟机状态
-vagrant status
-
-# 启动所有虚拟机
-vagrant up
-
-# 启动指定虚拟机（使用 machine_name: <env>-<cluster>-<guest-id>）
-vagrant up dev-my-cluster-node-1
-
-# 调试: 导出合并后的配置（JSON）
-ruby -r ./lib/radp_vagrant -e "RadpVagrant.dump_config('config')"
-
-# 按 guest_id 或 machine_name 过滤
-ruby -r ./lib/radp_vagrant -e "RadpVagrant.dump_config('config', 'node-1')"
-ruby -r ./lib/radp_vagrant -e "RadpVagrant.dump_config('config', 'dev-my-cluster-node-1')"
-
-# 输出为 YAML 格式
-ruby -r ./lib/radp_vagrant -e "RadpVagrant.dump_config('config', nil, format: :yaml)"
-
-# 生成独立 Vagrantfile（预览最终配置）
-ruby -r ./lib/radp_vagrant -e "puts RadpVagrant.generate_vagrantfile('config')"
-
-# 保存生成的 Vagrantfile
-ruby -r ./lib/radp_vagrant -e "RadpVagrant.generate_vagrantfile('config', 'Vagrantfile.generated')"
-```
-
 ### 升级
 
 #### 脚本
@@ -142,6 +99,141 @@ brew upgrade radp-vagrant-framework
 #### 手动
 
 从最新 Release 下载新的发布包并解压，或使用 `git pull` 更新克隆的仓库。
+
+## 如何使用
+
+### 初始化新项目
+
+安装后，使用以下命令创建带有示例配置的新项目：
+
+```shell
+radp-vf init myproject
+cd myproject
+```
+
+这会创建以下目录结构：
+
+```
+myproject/
+├── Vagrantfile           # 入口文件（加载框架）
+├── lib -> $RADP_VF_HOME/lib  # 指向框架的符号链接
+└── config/
+    ├── vagrant.yaml      # 基础配置（设置 env）
+    └── vagrant-sample.yaml   # 环境特定集群配置
+```
+
+### 配置文件
+
+框架使用双文件配置方式：
+
+1. **`config/vagrant.yaml`** - 基础配置（必需）
+   - 必须包含 `radp.env` 来指定环境
+   - 定义全局设置、插件和公共配置
+
+2. **`config/vagrant-{env}.yaml`** - 环境特定集群配置
+   - `{env}` 对应基础配置中 `radp.env` 的值
+   - 定义该环境的集群和虚拟机
+
+最小配置示例：
+
+```yaml
+# config/vagrant.yaml
+radp:
+  env: dev    # 将加载 config/vagrant-dev.yaml
+  extend:
+    vagrant:
+      config:
+        common:
+          box:
+            name: generic/ubuntu2204
+```
+
+```yaml
+# config/vagrant-dev.yaml
+radp:
+  extend:
+    vagrant:
+      config:
+        clusters:
+          - name: my-cluster
+            guests:
+              - id: node-1
+                provider:
+                  mem: 2048
+                  cpus: 2
+```
+
+### 环境变量
+
+| 变量 | 说明 | 默认值 |
+|------|------|--------|
+| `RADP_VF_HOME` | 框架安装目录 | 从脚本位置自动检测 |
+| `RADP_VAGRANT_CONFIG_DIR` | 覆盖配置目录 | `./config`（相对于 Vagrantfile） |
+
+**RADP_VF_HOME 默认值：**
+- 脚本/Homebrew 安装：`~/.local/lib/radp-vagrant-framework` 或 `/opt/homebrew/Cellar/radp-vagrant-framework/<version>/libexec`
+- Git clone：`<repo>/src/main/ruby`（自动检测）
+
+### 常用命令
+
+```shell
+# 查看虚拟机状态
+vagrant status
+
+# 启动所有虚拟机
+vagrant up
+
+# 启动指定虚拟机（格式：<env>-<cluster>-<guest-id>）
+vagrant up dev-my-cluster-node-1
+
+# SSH 登录虚拟机
+vagrant ssh dev-my-cluster-node-1
+
+# 停止所有虚拟机
+vagrant halt
+
+# 销毁所有虚拟机
+vagrant destroy
+```
+
+### 调试命令
+
+```shell
+# 导出合并后的配置（JSON）
+radp-vf dump-config
+
+# 按 guest ID 或 machine name 过滤
+radp-vf dump-config node-1
+
+# 生成独立 Vagrantfile（dry-run 预览）
+radp-vf generate
+
+# 保存生成的 Vagrantfile
+radp-vf generate Vagrantfile.preview
+```
+
+### 从 Git Clone 使用（开发模式）
+
+用于框架开发或直接从源码使用：
+
+```bash
+cd radp-vagrant-framework/src/main/ruby
+
+# 验证配置
+vagrant validate
+
+# 查看虚拟机状态
+vagrant status
+
+# 调试：导出合并后的配置
+ruby -r ./lib/radp_vagrant -e "RadpVagrant.dump_config('config')"
+
+# 输出为 YAML 格式
+ruby -r ./lib/radp_vagrant -e "RadpVagrant.dump_config('config', nil, format: :yaml)"
+
+# 生成独立 Vagrantfile
+ruby -r ./lib/radp_vagrant -e "puts RadpVagrant.generate_vagrantfile('config')"
+```
 
 ## 目录结构
 
