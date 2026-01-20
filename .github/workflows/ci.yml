@@ -1,0 +1,68 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        ruby: ['3.0', '3.1', '3.2', '3.3']
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: ${{ matrix.ruby }}
+
+      - name: Validate Ruby syntax
+        run: |
+          cd src/main/ruby
+          find lib -name "*.rb" -exec ruby -c {} \;
+
+      - name: Test framework loading
+        run: |
+          cd src/main/ruby
+          ruby -r ./lib/radp_vagrant -e "puts RadpVagrant::VERSION"
+
+      - name: Test config loading
+        run: |
+          cd src/main/ruby
+          ruby -r ./lib/radp_vagrant -e "RadpVagrant.build_merged_config('config')"
+
+      - name: Test Vagrantfile generation
+        run: |
+          cd src/main/ruby
+          ruby -r ./lib/radp_vagrant -e "puts RadpVagrant.generate_vagrantfile('config')"
+
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Check YAML syntax
+        run: |
+          cd src/main/ruby/config
+          for f in *.yaml; do
+            echo "Checking $f"
+            python3 -c "import yaml; yaml.safe_load(open('$f'))"
+          done
+
+      - name: Check for version consistency
+        run: |
+          version_file="src/main/ruby/lib/radp_vagrant/version.rb"
+          version=$(grep -oE "VERSION = 'v[0-9]+\.[0-9]+\.[0-9]+'" "${version_file}" | grep -oE "v[0-9]+\.[0-9]+\.[0-9]+" | head -n 1)
+          echo "Version: ${version}"
+          if [[ -z "${version}" ]]; then
+            echo "Failed to read version" >&2
+            exit 1
+          fi

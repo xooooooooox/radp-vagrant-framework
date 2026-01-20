@@ -1,0 +1,83 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Tag to release (vX.Y.Z)"
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Resolve tag
+        id: tag
+        run: |
+          if [[ -n "${{ inputs.tag }}" ]]; then
+            tag="${{ inputs.tag }}"
+          else
+            tag="${GITHUB_REF_NAME}"
+          fi
+          echo "tag=${tag}" >> "$GITHUB_OUTPUT"
+          echo "Using tag: ${tag}"
+
+      - name: Verify tag exists
+        run: |
+          git fetch --tags --force
+          if ! git rev-parse "${{ steps.tag.outputs.tag }}" >/dev/null 2>&1; then
+            echo "Tag ${{ steps.tag.outputs.tag }} does not exist" >&2
+            exit 1
+          fi
+
+      - name: Extract changelog
+        id: changelog
+        run: |
+          tag="${{ steps.tag.outputs.tag }}"
+          version="${tag#v}"
+          changelog=""
+
+          if [[ -f CHANGELOG.md ]]; then
+            # Extract section for this version
+            changelog=$(awk "/^## ${tag}/,/^## v[0-9]/{if(/^## v[0-9]/ && !/^## ${tag}/)exit; print}" CHANGELOG.md | tail -n +2)
+          fi
+
+          if [[ -z "${changelog}" ]]; then
+            changelog="Release ${tag}"
+          fi
+
+          # Write to file for multiline support
+          echo "${changelog}" > /tmp/changelog.txt
+          echo "file=/tmp/changelog.txt" >> "$GITHUB_OUTPUT"
+
+      - name: Create release archive
+        run: |
+          tag="${{ steps.tag.outputs.tag }}"
+          mkdir -p dist
+          git archive --format=tar.gz --prefix="radp-vagrant-framework-${tag#v}/" "${tag}" > "dist/radp-vagrant-framework-${tag#v}.tar.gz"
+          git archive --format=zip --prefix="radp-vagrant-framework-${tag#v}/" "${tag}" > "dist/radp-vagrant-framework-${tag#v}.zip"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ steps.tag.outputs.tag }}
+          name: ${{ steps.tag.outputs.tag }}
+          body_path: ${{ steps.changelog.outputs.file }}
+          draft: false
+          prerelease: false
+          files: |
+            dist/*.tar.gz
+            dist/*.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

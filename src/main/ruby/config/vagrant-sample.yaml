@@ -49,7 +49,7 @@ radp:
               - id: guest-1
                 enabled: true
                 # 这里约定如果 hostname 为空，则默认为 <guest-id>.<cluster-name>.<env>
-                hostname: guest-1.cluster-1.dev
+                hostname: guest-1.cluster-1.sample
                 # optional: 如果 plugin vagrant-hostmanager enabled, 则可以配置 hostmanager 的别名
                 hostmanager:
                   aliases:

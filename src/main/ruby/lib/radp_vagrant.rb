@@ -3,6 +3,7 @@
 # RADP Vagrant Framework
 # A YAML-driven framework for managing multi-machine Vagrant environments
 
+require_relative 'radp_vagrant/version'
 require_relative 'radp_vagrant/config_loader'
 require_relative 'radp_vagrant/config_merger'
 require_relative 'radp_vagrant/configurators/box'
@@ -15,26 +16,29 @@ require_relative 'radp_vagrant/configurators/trigger'
 require_relative 'radp_vagrant/configurators/plugin'
 
 module RadpVagrant
-  BANNER = <<~BANNER
-    \e[36m╔════════════════════════════════════════════════════════════════════════╗
-    ║                                                                        ║
-    ║   ██████╗  █████╗ ██████╗ ██████╗     ██╗   ██╗ █████╗  ██████╗       ║
-    ║   ██╔══██╗██╔══██╗██╔══██╗██╔══██╗    ██║   ██║██╔══██╗██╔════╝       ║
-    ║   ██████╔╝███████║██║  ██║██████╔╝    ██║   ██║███████║██║  ███╗      ║
-    ║   ██╔══██╗██╔══██║██║  ██║██╔═══╝     ╚██╗ ██╔╝██╔══██║██║   ██║      ║
-    ║   ██║  ██║██║  ██║██████╔╝██║          ╚████╔╝ ██║  ██║╚██████╔╝      ║
-    ║   ╚═╝  ╚═╝╚═╝  ╚═╝╚═════╝ ╚═╝           ╚═══╝  ╚═╝  ╚═╝ ╚═════╝       ║
-    ║                                                                        ║
-    ║                    RADP Vagrant Framework v2.0                         ║
-    ╚════════════════════════════════════════════════════════════════════════╝\e[0m
-  BANNER
+  def self.banner
+    version_str = VERSION.ljust(7)
+    <<~BANNER
+      \e[36m╔════════════════════════════════════════════════════════════════════════╗
+      ║                                                                        ║
+      ║   ██████╗  █████╗ ██████╗ ██████╗     ██╗   ██╗ █████╗  ██████╗       ║
+      ║   ██╔══██╗██╔══██╗██╔══██╗██╔══██╗    ██║   ██║██╔══██╗██╔════╝       ║
+      ║   ██████╔╝███████║██║  ██║██████╔╝    ██║   ██║███████║██║  ███╗      ║
+      ║   ██╔══██╗██╔══██║██║  ██║██╔═══╝     ╚██╗ ██╔╝██╔══██║██║   ██║      ║
+      ║   ██║  ██║██║  ██║██████╔╝██║          ╚████╔╝ ██║  ██║╚██████╔╝      ║
+      ║   ╚═╝  ╚═╝╚═╝  ╚═╝╚═════╝ ╚═╝           ╚═══╝  ╚═╝  ╚═╝ ╚═════╝       ║
+      ║                                                                        ║
+      ║                 RADP Vagrant Framework #{version_str}                      ║
+      ╚════════════════════════════════════════════════════════════════════════╝\e[0m
+    BANNER
+  end
 
   class << self
     # Main entry point for Vagrant configuration
     # @param vagrant_config [Vagrant::Config] Vagrant configuration object
     # @param config_dir [String] Directory containing config files
     def configure(vagrant_config, config_dir)
-      puts BANNER
+      puts banner
 
       merged = build_merged_config(config_dir)
       return log_warn('No vagrant configuration found') unless merged

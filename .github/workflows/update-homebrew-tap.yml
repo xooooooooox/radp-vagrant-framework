@@ -1,0 +1,118 @@
+name: Update Homebrew Tap
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_run:
+    workflows:
+      - Create version tag
+    types:
+      - completed
+  workflow_dispatch:
+
+jobs:
+  update-tap:
+    if: >-
+      github.event_name != 'workflow_run' ||
+      (github.event.workflow_run.conclusion == 'success' &&
+      (github.event.workflow_run.head_branch == 'main' ||
+       startsWith(github.event.workflow_run.head_branch, 'workflow/')))
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    env:
+      TAP_REPO: xooooooooox/homebrew-radp
+      TAP_FORMULA_PATH: Formula/radp-vagrant-framework.rb
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Fetch tags
+        run: git fetch --tags --force
+
+      - name: Checkout tap repository
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ env.TAP_REPO }}
+          path: homebrew-radp
+          token: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+
+      - name: Prepare release metadata
+        id: release
+        run: |
+          set -euo pipefail
+          if [[ "${GITHUB_EVENT_NAME}" == "workflow_run" ]]; then
+            head_sha="${{ github.event.workflow_run.head_sha }}"
+            head_branch="${{ github.event.workflow_run.head_branch }}"
+            if [[ "${head_branch}" == workflow/v* ]]; then
+              tag_name="${head_branch#workflow/}"
+            else
+              tag_name="$(git tag --points-at "${head_sha}" --list 'v*' | sort -V | tail -n 1)"
+            fi
+          else
+            tag_name="${GITHUB_REF_NAME}"
+          fi
+
+          if [[ -z "${tag_name}" ]]; then
+            echo "Failed to resolve version tag" >&2
+            exit 1
+          fi
+
+          version="${tag_name#v}"
+          tarball_url="https://github.com/${GITHUB_REPOSITORY}/archive/refs/tags/${tag_name}.tar.gz"
+          sha256="$(curl -sL "${tarball_url}" | sha256sum | awk '{print $1}')"
+
+          echo "tag_name=${tag_name}" >> "$GITHUB_OUTPUT"
+          echo "version=${version}" >> "$GITHUB_OUTPUT"
+          echo "tarball_url=${tarball_url}" >> "$GITHUB_OUTPUT"
+          echo "sha256=${sha256}" >> "$GITHUB_OUTPUT"
+
+      - name: Create or update formula
+        env:
+          TAG_NAME: ${{ steps.release.outputs.tag_name }}
+          VERSION: ${{ steps.release.outputs.version }}
+          TARBALL_URL: ${{ steps.release.outputs.tarball_url }}
+          SHA256: ${{ steps.release.outputs.sha256 }}
+        run: |
+          set -euo pipefail
+          formula="homebrew-radp/${TAP_FORMULA_PATH}"
+          mkdir -p "$(dirname "${formula}")"
+
+          cat > "${formula}" << EOF
+          class RadpVagrantFramework < Formula
+            desc "YAML-driven framework for managing multi-machine Vagrant environments"
+            homepage "https://github.com/${GITHUB_REPOSITORY}"
+            url "${TARBALL_URL}"
+            sha256 "${SHA256}"
+            version "${VERSION}"
+            license "MIT"
+
+            depends_on "ruby"
+
+            def install
+              libexec.install Dir["src/main/ruby/*"]
+              bin.install_symlink libexec/"bin/radp-vf"
+            end
+
+            test do
+              system "#{bin}/radp-vf", "version"
+            end
+          end
+          EOF
+
+      - name: Commit and push tap
+        run: |
+          set -euo pipefail
+          cd homebrew-radp
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add "${TAP_FORMULA_PATH}" || true
+          if git diff --cached --quiet; then
+            echo "No changes to commit."
+            exit 0
+          fi
+          git commit -m "Update radp-vagrant-framework to ${{ steps.release.outputs.tag_name }}"
+          git push

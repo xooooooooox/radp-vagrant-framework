@@ -23,7 +23,62 @@
 - **配置校验**: 检测重复的集群名称和 guest ID
 - **调试支持**: 可导出最终合并后的配置（JSON/YAML）
 
+## 安装
+
+### 前置要求
+
+- Ruby 2.7+
+- Vagrant 2.0+
+- VirtualBox（或其他支持的 provider）
+
+### 脚本安装 (curl / wget)
+
+```shell
+curl -fsSL https://raw.githubusercontent.com/xooooooooox/radp-vagrant-framework/main/tools/install.sh | bash
+```
+
+或:
+
+```shell
+wget -qO- https://raw.githubusercontent.com/xooooooooox/radp-vagrant-framework/main/tools/install.sh | bash
+```
+
+可选环境变量:
+
+```shell
+RADP_VF_VERSION=vX.Y.Z \
+RADP_VF_REF=main \
+RADP_VF_INSTALL_DIR="$HOME/.local/lib/radp-vagrant-framework" \
+RADP_VF_BIN_DIR="$HOME/.local/bin" \
+bash -c "$(curl -fsSL https://raw.githubusercontent.com/xooooooooox/radp-vagrant-framework/main/tools/install.sh)"
+```
+
+### Homebrew (macOS/Linux)
+
+```shell
+brew tap xooooooooox/radp
+brew install radp-vagrant-framework
+```
+
+### 手动安装 (Git clone)
+
+```shell
+git clone https://github.com/xooooooooox/radp-vagrant-framework.git
+cd radp-vagrant-framework/src/main/ruby
+```
+
 ## 快速开始
+
+### 初始化新项目
+
+```shell
+# 脚本或 Homebrew 安装后
+radp-vf init myproject
+cd myproject
+vagrant status
+```
+
+### 从 Git Clone 使用
 
 ```bash
 cd src/main/ruby
@@ -64,7 +119,7 @@ src/main/ruby/
 ├── Vagrantfile                     # 入口文件
 ├── config/
 │   ├── vagrant.yaml                # 基础配置（设置 env）
-│   ├── vagrant-dev.yaml            # Dev 环境集群
+│   ├── vagrant-sample.yaml         # Sample 环境集群
 │   └── vagrant-local.yaml          # Local 环境集群
 └── lib/
     ├── radp_vagrant.rb             # 主协调器
@@ -120,7 +175,7 @@ radp:
               run: once
               inline: echo "Hello"
 
-# vagrant-dev.yaml - Dev 环境
+# vagrant-sample.yaml - Dev 环境
 radp:
   extend:
     vagrant:

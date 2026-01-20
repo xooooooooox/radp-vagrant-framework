@@ -89,7 +89,7 @@ src/main/ruby/
 ├── Vagrantfile                     # Entry point
 ├── config/
 │   ├── vagrant.yaml                # Base config (sets env)
-│   ├── vagrant-dev.yaml            # Dev environment clusters
+│   ├── vagrant-sample.yaml         # Sample environment clusters
 │   └── vagrant-local.yaml          # Local environment clusters
 └── lib/
     ├── radp_vagrant.rb             # Main coordinator

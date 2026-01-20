@@ -23,7 +23,62 @@ A YAML-driven framework for managing multi-machine Vagrant environments with dec
 - **Configuration Validation**: Detect duplicate cluster names and guest IDs
 - **Debug Support**: Dump final merged configuration for inspection (JSON/YAML)
 
+## Installation
+
+### Prerequisites
+
+- Ruby 2.7+
+- Vagrant 2.0+
+- VirtualBox (or other supported provider)
+
+### Script (curl / wget)
+
+```shell
+curl -fsSL https://raw.githubusercontent.com/xooooooooox/radp-vagrant-framework/main/tools/install.sh | bash
+```
+
+Or:
+
+```shell
+wget -qO- https://raw.githubusercontent.com/xooooooooox/radp-vagrant-framework/main/tools/install.sh | bash
+```
+
+Optional variables:
+
+```shell
+RADP_VF_VERSION=vX.Y.Z \
+RADP_VF_REF=main \
+RADP_VF_INSTALL_DIR="$HOME/.local/lib/radp-vagrant-framework" \
+RADP_VF_BIN_DIR="$HOME/.local/bin" \
+bash -c "$(curl -fsSL https://raw.githubusercontent.com/xooooooooox/radp-vagrant-framework/main/tools/install.sh)"
+```
+
+### Homebrew (macOS/Linux)
+
+```shell
+brew tap xooooooooox/radp
+brew install radp-vagrant-framework
+```
+
+### Manual (Git clone)
+
+```shell
+git clone https://github.com/xooooooooox/radp-vagrant-framework.git
+cd radp-vagrant-framework/src/main/ruby
+```
+
 ## Quick Start
+
+### Initialize a New Project
+
+```shell
+# After installation via script or Homebrew
+radp-vf init myproject
+cd myproject
+vagrant status
+```
+
+### Use from Git Clone
 
 ```bash
 cd src/main/ruby
@@ -64,7 +119,7 @@ src/main/ruby/
 ├── Vagrantfile                     # Entry point
 ├── config/
 │   ├── vagrant.yaml                # Base configuration (sets env)
-│   ├── vagrant-dev.yaml            # Dev environment clusters
+│   ├── vagrant-sample.yaml         # Sample environment clusters
 │   └── vagrant-local.yaml          # Local environment clusters
 └── lib/
     ├── radp_vagrant.rb             # Main coordinator
@@ -120,7 +175,7 @@ radp:
               run: once
               inline: echo "Hello"
 
-# vagrant-dev.yaml - Dev environment
+# vagrant-sample.yaml - Dev environment
 radp:
   extend:
     vagrant:

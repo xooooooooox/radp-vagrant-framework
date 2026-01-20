@@ -1,7 +1,7 @@
 radp:
   # radp.env 只有配置在 vagrant.yaml (即主配置文件中) 才会生效
   # 如果配置在 vagrant-<env>.yaml 中，是无效的
-  env: dev
+  env: sample
   extend:
     vagrant:
       plugins:
