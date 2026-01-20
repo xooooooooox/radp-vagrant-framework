@@ -478,17 +478,31 @@ RadpVagrant::Configurators::Provider::CONFIGURATORS['vmware_desktop'] = lambda {
 
 1. Trigger `release-prep` with a `bump_type` (patch/minor/major/manual, default patch). For manual, provide `vX.Y.Z`. This updates `version.rb` and adds a changelog entry (branch `workflow/vX.Y.Z` + PR).
 2. Review/edit the changelog in the PR and merge to `main`.
-3. `create-version-tag` runs automatically on merge (or trigger it manually) to validate the version/changelog and create/push the tag.
-4. Tag workflows run:
-   - `release` creates the GitHub Release with archives.
-   - `update-homebrew-tap` updates the Homebrew formula in the tap repository.
+3. All subsequent workflows run automatically in sequence:
+   - `create-version-tag` → creates and pushes the Git tag
+   - `release` → creates GitHub Release with archives
+   - `update-homebrew-tap` → updates the Homebrew formula
+
+```
+release-prep (manual)
+       │
+       ▼
+   PR merged
+       │
+       ▼
+create-version-tag
+       │
+       ├──────────────┐
+       ▼              ▼
+   release    update-homebrew-tap
+```
 
 ### GitHub Actions
 
 #### CI (`ci.yml`)
 
 - **Trigger:** Push/PR to `main`.
-- **Purpose:** Validate Ruby syntax, test framework loading, config loading, and Vagrantfile generation across multiple Ruby versions (3.0-3.3) on Ubuntu and macOS.
+- **Purpose:** Validate Ruby syntax, test framework loading, config loading, and Vagrantfile generation across multiple Ruby versions (3.1-3.3) on Ubuntu and macOS.
 
 #### Release prep (`release-prep.yml`)
 
@@ -502,13 +516,13 @@ RadpVagrant::Configurators::Provider::CONFIGURATORS['vmware_desktop'] = lambda {
 
 #### Release (`release.yml`)
 
-- **Trigger:** Push of a version tag (`v*`), or manual (`workflow_dispatch`).
+- **Trigger:** Successful completion of `create-version-tag`, push of a version tag (`v*`), or manual (`workflow_dispatch`).
 - **Purpose:** Create GitHub Release with tar.gz and zip archives, extracting changelog for release notes.
 
 #### Update Homebrew tap (`update-homebrew-tap.yml`)
 
-- **Trigger:** Push of a version tag (`v*`), successful completion of the `create-version-tag` workflow on `main`, or manual (`workflow_dispatch`).
-- **Purpose:** Update the Homebrew tap formula with the new version and SHA256, and push the changes to the tap repository.
+- **Trigger:** Successful completion of `create-version-tag`, push of a version tag (`v*`), or manual (`workflow_dispatch`).
+- **Purpose:** Update the Homebrew tap formula using the template from `packaging/homebrew/radp-vagrant-framework.rb` with the new version and SHA256.
 
 ## License
 

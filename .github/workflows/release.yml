@@ -4,6 +4,11 @@ on:
   push:
     tags:
       - "v*"
+  workflow_run:
+    workflows:
+      - Create version tag
+    types:
+      - completed
   workflow_dispatch:
     inputs:
       tag:
@@ -15,6 +20,11 @@ permissions:
 
 jobs:
   release:
+    if: >-
+      github.event_name == 'push' ||
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'workflow_run' &&
+       github.event.workflow_run.conclusion == 'success')
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -22,11 +32,23 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Fetch tags
+        run: git fetch --tags --force
+
       - name: Resolve tag
         id: tag
         run: |
+          set -euo pipefail
           if [[ -n "${{ inputs.tag }}" ]]; then
             tag="${{ inputs.tag }}"
+          elif [[ "${GITHUB_EVENT_NAME}" == "workflow_run" ]]; then
+            # Get the latest tag that points to the workflow run's head commit
+            head_sha="${{ github.event.workflow_run.head_sha }}"
+            tag="$(git tag --points-at "${head_sha}" --list 'v*' | sort -V | tail -n 1)"
+            if [[ -z "${tag}" ]]; then
+              echo "No version tag found for commit ${head_sha}" >&2
+              exit 1
+            fi
           else
             tag="${GITHUB_REF_NAME}"
           fi
@@ -35,7 +57,6 @@ jobs:
 
       - name: Verify tag exists
         run: |
-          git fetch --tags --force
           if ! git rev-parse "${{ steps.tag.outputs.tag }}" >/dev/null 2>&1; then
             echo "Tag ${{ steps.tag.outputs.tag }} does not exist" >&2
             exit 1

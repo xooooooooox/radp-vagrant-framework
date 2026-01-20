@@ -478,10 +478,24 @@ RadpVagrant::Configurators::Provider::CONFIGURATORS['vmware_desktop'] = lambda {
 
 1. 触发 `release-prep` 并指定 `bump_type`（patch/minor/major/manual，默认 patch）。若选择 manual，需提供 `vX.Y.Z`。此步骤会更新 `version.rb` 并添加 changelog 条目（创建 `workflow/vX.Y.Z` 分支 + PR）。
 2. 审核/编辑 PR 中的 changelog，然后合并到 `main`。
-3. `create-version-tag` 在合并后自动运行（或手动触发），验证版本/changelog 后创建并推送 Git 标签。
-4. 标签工作流运行：
-   - `release` 创建包含归档文件的 GitHub Release。
-   - `update-homebrew-tap` 更新 tap 仓库中的 Homebrew formula。
+3. 后续工作流自动串联运行：
+   - `create-version-tag` → 创建并推送 Git 标签
+   - `release` → 创建包含归档文件的 GitHub Release
+   - `update-homebrew-tap` → 更新 Homebrew formula
+
+```
+release-prep (手动触发)
+       │
+       ▼
+   PR 合并
+       │
+       ▼
+create-version-tag
+       │
+       ├──────────────┐
+       ▼              ▼
+   release    update-homebrew-tap
+```
 
 ### GitHub Actions
 
@@ -502,13 +516,13 @@ RadpVagrant::Configurators::Provider::CONFIGURATORS['vmware_desktop'] = lambda {
 
 #### Release (`release.yml`)
 
-- **触发**: 推送版本标签（`v*`）或手动触发（`workflow_dispatch`）。
+- **触发**: `create-version-tag` 成功完成后、推送版本标签（`v*`）或手动触发（`workflow_dispatch`）。
 - **目的**: 创建包含 tar.gz 和 zip 归档的 GitHub Release，从 changelog 提取发布说明。
 
 #### Update Homebrew tap (`update-homebrew-tap.yml`)
 
-- **触发**: 推送版本标签（`v*`）、`create-version-tag` 在 `main` 上成功完成后，或手动触发（`workflow_dispatch`）。
-- **目的**: 使用新版本和 SHA256 更新 Homebrew tap formula，并推送更改到 tap 仓库。
+- **触发**: `create-version-tag` 成功完成后、推送版本标签（`v*`）或手动触发（`workflow_dispatch`）。
+- **目的**: 使用 `packaging/homebrew/radp-vagrant-framework.rb` 模板更新 Homebrew tap formula，替换版本和 SHA256。
 
 ## 许可证
 

@@ -72,36 +72,20 @@ jobs:
 
       - name: Create or update formula
         env:
-          TAG_NAME: ${{ steps.release.outputs.tag_name }}
           VERSION: ${{ steps.release.outputs.version }}
           TARBALL_URL: ${{ steps.release.outputs.tarball_url }}
           SHA256: ${{ steps.release.outputs.sha256 }}
         run: |
           set -euo pipefail
+          template="packaging/homebrew/radp-vagrant-framework.rb"
           formula="homebrew-radp/${TAP_FORMULA_PATH}"
           mkdir -p "$(dirname "${formula}")"
 
-          cat > "${formula}" << EOF
-          class RadpVagrantFramework < Formula
-            desc "YAML-driven framework for managing multi-machine Vagrant environments"
-            homepage "https://github.com/${GITHUB_REPOSITORY}"
-            url "${TARBALL_URL}"
-            sha256 "${SHA256}"
-            version "${VERSION}"
-            license "MIT"
-
-            depends_on "ruby"
-
-            def install
-              libexec.install Dir["src/main/ruby/*"]
-              bin.install_symlink libexec/"bin/radp-vf"
-            end
-
-            test do
-              system "#{bin}/radp-vf", "version"
-            end
-          end
-          EOF
+          # Copy template and replace placeholders
+          cp "${template}" "${formula}"
+          sed -i "s|%%TARBALL_URL%%|${TARBALL_URL}|g" "${formula}"
+          sed -i "s|%%SHA256%%|${SHA256}|g" "${formula}"
+          sed -i "s|%%VERSION%%|${VERSION}|g" "${formula}"
 
       - name: Commit and push tap
         run: |

@@ -1,5 +1,10 @@
-# Homebrew formula for radp-vagrant-framework
-# This is a template - actual formula is in the homebrew-radp tap
+# Homebrew formula template for radp-vagrant-framework
+# The CI workflow uses this template and replaces placeholders with actual values.
+#
+# Placeholders:
+#   %%TARBALL_URL%% - GitHub archive URL for the release tag
+#   %%SHA256%%      - SHA256 checksum of the tarball
+#   %%VERSION%%     - Version number (without 'v' prefix)
 #
 # Installation:
 #   brew tap xooooooooox/radp
@@ -8,41 +13,20 @@
 class RadpVagrantFramework < Formula
   desc "YAML-driven framework for managing multi-machine Vagrant environments"
   homepage "https://github.com/xooooooooox/radp-vagrant-framework"
-  url "https://github.com/xooooooooox/radp-vagrant-framework/archive/refs/tags/v0.1.0.tar.gz"
-  sha256 "PLACEHOLDER_SHA256"
-  version "0.1.0"
+  url "%%TARBALL_URL%%"
+  sha256 "%%SHA256%%"
+  version "%%VERSION%%"
   license "MIT"
 
   depends_on "ruby"
 
   def install
-    # Install framework files to libexec
+    # Install Ruby framework files
     libexec.install Dir["src/main/ruby/*"]
 
-    # Create wrapper script
-    (bin/"radp-vf").write <<~EOS
-      #!/bin/bash
-      export RADP_VF_HOME="#{libexec}"
-      cd "#{libexec}" && exec ruby -r ./lib/radp_vagrant -e "
-        case ARGV[0]
-        when 'version', '-v', '--version'
-          puts RadpVagrant::VERSION
-        when 'dump-config'
-          filter = ARGV[1]
-          RadpVagrant.dump_config('config', filter)
-        when 'generate'
-          output = ARGV[1]
-          if output
-            RadpVagrant.generate_vagrantfile('config', output)
-          else
-            puts RadpVagrant.generate_vagrantfile('config')
-          end
-        else
-          puts 'Usage: radp-vf <command>'
-          puts 'Commands: version, dump-config [filter], generate [output]'
-        end
-      " -- "$@"
-    EOS
+    # Install CLI script and create symlink
+    libexec.install "src/main/shell/bin/radp-vf" => "bin/radp-vf"
+    bin.install_symlink libexec/"bin/radp-vf"
   end
 
   test do
