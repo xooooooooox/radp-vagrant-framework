@@ -53,12 +53,12 @@ module RadpVagrant
       common_config = vagrant_section.dig('config', 'common')
       clusters = vagrant_section.dig('config', 'clusters') || []
 
-      # Collect all guest IDs for trigger only-on matching
-      all_guest_ids = collect_guest_ids(clusters)
+      # Collect all machine names for trigger only-on matching
+      all_machine_names = collect_machine_names(clusters, common_config, env)
 
       # Process each cluster
       clusters.each do |cluster|
-        process_cluster(vagrant_config, cluster, common_config, all_guest_ids, env)
+        process_cluster(vagrant_config, cluster, common_config, all_machine_names, env)
       end
 
       log_info 'Configuration complete'
@@ -104,17 +104,24 @@ module RadpVagrant
 
     private
 
-    def collect_guest_ids(clusters)
-      ids = []
+    def collect_machine_names(clusters, global_common, env)
+      names = []
       clusters.each do |cluster|
+        cluster_name = cluster['name'] || 'default'
+        cluster_common = cluster['common']
         cluster['guests']&.each do |guest|
-          ids << guest['id'] if guest['id'] && guest['enabled'] != false
+          next unless guest['id'] && guest['enabled'] != false
+
+          # Merge to get provider.name (same logic as process_cluster)
+          merged = merge_guest_config(global_common, cluster_common, guest, cluster_name, env)
+          machine_name = merged.dig('provider', 'name') || guest['id']
+          names << machine_name
         end
       end
-      ids
+      names
     end
 
-    def process_cluster(vagrant_config, cluster, global_common, all_guest_ids, env)
+    def process_cluster(vagrant_config, cluster, global_common, all_machine_names, env)
       cluster_name = cluster['name'] || 'default'
       cluster_common = cluster['common']
       guests = cluster['guests'] || []
@@ -126,7 +133,7 @@ module RadpVagrant
 
         # Merge and apply conventions
         merged_guest = merge_guest_config(global_common, cluster_common, guest, cluster_name, env)
-        define_guest(vagrant_config, merged_guest, all_guest_ids, env)
+        define_guest(vagrant_config, merged_guest, all_machine_names, env)
       end
     end
 
@@ -155,18 +162,21 @@ module RadpVagrant
       provider['name'] ||= "#{env}-#{cluster_name}-#{guest['id']}"
     end
 
-    def define_guest(vagrant_config, guest, all_guest_ids, env)
+    def define_guest(vagrant_config, guest, all_machine_names, env)
       guest_id = guest['id']
-      log_info "  Defining guest: #{guest_id}"
+      # Use provider.name as machine name for uniqueness across clusters
+      # This ensures $VAGRANT_DOTFILE_PATH/machines/<name> is unique
+      machine_name = guest.dig('provider', 'name') || guest_id
+      log_info "  Defining guest: #{machine_name} (id: #{guest_id})"
 
-      vagrant_config.vm.define guest_id do |vm_config|
+      vagrant_config.vm.define machine_name do |vm_config|
         Configurators::Box.configure(vm_config, guest)
         Configurators::Provider.configure(vm_config, guest)
         Configurators::Network.configure(vm_config, guest, env: env)
         Configurators::Hostmanager.configure(vm_config, guest)
         Configurators::SyncedFolder.configure(vm_config, guest)
         Configurators::Provision.configure(vm_config, guest)
-        Configurators::Trigger.configure(vagrant_config, guest, all_guest_ids: all_guest_ids)
+        Configurators::Trigger.configure(vagrant_config, guest, all_machine_names: all_machine_names)
       end
     end
 

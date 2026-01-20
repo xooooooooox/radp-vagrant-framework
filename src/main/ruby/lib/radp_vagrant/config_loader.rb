@@ -20,6 +20,7 @@ module RadpVagrant
         # Load base config
         base_config = load_yaml_file(base_path)
         validate!(base_config)
+        validate_base_config!(base_config)
 
         # Determine active environment
         env = base_config.dig('radp', 'env') || 'default'
@@ -102,6 +103,14 @@ module RadpVagrant
         validate_clusters!(vagrant_config.dig('config', 'clusters'))
       end
 
+      def validate_base_config!(config)
+        clusters = config.dig('radp', 'extend', 'vagrant', 'config', 'clusters')
+        return if clusters.nil? || clusters.empty?
+
+        raise ConfigError, "Clusters must not be defined in base vagrant.yaml. " \
+                           "Define clusters in vagrant-<env>.yaml instead."
+      end
+
       def validate_plugins!(plugins)
         return if plugins.nil?
         raise ConfigError, "'plugins' must be an array" unless plugins.is_a?(Array)
@@ -115,6 +124,13 @@ module RadpVagrant
         return if clusters.nil?
         raise ConfigError, "'clusters' must be an array" unless clusters.is_a?(Array)
 
+        # Check for duplicate cluster names
+        cluster_names = clusters.map { |c| c['name'] }.compact
+        duplicates = cluster_names.group_by(&:itself).select { |_, v| v.size > 1 }.keys
+        unless duplicates.empty?
+          raise ConfigError, "Duplicate cluster names found: #{duplicates.join(', ')}"
+        end
+
         clusters.each_with_index do |cluster, idx|
           validate_cluster!(cluster, idx)
         end
@@ -127,10 +143,18 @@ module RadpVagrant
         guests = cluster['guests']
         return if guests.nil?
 
-        raise ConfigError, "Cluster '#{cluster['name']}' guests must be an array" unless guests.is_a?(Array)
+        cluster_name = cluster['name']
+        raise ConfigError, "Cluster '#{cluster_name}' guests must be an array" unless guests.is_a?(Array)
+
+        # Check for duplicate guest IDs within this cluster
+        guest_ids = guests.map { |g| g['id'] }.compact
+        duplicates = guest_ids.group_by(&:itself).select { |_, v| v.size > 1 }.keys
+        unless duplicates.empty?
+          raise ConfigError, "Duplicate guest IDs in cluster '#{cluster_name}': #{duplicates.join(', ')}"
+        end
 
         guests.each_with_index do |guest, guest_idx|
-          raise ConfigError, "Guest at index #{guest_idx} in cluster '#{cluster['name']}' must have an 'id'" unless guest['id']
+          raise ConfigError, "Guest at index #{guest_idx} in cluster '#{cluster_name}' must have an 'id'" unless guest['id']
         end
       end
     end

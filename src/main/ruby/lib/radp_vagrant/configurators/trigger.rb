@@ -6,20 +6,23 @@ module RadpVagrant
     # Reference: https://developer.hashicorp.com/vagrant/docs/triggers/configuration
     module Trigger
       class << self
-        def configure(vagrant_config, guest, all_guest_ids: [])
+        def configure(vagrant_config, guest, all_machine_names: [])
           triggers = guest['triggers']
           return unless triggers
+
+          # Use machine name (provider.name) for trigger matching
+          machine_name = guest.dig('provider', 'name') || guest['id']
 
           triggers.each do |trigger|
             next unless trigger['enabled']
 
-            configure_trigger(vagrant_config, trigger, guest['id'], all_guest_ids)
+            configure_trigger(vagrant_config, trigger, machine_name, all_machine_names)
           end
         end
 
         private
 
-        def configure_trigger(vagrant_config, trigger, guest_id, all_guest_ids)
+        def configure_trigger(vagrant_config, trigger, machine_name, all_machine_names)
           # on: before or after (renamed from cycle)
           # Note: YAML parses bare 'on' as boolean true, so check for both
           timing = trigger['on'] || trigger[true] || 'before'
@@ -33,8 +36,8 @@ module RadpVagrant
           # action: which actions/commands to trigger on
           actions = parse_actions(trigger['action'])
 
-          # Handle only-on filter
-          only_on = parse_only_on(trigger['only-on'], guest_id, all_guest_ids)
+          # Handle only-on filter (uses machine names, not guest IDs)
+          only_on = parse_only_on(trigger['only-on'], machine_name, all_machine_names)
 
           # Skip if only-on doesn't match this guest
           return if only_on == :skip
@@ -81,7 +84,7 @@ module RadpVagrant
           end
         end
 
-        def parse_only_on(only_on, guest_id, all_guest_ids)
+        def parse_only_on(only_on, machine_name, all_machine_names)
           return nil unless only_on
 
           patterns = Array(only_on)
@@ -91,21 +94,21 @@ module RadpVagrant
 
           return patterns unless has_regex
 
-          # Expand regex patterns to matching guest IDs
-          matched_ids = []
+          # Expand regex patterns to matching machine names
+          matched_names = []
           patterns.each do |pattern|
             if pattern.is_a?(String) && pattern.start_with?('/') && pattern.end_with?('/')
               regex = Regexp.new(pattern[1..-2])
-              matched_ids.concat(all_guest_ids.select { |id| id =~ regex })
+              matched_names.concat(all_machine_names.select { |name| name =~ regex })
             else
-              matched_ids << pattern
+              matched_names << pattern
             end
           end
 
-          # If this guest isn't in the matched list, skip
-          return :skip if guest_id && !matched_ids.include?(guest_id)
+          # If this machine isn't in the matched list, skip
+          return :skip if machine_name && !matched_names.include?(machine_name)
 
-          matched_ids.empty? ? nil : matched_ids
+          matched_names.empty? ? nil : matched_names
         end
 
         def configure_run(trigger, config)
