@@ -9,6 +9,9 @@
 
 ```
 
+[![CI](https://img.shields.io/github/actions/workflow/status/xooooooooox/radp-vagrant-framework/ci.yml?label=CI)](https://github.com/xooooooooox/radp-vagrant-framework/actions/workflows/ci.yml)
+[![CI: Homebrew](https://img.shields.io/github/actions/workflow/status/xooooooooox/radp-vagrant-framework/update-homebrew-tap.yml?label=Homebrew%20tap)](https://github.com/xooooooooox/radp-vagrant-framework/actions/workflows/update-homebrew-tap.yml)
+
 A YAML-driven framework for managing multi-machine Vagrant environments with declarative configuration.
 
 ## Features
@@ -23,15 +26,16 @@ A YAML-driven framework for managing multi-machine Vagrant environments with dec
 - **Configuration Validation**: Detect duplicate cluster names and guest IDs
 - **Debug Support**: Dump final merged configuration for inspection (JSON/YAML)
 
-## Installation
+## QuickStart
 
-### Prerequisites
+### Installation
 
+Prerequisites:
 - Ruby 2.7+
 - Vagrant 2.0+
 - VirtualBox (or other supported provider)
 
-### Script (curl / wget)
+#### Script (curl / wget / fetch)
 
 ```shell
 curl -fsSL https://raw.githubusercontent.com/xooooooooox/radp-vagrant-framework/main/tools/install.sh | bash
@@ -50,26 +54,37 @@ RADP_VF_VERSION=vX.Y.Z \
 RADP_VF_REF=main \
 RADP_VF_INSTALL_DIR="$HOME/.local/lib/radp-vagrant-framework" \
 RADP_VF_BIN_DIR="$HOME/.local/bin" \
+RADP_VF_ALLOW_ANY_DIR=1 \
 bash -c "$(curl -fsSL https://raw.githubusercontent.com/xooooooooox/radp-vagrant-framework/main/tools/install.sh)"
 ```
 
-### Homebrew (macOS/Linux)
+`RADP_VF_REF` can be a branch, tag, or commit and takes precedence over `RADP_VF_VERSION`.
+If you set a custom install dir that does not end with `radp-vagrant-framework`, also set `RADP_VF_ALLOW_ANY_DIR=1`.
+Defaults: `~/.local/lib/radp-vagrant-framework` and `~/.local/bin`.
+
+Re-run the script to upgrade.
+
+#### Homebrew (macOS/Linux)
+
+Click [here](https://github.com/xooooooooox/homebrew-radp/blob/main/Formula/radp-vagrant-framework.rb) see details.
 
 ```shell
 brew tap xooooooooox/radp
 brew install radp-vagrant-framework
 ```
 
-### Manual (Git clone)
+#### Manual (Git clone / Release assets)
+
+Prebuilt release archives are attached to each release: <https://github.com/xooooooooox/radp-vagrant-framework/releases/latest>
+
+Or clone the repository:
 
 ```shell
 git clone https://github.com/xooooooooox/radp-vagrant-framework.git
 cd radp-vagrant-framework/src/main/ruby
 ```
 
-## Quick Start
-
-### Initialize a New Project
+### Quick Start Usage
 
 ```shell
 # After installation via script or Homebrew
@@ -111,6 +126,22 @@ ruby -r ./lib/radp_vagrant -e "puts RadpVagrant.generate_vagrantfile('config')"
 # Save generated Vagrantfile
 ruby -r ./lib/radp_vagrant -e "RadpVagrant.generate_vagrantfile('config', 'Vagrantfile.generated')"
 ```
+
+### Upgrade
+
+#### Script
+
+Re-run the installation script to upgrade to the latest version.
+
+#### Homebrew
+
+```shell
+brew upgrade radp-vagrant-framework
+```
+
+#### Manual
+
+Download the new release archive from the latest release and extract it, or `git pull` if using a cloned repository.
 
 ## Directory Structure
 
@@ -440,6 +471,44 @@ RadpVagrant::Configurators::Provider::CONFIGURATORS['vmware_desktop'] = lambda {
   provider.vmx['numvcpus'] = opts['cpus']
 }
 ```
+
+## CI
+
+### How to release
+
+1. Trigger `release-prep` with a `bump_type` (patch/minor/major/manual, default patch). For manual, provide `vX.Y.Z`. This updates `version.rb` and adds a changelog entry (branch `workflow/vX.Y.Z` + PR).
+2. Review/edit the changelog in the PR and merge to `main`.
+3. `create-version-tag` runs automatically on merge (or trigger it manually) to validate the version/changelog and create/push the tag.
+4. Tag workflows run:
+   - `release` creates the GitHub Release with archives.
+   - `update-homebrew-tap` updates the Homebrew formula in the tap repository.
+
+### GitHub Actions
+
+#### CI (`ci.yml`)
+
+- **Trigger:** Push/PR to `main`.
+- **Purpose:** Validate Ruby syntax, test framework loading, config loading, and Vagrantfile generation across multiple Ruby versions (3.0-3.3) on Ubuntu and macOS.
+
+#### Release prep (`release-prep.yml`)
+
+- **Trigger:** Manual (`workflow_dispatch`) on `main`.
+- **Purpose:** Create a release branch (`workflow/vX.Y.Z`) from the resolved version (patch/minor/major bump, or manual `vX.Y.Z`), update `version.rb`, insert a changelog entry, and open a PR for review.
+
+#### Create version tag (`create-version-tag.yml`)
+
+- **Trigger:** Manual (`workflow_dispatch`) on `main`, or merge of a `workflow/vX.Y.Z` PR.
+- **Purpose:** Read version from `version.rb`, validate the changelog entry, then create/push the Git tag if it does not already exist.
+
+#### Release (`release.yml`)
+
+- **Trigger:** Push of a version tag (`v*`), or manual (`workflow_dispatch`).
+- **Purpose:** Create GitHub Release with tar.gz and zip archives, extracting changelog for release notes.
+
+#### Update Homebrew tap (`update-homebrew-tap.yml`)
+
+- **Trigger:** Push of a version tag (`v*`), successful completion of the `create-version-tag` workflow on `main`, or manual (`workflow_dispatch`).
+- **Purpose:** Update the Homebrew tap formula with the new version and SHA256, and push the changes to the tap repository.
 
 ## License
 

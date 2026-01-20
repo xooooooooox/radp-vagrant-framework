@@ -9,6 +9,9 @@
 
 ```
 
+[![CI](https://img.shields.io/github/actions/workflow/status/xooooooooox/radp-vagrant-framework/ci.yml?label=CI)](https://github.com/xooooooooox/radp-vagrant-framework/actions/workflows/ci.yml)
+[![CI: Homebrew](https://img.shields.io/github/actions/workflow/status/xooooooooox/radp-vagrant-framework/update-homebrew-tap.yml?label=Homebrew%20tap)](https://github.com/xooooooooox/radp-vagrant-framework/actions/workflows/update-homebrew-tap.yml)
+
 基于 YAML 配置的多机 Vagrant 环境管理框架。
 
 ## 特性
@@ -23,15 +26,16 @@
 - **配置校验**: 检测重复的集群名称和 guest ID
 - **调试支持**: 可导出最终合并后的配置（JSON/YAML）
 
-## 安装
+## 快速开始
 
-### 前置要求
+### 安装
 
+前置要求:
 - Ruby 2.7+
 - Vagrant 2.0+
 - VirtualBox（或其他支持的 provider）
 
-### 脚本安装 (curl / wget)
+#### 脚本安装 (curl / wget / fetch)
 
 ```shell
 curl -fsSL https://raw.githubusercontent.com/xooooooooox/radp-vagrant-framework/main/tools/install.sh | bash
@@ -50,26 +54,37 @@ RADP_VF_VERSION=vX.Y.Z \
 RADP_VF_REF=main \
 RADP_VF_INSTALL_DIR="$HOME/.local/lib/radp-vagrant-framework" \
 RADP_VF_BIN_DIR="$HOME/.local/bin" \
+RADP_VF_ALLOW_ANY_DIR=1 \
 bash -c "$(curl -fsSL https://raw.githubusercontent.com/xooooooooox/radp-vagrant-framework/main/tools/install.sh)"
 ```
 
-### Homebrew (macOS/Linux)
+`RADP_VF_REF` 可以是分支、标签或提交，优先级高于 `RADP_VF_VERSION`。
+如果自定义安装目录不以 `radp-vagrant-framework` 结尾，需设置 `RADP_VF_ALLOW_ANY_DIR=1`。
+默认路径：`~/.local/lib/radp-vagrant-framework` 和 `~/.local/bin`。
+
+重新运行脚本即可升级。
+
+#### Homebrew (macOS/Linux)
+
+点击 [这里](https://github.com/xooooooooox/homebrew-radp/blob/main/Formula/radp-vagrant-framework.rb) 查看详情。
 
 ```shell
 brew tap xooooooooox/radp
 brew install radp-vagrant-framework
 ```
 
-### 手动安装 (Git clone)
+#### 手动安装 (Git clone / Release 下载)
+
+预构建的发布包可在每个 Release 页面下载：<https://github.com/xooooooooox/radp-vagrant-framework/releases/latest>
+
+或克隆仓库：
 
 ```shell
 git clone https://github.com/xooooooooox/radp-vagrant-framework.git
 cd radp-vagrant-framework/src/main/ruby
 ```
 
-## 快速开始
-
-### 初始化新项目
+### 快速开始使用
 
 ```shell
 # 脚本或 Homebrew 安装后
@@ -111,6 +126,22 @@ ruby -r ./lib/radp_vagrant -e "puts RadpVagrant.generate_vagrantfile('config')"
 # 保存生成的 Vagrantfile
 ruby -r ./lib/radp_vagrant -e "RadpVagrant.generate_vagrantfile('config', 'Vagrantfile.generated')"
 ```
+
+### 升级
+
+#### 脚本
+
+重新运行安装脚本即可升级到最新版本。
+
+#### Homebrew
+
+```shell
+brew upgrade radp-vagrant-framework
+```
+
+#### 手动
+
+从最新 Release 下载新的发布包并解压，或使用 `git pull` 更新克隆的仓库。
 
 ## 目录结构
 
@@ -440,6 +471,44 @@ RadpVagrant::Configurators::Provider::CONFIGURATORS['vmware_desktop'] = lambda {
   provider.vmx['numvcpus'] = opts['cpus']
 }
 ```
+
+## CI
+
+### 如何发布
+
+1. 触发 `release-prep` 并指定 `bump_type`（patch/minor/major/manual，默认 patch）。若选择 manual，需提供 `vX.Y.Z`。此步骤会更新 `version.rb` 并添加 changelog 条目（创建 `workflow/vX.Y.Z` 分支 + PR）。
+2. 审核/编辑 PR 中的 changelog，然后合并到 `main`。
+3. `create-version-tag` 在合并后自动运行（或手动触发），验证版本/changelog 后创建并推送 Git 标签。
+4. 标签工作流运行：
+   - `release` 创建包含归档文件的 GitHub Release。
+   - `update-homebrew-tap` 更新 tap 仓库中的 Homebrew formula。
+
+### GitHub Actions
+
+#### CI (`ci.yml`)
+
+- **触发**: 推送/PR 到 `main`。
+- **目的**: 在 Ubuntu 和 macOS 上跨多个 Ruby 版本（3.0-3.3）验证 Ruby 语法、测试框架加载、配置加载和 Vagrantfile 生成。
+
+#### Release prep (`release-prep.yml`)
+
+- **触发**: 在 `main` 上手动触发（`workflow_dispatch`）。
+- **目的**: 从解析的版本（patch/minor/major 升级或手动指定 `vX.Y.Z`）创建发布分支（`workflow/vX.Y.Z`），更新 `version.rb`，插入 changelog 条目，并创建 PR 供审核。
+
+#### Create version tag (`create-version-tag.yml`)
+
+- **触发**: 在 `main` 上手动触发（`workflow_dispatch`），或合并 `workflow/vX.Y.Z` PR 时。
+- **目的**: 从 `version.rb` 读取版本，验证 changelog 条目，然后创建/推送 Git 标签（如不存在）。
+
+#### Release (`release.yml`)
+
+- **触发**: 推送版本标签（`v*`）或手动触发（`workflow_dispatch`）。
+- **目的**: 创建包含 tar.gz 和 zip 归档的 GitHub Release，从 changelog 提取发布说明。
+
+#### Update Homebrew tap (`update-homebrew-tap.yml`)
+
+- **触发**: 推送版本标签（`v*`）、`create-version-tag` 在 `main` 上成功完成后，或手动触发（`workflow_dispatch`）。
+- **目的**: 使用新版本和 SHA256 更新 Homebrew tap formula，并推送更改到 tap 仓库。
 
 ## 许可证
 

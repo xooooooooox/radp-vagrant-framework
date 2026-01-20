@@ -1,0 +1,195 @@
+#!/usr/bin/env bash
+# RADP Vagrant Framework CLI
+# https://github.com/xooooooooox/radp-vagrant-framework
+
+set -euo pipefail
+
+# Resolve script directory (handle symlinks)
+resolve_script_dir() {
+  local source="${BASH_SOURCE[0]}"
+  while [[ -L "${source}" ]]; do
+    local dir
+    dir="$(cd -P "$(dirname "${source}")" && pwd)"
+    source="$(readlink "${source}")"
+    [[ "${source}" != /* ]] && source="${dir}/${source}"
+  done
+  cd -P "$(dirname "${source}")" && pwd
+}
+
+SCRIPT_DIR="$(resolve_script_dir)"
+
+# Determine RADP_VF_HOME
+# Priority: env var > installed location > source repo layout
+if [[ -z "${RADP_VF_HOME:-}" ]]; then
+  # Check if we're in installed layout: bin/radp-vf with lib/ as sibling
+  if [[ -d "${SCRIPT_DIR}/../lib/radp_vagrant" ]]; then
+    RADP_VF_HOME="$(cd "${SCRIPT_DIR}/.." && pwd)"
+  # Check source repo layout: src/main/shell/bin/radp-vf
+  elif [[ -d "${SCRIPT_DIR}/../../ruby/lib/radp_vagrant" ]]; then
+    RADP_VF_HOME="$(cd "${SCRIPT_DIR}/../../ruby" && pwd)"
+  else
+    echo "Error: Cannot locate RADP Vagrant Framework. Set RADP_VF_HOME." >&2
+    exit 1
+  fi
+fi
+export RADP_VF_HOME
+
+usage() {
+  cat << 'USAGE'
+RADP Vagrant Framework CLI
+
+Usage:
+  radp-vf <command> [options]
+
+Commands:
+  init [dir]              Initialize a new project with sample configuration
+  dump-config [filter]    Dump merged configuration (JSON)
+  generate [output]       Generate standalone Vagrantfile
+  version                 Show version
+  help                    Show this help
+
+Environment Variables:
+  RADP_VF_HOME           Framework installation directory
+
+Examples:
+  radp-vf init myproject
+  radp-vf dump-config
+  radp-vf dump-config node-1
+  radp-vf generate Vagrantfile.preview
+USAGE
+}
+
+cmd_init() {
+  local target_dir="${1:-.}"
+  mkdir -p "${target_dir}"
+
+  if [[ -f "${target_dir}/Vagrantfile" ]]; then
+    echo "Error: Vagrantfile already exists in ${target_dir}" >&2
+    exit 1
+  fi
+
+  mkdir -p "${target_dir}/config"
+
+  # Create Vagrantfile
+  cat > "${target_dir}/Vagrantfile" << 'VAGRANTFILE'
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+
+# RADP Vagrant Framework
+# See: https://github.com/xooooooooox/radp-vagrant-framework
+
+require_relative 'lib/radp_vagrant'
+
+config_dir = ENV['RADP_VAGRANT_CONFIG_DIR'] || File.join(__dir__, 'config')
+
+Vagrant.configure('2') do |config|
+  RadpVagrant.configure(config, config_dir)
+end
+VAGRANTFILE
+
+  # Create symlink to lib
+  if [[ ! -e "${target_dir}/lib" ]]; then
+    ln -s "${RADP_VF_HOME}/lib" "${target_dir}/lib"
+  fi
+
+  # Create sample vagrant.yaml
+  cat > "${target_dir}/config/vagrant.yaml" << 'VAGRANT_YAML'
+radp:
+  env: sample
+  extend:
+    vagrant:
+      plugins:
+        - name: vagrant-hostmanager
+          required: true
+          options:
+            enabled: true
+            manage_host: true
+            manage_guest: true
+      config:
+        common:
+          # Global settings inherited by all guests
+VAGRANT_YAML
+
+  # Create sample vagrant-sample.yaml
+  cat > "${target_dir}/config/vagrant-sample.yaml" << 'VAGRANT_DEV_YAML'
+radp:
+  extend:
+    vagrant:
+      config:
+        clusters:
+          - name: example
+            common:
+              box:
+                name: generic/ubuntu2204
+            guests:
+              - id: node-1
+                provider:
+                  mem: 2048
+                  cpus: 2
+                network:
+                  private-network:
+                    enabled: true
+                    type: dhcp
+VAGRANT_DEV_YAML
+
+  echo "Initialized RADP Vagrant Framework project in ${target_dir}"
+  echo ""
+  echo "Next steps:"
+  echo "  cd ${target_dir}"
+  echo "  vagrant status"
+}
+
+cmd_dump_config() {
+  local filter="${1:-}"
+  cd "${RADP_VF_HOME}"
+  if [[ -n "${filter}" ]]; then
+    ruby -r ./lib/radp_vagrant -e "RadpVagrant.dump_config('config', '${filter}')"
+  else
+    ruby -r ./lib/radp_vagrant -e "RadpVagrant.dump_config('config')"
+  fi
+}
+
+cmd_generate() {
+  local output="${1:-}"
+  cd "${RADP_VF_HOME}"
+  if [[ -n "${output}" ]]; then
+    ruby -r ./lib/radp_vagrant -e "RadpVagrant.generate_vagrantfile('config', '${output}')"
+  else
+    ruby -r ./lib/radp_vagrant -e "puts RadpVagrant.generate_vagrantfile('config')"
+  fi
+}
+
+cmd_version() {
+  cd "${RADP_VF_HOME}"
+  ruby -r ./lib/radp_vagrant -e "puts RadpVagrant::VERSION"
+}
+
+main() {
+  local cmd="${1:-help}"
+  shift || true
+
+  case "${cmd}" in
+    init)
+      cmd_init "$@"
+      ;;
+    dump-config|dump_config)
+      cmd_dump_config "$@"
+      ;;
+    generate)
+      cmd_generate "$@"
+      ;;
+    version|-v|--version)
+      cmd_version
+      ;;
+    help|-h|--help)
+      usage
+      ;;
+    *)
+      echo "Unknown command: ${cmd}" >&2
+      usage >&2
+      exit 1
+      ;;
+  esac
+}
+
+main "$@"
