@@ -17,13 +17,19 @@ vagrant validate
 # Show VM status
 vagrant status
 
-# Start VMs
+# Start VMs (use machine_name: <env>-<cluster>-<guest-id>)
 vagrant up
-vagrant up guest-1
+vagrant up local-cluster-1-guest-1
 
-# Debug: dump merged configuration
+# Debug: dump merged configuration (JSON format)
 ruby -r ./lib/radp_vagrant -e "RadpVagrant.dump_config('config')"
+
+# Filter by guest_id or machine_name
 ruby -r ./lib/radp_vagrant -e "RadpVagrant.dump_config('config', 'guest-1')"
+ruby -r ./lib/radp_vagrant -e "RadpVagrant.dump_config('config', 'local-cluster-1-guest-1')"
+
+# Output as YAML
+ruby -r ./lib/radp_vagrant -e "RadpVagrant.dump_config('config', nil, format: :yaml)"
 ```
 
 ## Architecture
@@ -153,3 +159,11 @@ radp:
 2. **Convention-Based Defaults**: hostname, provider.name, provider.group-id auto-generated
 3. **Plugin Options**: Use underscores to match official Vagrant plugin documentation
 4. **Modular Plugins**: Each plugin configurator in separate file for maintainability
+5. **Machine Naming**: Vagrant machine name uses `provider.name` (default: `{env}-{cluster}-{id}`) for uniqueness in `$VAGRANT_DOTFILE_PATH/machines/<name>`
+6. **Clusters Only in Env Files**: Clusters must be defined in `vagrant-{env}.yaml`, not in base `vagrant.yaml`
+
+## Validation Rules
+
+- Duplicate cluster names in the same env file are not allowed
+- Duplicate guest IDs within the same cluster are not allowed
+- Clusters cannot be defined in base `vagrant.yaml` (only in `vagrant-{env}.yaml`)

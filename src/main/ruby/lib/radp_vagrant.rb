@@ -36,106 +36,90 @@ module RadpVagrant
     def configure(vagrant_config, config_dir)
       puts BANNER
 
-      # Load configuration (base + environment-specific)
-      config = ConfigLoader.load(config_dir)
-      env = config.dig('radp', '_resolved_env') || 'default'
+      merged = build_merged_config(config_dir)
+      return log_warn('No vagrant configuration found') unless merged
 
-      log_info "Environment: #{env}"
-      log_info "Config directory: #{config_dir}"
-
-      vagrant_section = config.dig('radp', 'extend', 'vagrant')
-      return log_warn('No vagrant configuration found') unless vagrant_section
+      log_info "Environment: #{merged['env']}"
+      log_info "Config directory: #{merged['config_dir']}"
 
       # Configure plugins first
-      Configurators::Plugin.configure(vagrant_config, vagrant_section['plugins'])
-
-      # Get configuration sections
-      common_config = vagrant_section.dig('config', 'common')
-      clusters = vagrant_section.dig('config', 'clusters') || []
+      Configurators::Plugin.configure(vagrant_config, merged['plugins'])
 
       # Collect all machine names for trigger only-on matching
-      all_machine_names = collect_machine_names(clusters, common_config, env)
+      all_machine_names = merged['clusters'].flat_map do |cluster|
+        cluster['guests'].map { |g| g.dig('provider', 'name') || g['id'] }
+      end
 
       # Process each cluster
-      clusters.each do |cluster|
-        process_cluster(vagrant_config, cluster, common_config, all_machine_names, env)
+      merged['clusters'].each do |cluster|
+        log_info "Processing cluster: #{cluster['name']}"
+        cluster['guests'].each do |guest|
+          define_guest(vagrant_config, guest, all_machine_names)
+        end
       end
 
       log_info 'Configuration complete'
     end
 
-    # Debug: dump final configuration for a guest
+    # Dump final merged configuration
     # @param config_dir [String] Directory containing config files
-    # @param guest_id [String, nil] Specific guest to dump, or nil for all
-    def dump_config(config_dir, guest_id = nil)
-      require 'json'
+    # @param filter [String, nil] Filter by machine_name or guest_id
+    # @param format [Symbol] Output format (:json or :yaml)
+    def dump_config(config_dir, filter = nil, format: :json)
+      merged = build_merged_config(config_dir)
+      return puts "No vagrant configuration found" unless merged
 
+      # Apply filter if specified (matches machine_name or guest_id)
+      if filter
+        merged['clusters'] = merged['clusters'].map do |cluster|
+          filtered_guests = cluster['guests'].select do |guest|
+            machine_name = guest.dig('provider', 'name') || guest['id']
+            guest['id'] == filter || machine_name == filter
+          end
+          cluster.merge('guests' => filtered_guests)
+        end.reject { |c| c['guests'].empty? }
+      end
+
+      output_config(merged, format)
+    end
+
+    # Build fully merged configuration (single source of truth)
+    # @param config_dir [String] Directory containing config files
+    # @return [Hash, nil] Merged configuration or nil if no vagrant config
+    def build_merged_config(config_dir)
       config = ConfigLoader.load(config_dir)
       env = config.dig('radp', '_resolved_env') || 'default'
 
       vagrant_section = config.dig('radp', 'extend', 'vagrant')
-      return puts "No vagrant configuration found" unless vagrant_section
+      return nil unless vagrant_section
 
       common_config = vagrant_section.dig('config', 'common')
       clusters = vagrant_section.dig('config', 'clusters') || []
 
-      result = {
-        env: env,
-        plugins: vagrant_section['plugins'],
-        guests: []
-      }
-
-      clusters.each do |cluster|
-        cluster_name = cluster['name']
+      # Build merged clusters with fully resolved guests
+      merged_clusters = clusters.map do |cluster|
+        cluster_name = cluster['name'] || 'default'
         cluster_common = cluster['common']
         guests = cluster['guests'] || []
 
-        guests.each do |guest|
+        merged_guests = guests.filter_map do |guest|
           next if guest['enabled'] == false
-          next if guest_id && guest['id'] != guest_id
 
-          merged = merge_guest_config(common_config, cluster_common, guest, cluster_name, env)
-          result[:guests] << merged
+          merge_guest_config(common_config, cluster_common, guest, cluster_name, env)
         end
+
+        { 'name' => cluster_name, 'guests' => merged_guests }
       end
 
-      puts JSON.pretty_generate(result)
+      {
+        'env' => env,
+        'config_dir' => config.dig('radp', '_config_dir'),
+        'plugins' => vagrant_section['plugins'],
+        'clusters' => merged_clusters
+      }
     end
 
     private
-
-    def collect_machine_names(clusters, global_common, env)
-      names = []
-      clusters.each do |cluster|
-        cluster_name = cluster['name'] || 'default'
-        cluster_common = cluster['common']
-        cluster['guests']&.each do |guest|
-          next unless guest['id'] && guest['enabled'] != false
-
-          # Merge to get provider.name (same logic as process_cluster)
-          merged = merge_guest_config(global_common, cluster_common, guest, cluster_name, env)
-          machine_name = merged.dig('provider', 'name') || guest['id']
-          names << machine_name
-        end
-      end
-      names
-    end
-
-    def process_cluster(vagrant_config, cluster, global_common, all_machine_names, env)
-      cluster_name = cluster['name'] || 'default'
-      cluster_common = cluster['common']
-      guests = cluster['guests'] || []
-
-      log_info "Processing cluster: #{cluster_name}"
-
-      guests.each do |guest|
-        next if guest['enabled'] == false
-
-        # Merge and apply conventions
-        merged_guest = merge_guest_config(global_common, cluster_common, guest, cluster_name, env)
-        define_guest(vagrant_config, merged_guest, all_machine_names, env)
-      end
-    end
 
     def merge_guest_config(global_common, cluster_common, guest, cluster_name, env)
       # Merge: global common -> cluster common -> guest
@@ -162,8 +146,20 @@ module RadpVagrant
       provider['name'] ||= "#{env}-#{cluster_name}-#{guest['id']}"
     end
 
-    def define_guest(vagrant_config, guest, all_machine_names, env)
+    def output_config(config, format)
+      case format
+      when :yaml
+        require 'yaml'
+        puts config.to_yaml
+      else
+        require 'json'
+        puts JSON.pretty_generate(config)
+      end
+    end
+
+    def define_guest(vagrant_config, guest, all_machine_names)
       guest_id = guest['id']
+      env = guest['_env']
       # Use provider.name as machine name for uniqueness across clusters
       # This ensures $VAGRANT_DOTFILE_PATH/machines/<name> is unique
       machine_name = guest.dig('provider', 'name') || guest_id
