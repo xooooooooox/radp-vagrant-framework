@@ -45,13 +45,9 @@ jobs:
         run: |
           set -euo pipefail
           if [[ "${GITHUB_EVENT_NAME}" == "workflow_run" ]]; then
-            head_sha="${{ github.event.workflow_run.head_sha }}"
-            head_branch="${{ github.event.workflow_run.head_branch }}"
-            if [[ "${head_branch}" == workflow/v* ]]; then
-              tag_name="${head_branch#workflow/}"
-            else
-              tag_name="$(git tag --points-at "${head_sha}" --list 'v*' | sort -V | tail -n 1)"
-            fi
+            # Read version from version.rb (same source as create-version-tag)
+            version_file="src/main/ruby/lib/radp_vagrant/version.rb"
+            tag_name="$(grep -oE "VERSION = 'v[0-9]+\.[0-9]+\.[0-9]+'" "${version_file}" | grep -oE "v[0-9]+\.[0-9]+\.[0-9]+" | head -n 1)"
           else
             tag_name="${GITHUB_REF_NAME}"
           fi

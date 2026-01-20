@@ -42,11 +42,11 @@ jobs:
           if [[ -n "${{ inputs.tag }}" ]]; then
             tag="${{ inputs.tag }}"
           elif [[ "${GITHUB_EVENT_NAME}" == "workflow_run" ]]; then
-            # Get the latest tag that points to the workflow run's head commit
-            head_sha="${{ github.event.workflow_run.head_sha }}"
-            tag="$(git tag --points-at "${head_sha}" --list 'v*' | sort -V | tail -n 1)"
+            # Read version from version.rb (same source as create-version-tag)
+            version_file="src/main/ruby/lib/radp_vagrant/version.rb"
+            tag="$(grep -oE "VERSION = 'v[0-9]+\.[0-9]+\.[0-9]+'" "${version_file}" | grep -oE "v[0-9]+\.[0-9]+\.[0-9]+" | head -n 1)"
             if [[ -z "${tag}" ]]; then
-              echo "No version tag found for commit ${head_sha}" >&2
+              echo "Failed to read version from ${version_file}" >&2
               exit 1
             fi
           else
