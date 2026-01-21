@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## v0.0.7 - 2026-01-21
+
+- fab16af fix: dynamically locates the framework using RADP_VF_HOME environment variable, with fallback to local lib directory
+
 ## v0.0.6 - 2026-01-21
 
 - Run Vagrant from Anywhere
