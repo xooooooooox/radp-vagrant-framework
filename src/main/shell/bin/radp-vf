@@ -206,6 +206,9 @@ cmd_vg() {
     export RADP_VAGRANT_ENV="${OPT_ENV}"
   fi
 
+  # Export RADP_VF_HOME so Vagrantfile can find the framework
+  export RADP_VF_HOME
+
   # Change to project directory and run vagrant
   cd "${project_dir}"
   exec vagrant "$@"
@@ -236,19 +239,27 @@ cmd_init() {
 # RADP Vagrant Framework
 # See: https://github.com/xooooooooox/radp-vagrant-framework
 
-require_relative 'lib/radp_vagrant'
+# Locate framework library
+# Priority: RADP_VF_HOME > local lib directory
+radp_vf_home = ENV['RADP_VF_HOME']
+lib_path = if radp_vf_home && File.exist?(File.join(radp_vf_home, 'lib', 'radp_vagrant.rb'))
+             File.join(radp_vf_home, 'lib')
+           elsif File.exist?(File.join(__dir__, 'lib', 'radp_vagrant.rb'))
+             File.join(__dir__, 'lib')
+           end
 
-config_dir = ENV['RADP_VAGRANT_CONFIG_DIR'] || File.join(__dir__, 'config')
+raise 'Cannot locate RADP Vagrant Framework. Set RADP_VF_HOME environment variable.' unless lib_path
+
+$LOAD_PATH.unshift(lib_path) unless $LOAD_PATH.include?(lib_path)
+require 'radp_vagrant'
+
+Vagrant.require_version '>=1.6.0'
 
 Vagrant.configure('2') do |config|
+  config_dir = ENV['RADP_VAGRANT_CONFIG_DIR'] || File.join(__dir__, 'config')
   RadpVagrant.configure(config, config_dir)
 end
 VAGRANTFILE
-
-  # Create symlink to lib
-  if [[ ! -e "${target_dir}/lib" ]]; then
-    ln -s "${RADP_VF_HOME}/lib" "${target_dir}/lib"
-  fi
 
   # Create sample vagrant.yaml
   cat > "${target_dir}/config/vagrant.yaml" << 'VAGRANT_YAML'
@@ -295,7 +306,6 @@ VAGRANT_DEV_YAML
   echo "Created files:"
   echo "  ${abs_target_dir}/"
   echo "  ├── Vagrantfile"
-  echo "  ├── lib -> ${RADP_VF_HOME}/lib"
   echo "  └── config/"
   echo "      ├── vagrant.yaml          # Base config (env: sample)"
   echo "      └── vagrant-sample.yaml   # Cluster definitions"
@@ -309,6 +319,10 @@ VAGRANT_DEV_YAML
   echo "  cd ${target_dir}"
   echo "  vagrant status    # View VM status"
   echo "  vagrant up        # Start VMs"
+  echo ""
+  echo "Or run from anywhere:"
+  echo "  export RADP_VAGRANT_CONFIG_DIR=${abs_target_dir}/config"
+  echo "  radp-vf vg status"
   echo ""
   echo "Edit config/vagrant.yaml to change 'env' and create your own environment file."
 }
