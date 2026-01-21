@@ -31,8 +31,8 @@ A YAML-driven framework for managing multi-machine Vagrant environments with dec
 ### Installation
 
 Prerequisites:
-- Ruby 2.7+
-- Vagrant 2.0+
+- Ruby 2.7+. (You can install Ruby here: <https://www.ruby-lang.org/en/documentation/installation/>)
+- Vagrant 2.0+. (You can install Vagrant here: <https://developer.hashicorp.com/vagrant/install>)
 - VirtualBox (or other supported provider)
 
 #### Script (curl / wget / fetch)
