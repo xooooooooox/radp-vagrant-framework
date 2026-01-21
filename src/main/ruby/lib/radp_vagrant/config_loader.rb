@@ -23,7 +23,8 @@ module RadpVagrant
         validate_base_config!(base_config)
 
         # Determine active environment
-        env = base_config.dig('radp', 'env') || 'default'
+        # Priority: RADP_VAGRANT_ENV env var > radp.env in config > 'default'
+        env = ENV['RADP_VAGRANT_ENV'] || base_config.dig('radp', 'env') || 'default'
 
         # Load environment-specific config if exists
         env_filename = base_filename.sub('.yaml', "-#{env}.yaml")

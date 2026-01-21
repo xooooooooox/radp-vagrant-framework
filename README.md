@@ -168,13 +168,45 @@ radp:
 | Variable | Description | Default |
 |----------|-------------|---------|
 | `RADP_VF_HOME` | Framework installation directory | Auto-detected from script location |
-| `RADP_VAGRANT_CONFIG_DIR` | Override configuration directory | `./config` (relative to Vagrantfile) |
+| `RADP_VF_PROJECT_DIR` | Project directory containing Vagrantfile | Derived from config dir |
+| `RADP_VAGRANT_CONFIG_DIR` | Configuration directory path | `./config` (relative to Vagrantfile) |
+| `RADP_VAGRANT_ENV` | Override environment name | - |
 
 **RADP_VF_HOME defaults:**
 - Script/Homebrew install: `~/.local/lib/radp-vagrant-framework` or `/opt/homebrew/Cellar/radp-vagrant-framework/<version>/libexec`
 - Git clone: `<repo>/src/main/ruby` (auto-detected)
 
-### Common Commands
+**Environment priority (highest to lowest):**
+```
+-e flag > RADP_VAGRANT_ENV > radp.env in vagrant.yaml
+```
+
+### Run Vagrant from Anywhere
+
+After setting up your project, configure environment variables to run vagrant commands from any directory:
+
+```shell
+# Add to ~/.zshrc or ~/.bashrc
+export RADP_VAGRANT_CONFIG_DIR="$HOME/vagrant-vms/config"
+# Or more explicitly:
+export RADP_VF_PROJECT_DIR="$HOME/vagrant-vms"
+```
+
+Then from any directory:
+
+```shell
+# Run vagrant commands via radp-vf vg
+radp-vf vg status
+radp-vf vg up
+radp-vf vg ssh sample-example-node-1
+radp-vf vg halt
+
+# Override environment with -e flag
+radp-vf -e dev vg status      # Uses vagrant-dev.yaml
+radp-vf -e prod vg up         # Uses vagrant-prod.yaml
+```
+
+### Common Commands (in project directory)
 
 ```shell
 # Show VM status
@@ -199,6 +231,9 @@ vagrant destroy
 ### Debug Commands
 
 ```shell
+# Show environment info
+radp-vf info
+
 # Dump merged configuration (JSON)
 radp-vf dump-config
 
