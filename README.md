@@ -108,19 +108,18 @@ After installation, create a new project with sample configuration:
 
 ```shell
 radp-vf init myproject
-cd myproject
 ```
 
 This creates the following structure:
 
 ```
 myproject/
-├── Vagrantfile           # Entry point (loads framework)
-├── lib -> $RADP_VF_HOME/lib  # Symlink to framework
 └── config/
-    ├── vagrant.yaml      # Base configuration (sets env)
+    ├── vagrant.yaml          # Base configuration (sets env)
     └── vagrant-sample.yaml   # Environment-specific clusters
 ```
+
+The framework's Vagrantfile is used automatically via `radp-vf vg` - no Vagrantfile is created in your project directory.
 
 ### Configuration Files
 
@@ -168,9 +167,8 @@ radp:
 | Variable | Description | Default |
 |----------|-------------|---------|
 | `RADP_VF_HOME` | Framework installation directory | Auto-detected from script location |
-| `RADP_VF_PROJECT_DIR` | Project directory containing Vagrantfile | Derived from config dir |
-| `RADP_VAGRANT_CONFIG_DIR` | Configuration directory path | `./config` (relative to Vagrantfile) |
-| `RADP_VAGRANT_ENV` | Override environment name | - |
+| `RADP_VAGRANT_CONFIG_DIR` | Configuration directory path (required for `vg`) | `./config` if exists |
+| `RADP_VAGRANT_ENV` | Override environment name | `radp.env` in vagrant.yaml |
 
 **RADP_VF_HOME defaults:**
 - Script/Homebrew install: `~/.local/lib/radp-vagrant-framework` or `/opt/homebrew/Cellar/radp-vagrant-framework/<version>/libexec`
@@ -181,52 +179,30 @@ radp:
 -e flag > RADP_VAGRANT_ENV > radp.env in vagrant.yaml
 ```
 
-### Run Vagrant from Anywhere
+### Running Vagrant Commands
 
-After setting up your project, configure environment variables to run vagrant commands from any directory:
-
-```shell
-# Add to ~/.zshrc or ~/.bashrc
-export RADP_VAGRANT_CONFIG_DIR="$HOME/vagrant-vms/config"
-# Or more explicitly:
-export RADP_VF_PROJECT_DIR="$HOME/vagrant-vms"
-```
-
-Then from any directory:
+Use `radp-vf vg` to run vagrant commands. This works from the project directory or anywhere if `RADP_VAGRANT_CONFIG_DIR` is set:
 
 ```shell
-# Run vagrant commands via radp-vf vg
+# From project directory (contains config/vagrant.yaml)
+cd myproject
 radp-vf vg status
 radp-vf vg up
 radp-vf vg ssh sample-example-node-1
 radp-vf vg halt
+radp-vf vg destroy
+
+# Or from any directory with RADP_VAGRANT_CONFIG_DIR set
+export RADP_VAGRANT_CONFIG_DIR="$HOME/myproject/config"
+radp-vf vg status
+radp-vf vg up
 
 # Override environment with -e flag
 radp-vf -e dev vg status      # Uses vagrant-dev.yaml
 radp-vf -e prod vg up         # Uses vagrant-prod.yaml
 ```
 
-### Common Commands (in project directory)
-
-```shell
-# Show VM status
-vagrant status
-
-# Start all VMs
-vagrant up
-
-# Start specific VM (format: <env>-<cluster>-<guest-id>)
-vagrant up dev-my-cluster-node-1
-
-# SSH into a VM
-vagrant ssh dev-my-cluster-node-1
-
-# Stop all VMs
-vagrant halt
-
-# Destroy all VMs
-vagrant destroy
-```
+**Note:** Native `vagrant` commands are isolated from `radp-vf vg`. Running `vagrant up` in a directory with its own Vagrantfile works normally and is not affected by RADP Vagrant Framework.
 
 ### Debug Commands
 
@@ -537,7 +513,11 @@ Vagrant machine names use `provider.name` (default: `{env}-{cluster}-{guest-id}`
 
 ## Environment Variables
 
-- `RADP_VAGRANT_CONFIG_DIR` - Override configuration directory path
+| Variable | Description |
+|----------|-------------|
+| `RADP_VF_HOME` | Framework installation directory (auto-detected) |
+| `RADP_VAGRANT_CONFIG_DIR` | Configuration directory path |
+| `RADP_VAGRANT_ENV` | Override environment name |
 
 ## Extending
 

@@ -42,36 +42,29 @@ get_version() {
   (cd "${RADP_VF_HOME}" && ruby -r ./lib/radp_vagrant -e "puts RadpVagrant::VERSION" 2>/dev/null) || echo "unknown"
 }
 
-# Resolve project directory
-# Priority: RADP_VF_PROJECT_DIR > derived from RADP_VAGRANT_CONFIG_DIR > current dir
-resolve_project_dir() {
-  local project_dir=""
+# Resolve config directory
+# Priority: RADP_VAGRANT_CONFIG_DIR > ./config (if exists)
+resolve_config_dir() {
+  local config_dir=""
 
-  if [[ -n "${RADP_VF_PROJECT_DIR:-}" ]]; then
-    project_dir="${RADP_VF_PROJECT_DIR}"
-  elif [[ -n "${RADP_VAGRANT_CONFIG_DIR:-}" ]]; then
-    # Derive from config dir
-    if [[ "${RADP_VAGRANT_CONFIG_DIR}" == */config ]]; then
-      project_dir="${RADP_VAGRANT_CONFIG_DIR%/config}"
-    else
-      project_dir="${RADP_VAGRANT_CONFIG_DIR}"
-    fi
-  elif [[ -f "Vagrantfile" ]]; then
-    project_dir="$(pwd)"
+  if [[ -n "${RADP_VAGRANT_CONFIG_DIR:-}" ]]; then
+    config_dir="${RADP_VAGRANT_CONFIG_DIR}"
+  elif [[ -d "./config" && -f "./config/vagrant.yaml" ]]; then
+    config_dir="$(pwd)/config"
   fi
 
-  if [[ -z "${project_dir}" ]]; then
-    echo "Error: Cannot determine project directory." >&2
-    echo "Set RADP_VF_PROJECT_DIR or RADP_VAGRANT_CONFIG_DIR, or run from a project directory." >&2
+  if [[ -z "${config_dir}" ]]; then
+    echo "Error: Cannot determine config directory." >&2
+    echo "Set RADP_VAGRANT_CONFIG_DIR or run from a directory containing config/vagrant.yaml" >&2
     return 1
   fi
 
-  if [[ ! -f "${project_dir}/Vagrantfile" ]]; then
-    echo "Error: No Vagrantfile found in ${project_dir}" >&2
+  if [[ ! -f "${config_dir}/vagrant.yaml" ]]; then
+    echo "Error: No vagrant.yaml found in ${config_dir}" >&2
     return 1
   fi
 
-  echo "${project_dir}"
+  echo "${config_dir}"
 }
 
 usage() {
@@ -85,7 +78,7 @@ Usage:
 
 Commands:
   init [dir]              Initialize a new project with sample configuration
-  vg <vagrant-cmd>        Run vagrant command in project directory
+  vg <vagrant-cmd>        Run vagrant command with framework
   dump-config [filter]    Dump merged configuration (JSON)
   generate [output]       Generate standalone Vagrantfile
   info                    Show environment and configuration info
@@ -98,9 +91,7 @@ Options:
 Environment Variables:
   RADP_VF_HOME            Framework installation directory
                           Current: ${RADP_VF_HOME}
-  RADP_VF_PROJECT_DIR     Project directory containing Vagrantfile
-  RADP_VAGRANT_CONFIG_DIR Configuration directory path
-                          Default: ./config (relative to Vagrantfile)
+  RADP_VAGRANT_CONFIG_DIR Configuration directory path (required for vg)
   RADP_VAGRANT_ENV        Override environment name
 
 Environment Priority (highest to lowest):
@@ -109,6 +100,8 @@ Environment Priority (highest to lowest):
 Examples:
   radp-vf init myproject
   radp-vf info
+  cd myproject && radp-vf vg status
+  export RADP_VAGRANT_CONFIG_DIR=/path/to/project/config
   radp-vf vg status
   radp-vf vg up
   radp-vf -e dev vg status
@@ -124,66 +117,50 @@ cmd_info() {
 
   echo "RADP Vagrant Framework"
   echo ""
-  echo "Environment:"
+  echo "Framework:"
   echo "  Version:      ${version}"
   echo "  RADP_VF_HOME: ${RADP_VF_HOME}"
+  echo "  Vagrantfile:  ${RADP_VF_HOME}/Vagrantfile"
   echo ""
   echo "Environment Variables:"
-  echo "  RADP_VF_PROJECT_DIR:     ${RADP_VF_PROJECT_DIR:-(not set)}"
   echo "  RADP_VAGRANT_CONFIG_DIR: ${RADP_VAGRANT_CONFIG_DIR:-(not set)}"
   echo "  RADP_VAGRANT_ENV:        ${RADP_VAGRANT_ENV:-(not set)}"
 
-  # Try to resolve project directory
-  local project_dir
-  project_dir="$(resolve_project_dir 2>/dev/null)" || true
+  # Try to resolve config directory
+  local config_dir
+  config_dir="$(resolve_config_dir 2>/dev/null)" || true
 
-  if [[ -n "${project_dir}" ]]; then
-    local config_dir="${RADP_VAGRANT_CONFIG_DIR:-${project_dir}/config}"
-    local abs_config_dir
-    if [[ "${config_dir}" == /* ]]; then
-      abs_config_dir="${config_dir}"
-    else
-      abs_config_dir="${project_dir}/${config_dir}"
-    fi
-
+  if [[ -n "${config_dir}" ]]; then
     echo ""
-    echo "Resolved Project:"
-    echo "  Project Dir:  ${project_dir}"
-    echo "  Vagrantfile:  ${project_dir}/Vagrantfile"
+    echo "Resolved Configuration:"
+    echo "  Config Dir:   ${config_dir}"
 
-    if [[ -d "${abs_config_dir}" ]]; then
-      echo "  Config Path:  ${abs_config_dir}"
-
-      # Show config files
-      if [[ -f "${abs_config_dir}/vagrant.yaml" ]]; then
-        local env_name
-        env_name="$(grep -E '^\s*env:' "${abs_config_dir}/vagrant.yaml" 2>/dev/null | head -1 | sed 's/.*env:\s*//' | tr -d ' ')"
-        local effective_env="${OPT_ENV:-${RADP_VAGRANT_ENV:-${env_name}}}"
-        echo "  Environment:  ${effective_env:-unknown}"
-        if [[ -n "${OPT_ENV}" ]]; then
-          echo "                (from -e flag)"
-        elif [[ -n "${RADP_VAGRANT_ENV:-}" ]]; then
-          echo "                (from RADP_VAGRANT_ENV)"
-        else
-          echo "                (from vagrant.yaml)"
-        fi
-        echo ""
-        echo "Config Files:"
-        echo "  Base: ${abs_config_dir}/vagrant.yaml"
-        if [[ -n "${effective_env}" && -f "${abs_config_dir}/vagrant-${effective_env}.yaml" ]]; then
-          echo "  Env:  ${abs_config_dir}/vagrant-${effective_env}.yaml"
-        elif [[ -n "${effective_env}" ]]; then
-          echo "  Env:  ${abs_config_dir}/vagrant-${effective_env}.yaml (not found)"
-        fi
+    if [[ -f "${config_dir}/vagrant.yaml" ]]; then
+      local env_name
+      env_name="$(grep -E '^\s*env:' "${config_dir}/vagrant.yaml" 2>/dev/null | head -1 | sed 's/.*env:\s*//' | tr -d ' ')"
+      local effective_env="${OPT_ENV:-${RADP_VAGRANT_ENV:-${env_name}}}"
+      echo "  Environment:  ${effective_env:-unknown}"
+      if [[ -n "${OPT_ENV}" ]]; then
+        echo "                (from -e flag)"
+      elif [[ -n "${RADP_VAGRANT_ENV:-}" ]]; then
+        echo "                (from RADP_VAGRANT_ENV)"
+      else
+        echo "                (from vagrant.yaml)"
       fi
-    else
-      echo "  Config Path:  ${abs_config_dir} (not found)"
+      echo ""
+      echo "Config Files:"
+      echo "  Base: ${config_dir}/vagrant.yaml"
+      if [[ -n "${effective_env}" && -f "${config_dir}/vagrant-${effective_env}.yaml" ]]; then
+        echo "  Env:  ${config_dir}/vagrant-${effective_env}.yaml"
+      elif [[ -n "${effective_env}" ]]; then
+        echo "  Env:  ${config_dir}/vagrant-${effective_env}.yaml (not found)"
+      fi
     fi
   else
     echo ""
-    echo "Project: (cannot be resolved)"
-    echo "  Set RADP_VF_PROJECT_DIR or RADP_VAGRANT_CONFIG_DIR,"
-    echo "  or run 'radp-vf init <dir>' to create a new project."
+    echo "Configuration: (not resolved)"
+    echo "  Set RADP_VAGRANT_CONFIG_DIR or run from a directory with config/vagrant.yaml"
+    echo "  Or run 'radp-vf init <dir>' to create a new project."
   fi
 }
 
@@ -198,71 +175,44 @@ cmd_vg() {
     return 1
   fi
 
-  local project_dir
-  project_dir="$(resolve_project_dir)" || return 1
+  local config_dir
+  config_dir="$(resolve_config_dir)" || return 1
 
   # Set environment override if specified
   if [[ -n "${OPT_ENV}" ]]; then
     export RADP_VAGRANT_ENV="${OPT_ENV}"
   fi
 
-  # Export RADP_VF_HOME so Vagrantfile can find the framework
+  # Use framework's Vagrantfile via VAGRANT_VAGRANTFILE
+  export VAGRANT_VAGRANTFILE="${RADP_VF_HOME}/Vagrantfile"
+  export RADP_VAGRANT_CONFIG_DIR="${config_dir}"
   export RADP_VF_HOME
 
-  # Change to project directory and run vagrant
-  cd "${project_dir}"
+  # Run vagrant (no need to change directory)
   exec vagrant "$@"
 }
 
 cmd_init() {
   local target_dir="${1:-.}"
   local abs_target_dir
+  local abs_config_dir
 
   mkdir -p "${target_dir}"
   abs_target_dir="$(cd "${target_dir}" && pwd)"
+  abs_config_dir="${abs_target_dir}/config"
 
-  if [[ -f "${target_dir}/Vagrantfile" ]]; then
-    echo "Error: Vagrantfile already exists in ${abs_target_dir}" >&2
+  if [[ -f "${abs_config_dir}/vagrant.yaml" ]]; then
+    echo "Error: Configuration already exists in ${abs_config_dir}" >&2
     exit 1
   fi
 
   echo "Initializing RADP Vagrant Framework project..."
   echo ""
 
-  mkdir -p "${target_dir}/config"
-
-  # Create Vagrantfile
-  cat > "${target_dir}/Vagrantfile" << 'VAGRANTFILE'
-# -*- mode: ruby -*-
-# vi: set ft=ruby :
-
-# RADP Vagrant Framework
-# See: https://github.com/xooooooooox/radp-vagrant-framework
-
-# Locate framework library
-# Priority: RADP_VF_HOME > local lib directory
-radp_vf_home = ENV['RADP_VF_HOME']
-lib_path = if radp_vf_home && File.exist?(File.join(radp_vf_home, 'lib', 'radp_vagrant.rb'))
-             File.join(radp_vf_home, 'lib')
-           elsif File.exist?(File.join(__dir__, 'lib', 'radp_vagrant.rb'))
-             File.join(__dir__, 'lib')
-           end
-
-raise 'Cannot locate RADP Vagrant Framework. Set RADP_VF_HOME environment variable.' unless lib_path
-
-$LOAD_PATH.unshift(lib_path) unless $LOAD_PATH.include?(lib_path)
-require 'radp_vagrant'
-
-Vagrant.require_version '>=1.6.0'
-
-Vagrant.configure('2') do |config|
-  config_dir = ENV['RADP_VAGRANT_CONFIG_DIR'] || File.join(__dir__, 'config')
-  RadpVagrant.configure(config, config_dir)
-end
-VAGRANTFILE
+  mkdir -p "${abs_config_dir}"
 
   # Create sample vagrant.yaml
-  cat > "${target_dir}/config/vagrant.yaml" << 'VAGRANT_YAML'
+  cat > "${abs_config_dir}/vagrant.yaml" << 'VAGRANT_YAML'
 radp:
   env: sample
   extend:
@@ -280,7 +230,7 @@ radp:
 VAGRANT_YAML
 
   # Create sample vagrant-sample.yaml
-  cat > "${target_dir}/config/vagrant-sample.yaml" << 'VAGRANT_DEV_YAML'
+  cat > "${abs_config_dir}/vagrant-sample.yaml" << 'VAGRANT_DEV_YAML'
 radp:
   extend:
     vagrant:
@@ -303,28 +253,25 @@ VAGRANT_DEV_YAML
 
   echo "Project initialized successfully!"
   echo ""
-  echo "Created files:"
-  echo "  ${abs_target_dir}/"
-  echo "  ├── Vagrantfile"
-  echo "  └── config/"
-  echo "      ├── vagrant.yaml          # Base config (env: sample)"
-  echo "      └── vagrant-sample.yaml   # Cluster definitions"
+  echo "Created:"
+  echo "  ${abs_config_dir}/"
+  echo "  ├── vagrant.yaml          # Base config (env: sample)"
+  echo "  └── vagrant-sample.yaml   # Cluster definitions"
   echo ""
-  echo "Configuration:"
-  echo "  Framework:    ${RADP_VF_HOME}"
-  echo "  Config Dir:   ${abs_target_dir}/config"
-  echo "  Environment:  sample"
+  echo "Framework:"
+  echo "  RADP_VF_HOME: ${RADP_VF_HOME}"
+  echo "  Vagrantfile:  ${RADP_VF_HOME}/Vagrantfile"
   echo ""
   echo "Next steps:"
-  echo "  cd ${target_dir}"
-  echo "  vagrant status    # View VM status"
-  echo "  vagrant up        # Start VMs"
-  echo ""
-  echo "Or run from anywhere:"
-  echo "  export RADP_VAGRANT_CONFIG_DIR=${abs_target_dir}/config"
+  echo "  # Option 1: Run from project directory"
+  echo "  cd ${abs_target_dir}"
   echo "  radp-vf vg status"
   echo ""
-  echo "Edit config/vagrant.yaml to change 'env' and create your own environment file."
+  echo "  # Option 2: Run from anywhere"
+  echo "  export RADP_VAGRANT_CONFIG_DIR=${abs_config_dir}"
+  echo "  radp-vf vg status"
+  echo ""
+  echo "Edit vagrant.yaml to change 'env' and create your own environment file."
 }
 
 cmd_dump_config() {

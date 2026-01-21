@@ -108,19 +108,18 @@ brew upgrade radp-vagrant-framework
 
 ```shell
 radp-vf init myproject
-cd myproject
 ```
 
 这会创建以下目录结构：
 
 ```
 myproject/
-├── Vagrantfile           # 入口文件（加载框架）
-├── lib -> $RADP_VF_HOME/lib  # 指向框架的符号链接
 └── config/
-    ├── vagrant.yaml      # 基础配置（设置 env）
+    ├── vagrant.yaml          # 基础配置（设置 env）
     └── vagrant-sample.yaml   # 环境特定集群配置
 ```
+
+框架的 Vagrantfile 会通过 `radp-vf vg` 自动使用 - 项目目录中无需创建 Vagrantfile。
 
 ### 配置文件
 
@@ -168,8 +167,7 @@ radp:
 | 变量 | 说明 | 默认值 |
 |------|------|--------|
 | `RADP_VF_HOME` | 框架安装目录 | 从脚本位置自动检测 |
-| `RADP_VF_PROJECT_DIR` | 包含 Vagrantfile 的项目目录 | 从当前目录检测 |
-| `RADP_VAGRANT_CONFIG_DIR` | 覆盖配置目录 | `./config`（相对于 Vagrantfile） |
+| `RADP_VAGRANT_CONFIG_DIR` | 配置目录路径（`vg` 命令必需） | 当前目录下的 `./config`（如存在） |
 | `RADP_VAGRANT_ENV` | 覆盖环境名称 | `vagrant.yaml` 中的 `radp.env` |
 
 **RADP_VF_HOME 默认值：**
@@ -181,31 +179,37 @@ radp:
 -e 参数 > RADP_VAGRANT_ENV > vagrant.yaml 中的 radp.env
 ```
 
-### 常用命令
+### 运行 Vagrant 命令
+
+使用 `radp-vf vg` 运行 vagrant 命令。可以在项目目录中运行，也可以在设置了 `RADP_VAGRANT_CONFIG_DIR` 后从任意目录运行：
 
 ```shell
-# 查看虚拟机状态
-vagrant status
+# 从项目目录运行（包含 config/vagrant.yaml）
+cd myproject
+radp-vf vg status
+radp-vf vg up
+radp-vf vg ssh sample-example-node-1
+radp-vf vg halt
+radp-vf vg destroy
 
-# 启动所有虚拟机
-vagrant up
+# 或者设置 RADP_VAGRANT_CONFIG_DIR 后从任意目录运行
+export RADP_VAGRANT_CONFIG_DIR="$HOME/myproject/config"
+radp-vf vg status
+radp-vf vg up
 
-# 启动指定虚拟机（格式：<env>-<cluster>-<guest-id>）
-vagrant up dev-my-cluster-node-1
-
-# SSH 登录虚拟机
-vagrant ssh dev-my-cluster-node-1
-
-# 停止所有虚拟机
-vagrant halt
-
-# 销毁所有虚拟机
-vagrant destroy
+# 使用 -e 参数切换环境
+radp-vf -e dev vg status      # 使用 vagrant-dev.yaml
+radp-vf -e prod vg up         # 使用 vagrant-prod.yaml
 ```
+
+**注意：** 原生 `vagrant` 命令与 `radp-vf vg` 相互隔离。在包含自己 Vagrantfile 的目录中运行 `vagrant up` 不会受 RADP Vagrant Framework 影响。
 
 ### 调试命令
 
 ```shell
+# 显示环境信息
+radp-vf info
+
 # 导出合并后的配置（JSON）
 radp-vf dump-config
 
@@ -218,30 +222,6 @@ radp-vf generate
 # 保存生成的 Vagrantfile
 radp-vf generate Vagrantfile.preview
 ```
-
-### 从任意目录运行 Vagrant
-
-使用 `radp-vf vg` 命令可以在任意目录运行 vagrant 命令，无需切换到项目目录：
-
-```shell
-# 设置项目目录（可选，也可设置 RADP_VF_PROJECT_DIR）
-export RADP_VAGRANT_CONFIG_DIR=/path/to/myproject/config
-
-# 在任意目录运行 vagrant 命令
-radp-vf vg status
-radp-vf vg up
-radp-vf vg ssh dev-my-cluster-node-1
-radp-vf vg halt
-
-# 使用 -e 参数切换环境
-radp-vf -e prod vg status
-radp-vf -e dev vg up
-```
-
-**项目目录解析优先级：**
-1. `RADP_VF_PROJECT_DIR` 环境变量
-2. 从 `RADP_VAGRANT_CONFIG_DIR` 推导（如果以 `/config` 结尾）
-3. 当前目录（如果包含 Vagrantfile）
 
 ### 从 Git Clone 使用（开发模式）
 
@@ -536,9 +516,8 @@ Vagrant 机器名称使用 `provider.name`（默认: `{env}-{cluster}-{guest-id}
 | 变量 | 说明 |
 |------|------|
 | `RADP_VF_HOME` | 框架安装目录（自动检测） |
-| `RADP_VF_PROJECT_DIR` | 项目目录（包含 Vagrantfile） |
-| `RADP_VAGRANT_CONFIG_DIR` | 配置目录路径（默认 `./config`） |
-| `RADP_VAGRANT_ENV` | 覆盖环境名称（默认使用 `vagrant.yaml` 中的 `radp.env`） |
+| `RADP_VAGRANT_CONFIG_DIR` | 配置目录路径 |
+| `RADP_VAGRANT_ENV` | 覆盖环境名称 |
 
 ## 扩展
 
