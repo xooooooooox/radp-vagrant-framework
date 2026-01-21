@@ -374,7 +374,7 @@ network:
   private-network:
     enabled: true
     type: dhcp                    # dhcp or static
-    ip: 192.168.56.10             # For static type
+    ip: 172.168.56.10             # For static type
     netmask: 255.255.255.0
   public-network:
     enabled: true

@@ -374,7 +374,7 @@ network:
   private-network:
     enabled: true
     type: dhcp                    # dhcp 或 static
-    ip: 192.168.56.10             # static 类型时使用
+    ip: 172.168.56.10             # static 类型时使用
     netmask: 255.255.255.0
   public-network:
     enabled: true
