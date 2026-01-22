@@ -1,5 +1,12 @@
 # CHANGELOG
 
+## v0.0.19 - 2026-01-22
+
+- 985bdc2 docs: update README files to clarify script path resolution logic and supported directory structures
+- 83e16b7 feat(provision): enhance path resolution logic with additional fallbacks
+- 8903aef docs: Explain script path resolution and recommended directory structure in README files
+- 6d08a46 feat(provision): Add support for resolving relative paths against config directory
+
 ## v0.0.18 - 2026-01-22
 
 - 529c239 refactor: Move banner content to an external file template
