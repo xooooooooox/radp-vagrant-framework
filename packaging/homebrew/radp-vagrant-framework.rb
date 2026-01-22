@@ -21,9 +21,6 @@ class RadpVagrantFramework < Formula
   # Use system ruby on macOS instead of forcing Homebrew's ruby
   uses_from_macos "ruby"
 
-  # Vagrant is required (installed via cask)
-  depends_on cask: "vagrant"
-
   def install
     # Install Ruby framework files
     libexec.install Dir["src/main/ruby/*"]
@@ -35,8 +32,10 @@ class RadpVagrantFramework < Formula
 
   def caveats
     <<~EOS
-      radp-vagrant-framework requires a Vagrant provider (e.g., VirtualBox).
-      To install VirtualBox:
+      radp-vagrant-framework requires Vagrant and a provider (e.g., VirtualBox).
+
+      To install dependencies:
+        brew install --cask vagrant
         brew install --cask virtualbox
 
       Quick start:
