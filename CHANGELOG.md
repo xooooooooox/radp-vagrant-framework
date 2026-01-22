@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## v0.0.20 - 2026-01-22
+
+- 086f4be chore: adjust banner formatting for consistent spacing alignment
+
 ## v0.0.19 - 2026-01-22
 
 - 985bdc2 docs: update README files to clarify script path resolution logic and supported directory structures
