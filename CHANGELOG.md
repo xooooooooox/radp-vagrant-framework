@@ -2,6 +2,11 @@
 
 ## v0.0.14 - 2026-01-22
 
+- 3720a5f Release prep v0.0.14
+- 0020287 feat(config): Implement deep merge for plugins by name
+
+## v0.0.14 - 2026-01-22
+
 - 0020287 feat(config): Implement deep merge for plugins by name
 
 ## v0.0.13 - 2026-01-22
