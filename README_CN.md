@@ -529,6 +529,98 @@ plugins:
 
 </details>
 
+#### vagrant-bindfs
+
+通过 bindfs 挂载重新映射用户/组所有权，解决 NFS 权限问题。
+
+##### 为什么使用 bindfs？
+
+NFS 共享会继承宿主机的数字用户/组 ID（例如 macOS 用户在虚拟机内显示为 `501:20`）。这会导致虚拟机用户（通常是
+`vagrant:vagrant`）无法访问挂载的文件。vagrant-bindfs 通过重新挂载 NFS 共享并修正所有权来解决此问题。
+
+##### 推荐配置
+
+在 `synced-folders` 中为 NFS 文件夹配置 bindfs：
+
+```yaml
+synced-folders:
+  nfs:
+    - host: ./data
+      guest: /data
+      bindfs:
+        enabled: true
+        force_user: vagrant
+        force_group: vagrant
+```
+
+这将：
+
+1. 将 NFS 挂载到 `/mnt-bindfs/data`（临时路径）
+2. 使用 bindfs 重新挂载到 `/data`，所有权为 `vagrant:vagrant`
+
+##### 带权限映射
+
+```yaml
+synced-folders:
+  nfs:
+    - host: ./app
+      guest: /var/www/app
+      bindfs:
+        enabled: true
+        force_user: www-data
+        force_group: www-data
+        perms: "u=rwX:g=rX:o=rX"         # 用户 rwx，组/其他 rx
+        create_with_perms: "u=rwX:g=rX:o=rX"
+```
+
+##### 全局插件选项
+
+```yaml
+plugins:
+  - name: vagrant-bindfs
+    options:
+      debug: false                       # 启用调试输出
+      force_empty_mountpoints: true      # 挂载前清理挂载点
+      skip_validations: # 跳过用户/组存在性检查
+        - user
+        - group
+      default_options: # 所有 bind_folder 调用的默认选项
+        force_user: vagrant
+        force_group: vagrant
+```
+
+<details>
+<summary><b>所有 bindfs 选项（按文件夹）</b></summary>
+
+| 选项                  | 类型      | 说明                                     |
+|---------------------|---------|----------------------------------------|
+| `enabled`           | boolean | 为此文件夹启用 bindfs                         |
+| `force_user`        | string  | 强制所有文件归此用户所有                           |
+| `force_group`       | string  | 强制所有文件归此组所有                            |
+| `perms`             | string  | 权限映射（如 `u=rwX:g=rD:o=rD`）              |
+| `create_with_perms` | string  | 新建文件的权限                                |
+| `create_as_user`    | boolean | 以访问用户身份创建文件                            |
+| `chown_ignore`      | boolean | 忽略 chown 操作                            |
+| `chgrp_ignore`      | boolean | 忽略 chgrp 操作                            |
+| `o`                 | string  | 附加挂载选项                                 |
+| `after`             | string  | 何时绑定：`synced_folders`（默认）或 `provision` |
+
+</details>
+
+<details>
+<summary><b>所有全局插件选项</b></summary>
+
+| 选项                           | 类型      | 默认值     | 说明                     |
+|------------------------------|---------|---------|------------------------|
+| `debug`                      | boolean | `false` | 启用详细输出                 |
+| `force_empty_mountpoints`    | boolean | `false` | 绑定前清理挂载目标              |
+| `skip_validations`           | array   | `[]`    | 跳过验证：`user`、`group`    |
+| `bindfs_version`             | string  | -       | 指定安装的 bindfs 版本        |
+| `install_bindfs_from_source` | boolean | `false` | 从源码构建 bindfs           |
+| `default_options`            | hash    | -       | 所有 bind_folder 调用的默认选项 |
+
+</details>
+
 ### Box
 
 ```yaml

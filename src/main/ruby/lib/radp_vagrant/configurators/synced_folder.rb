@@ -5,6 +5,9 @@ module RadpVagrant
     # Configures VM synced folders (basic, nfs, rsync, smb)
     # Reference: https://developer.hashicorp.com/vagrant/docs/synced-folders/basic_usage
     module SyncedFolder
+      # Prefix for temporary NFS mount paths when using bindfs
+      BINDFS_MOUNT_PREFIX = '/mnt-bindfs'
+
       class << self
         def configure(vm_config, guest)
           folders = guest['synced-folders']
@@ -27,8 +30,54 @@ module RadpVagrant
 
           return unless host_path && guest_path
 
-          options = build_options(folder, folder_type)
-          vm_config.vm.synced_folder host_path, guest_path, **options
+          # Check if bindfs is enabled for NFS folders
+          bindfs_config = folder['bindfs']
+          use_bindfs = bindfs_config && bindfs_config['enabled'] && folder_type == 'nfs'
+
+          if use_bindfs
+            configure_nfs_with_bindfs(vm_config, folder, host_path, guest_path, bindfs_config)
+          else
+            options = build_options(folder, folder_type)
+            vm_config.vm.synced_folder host_path, guest_path, **options
+          end
+        end
+
+        def configure_nfs_with_bindfs(vm_config, folder, host_path, guest_path, bindfs_config)
+          # Mount NFS to a temporary path
+          temp_path = "#{BINDFS_MOUNT_PREFIX}#{guest_path}"
+
+          # Build NFS options and mount to temp path
+          nfs_options = build_options(folder, 'nfs')
+          vm_config.vm.synced_folder host_path, temp_path, **nfs_options
+
+          # Build bindfs options
+          bindfs_options = build_bindfs_options(bindfs_config)
+
+          # Configure bindfs to remount with correct permissions
+          vm_config.bindfs.bind_folder temp_path, guest_path, bindfs_options
+        end
+
+        def build_bindfs_options(config)
+          options = {}
+
+          # Ownership options
+          options[:force_user] = config['force_user'] if config['force_user']
+          options[:force_group] = config['force_group'] if config['force_group']
+
+          # Permission options
+          options[:perms] = config['perms'] if config['perms']
+          options[:create_with_perms] = config['create_with_perms'] if config['create_with_perms']
+
+          # Behavior options
+          options[:create_as_user] = config['create_as_user'] if config.key?('create_as_user')
+          options[:chown_ignore] = config['chown_ignore'] if config.key?('chown_ignore')
+          options[:chgrp_ignore] = config['chgrp_ignore'] if config.key?('chgrp_ignore')
+
+          # Mount options
+          options[:o] = config['o'] if config['o']
+          options[:after] = config['after'].to_sym if config['after']
+
+          options
         end
 
         def build_options(folder, folder_type)
