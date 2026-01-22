@@ -38,8 +38,8 @@ module RadpVagrant
           # run: once, always, never (renamed from freq)
           options[:run] = provision['run'] if provision['run']
 
-          # privileged: run as root (default: true)
-          options[:privileged] = provision['privileged'] if provision.key?('privileged')
+          # privileged: run as root (default: false)
+          options[:privileged] = provision.fetch('privileged', false)
 
           # Script content - one of inline or path required
           options[:inline] = provision['inline'] if provision['inline']
