@@ -2,7 +2,7 @@
 
 ## v0.0.15 - 2026-01-22
 
-- 6dd24b9 feat(vbguest): Enhance vbguest configurator with extended options and hooks
+- feat(vbguest): Enhance vbguest configurator with extended options and hooks
 
 ## v0.0.14 - 2026-01-22
 
