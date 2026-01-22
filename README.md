@@ -813,6 +813,30 @@ provisions:
       NFS_ROOT: "/volume2/nfs"
 ```
 
+**Script path resolution:**
+
+The `path` option supports both absolute and relative paths. Relative paths are resolved from the **project root
+directory** (parent of the config directory).
+
+| Path Type | Example                 | Resolved To                         |
+|-----------|-------------------------|-------------------------------------|
+| Absolute  | `/opt/scripts/setup.sh` | `/opt/scripts/setup.sh` (unchanged) |
+| Relative  | `scripts/setup.sh`      | `{project_root}/scripts/setup.sh`   |
+
+**Recommended directory structure:**
+
+```
+myproject/                          # project root
+├── config/                         # config directory
+│   ├── vagrant.yaml
+│   └── vagrant-{env}.yaml
+└── scripts/                        # external scripts
+    ├── setup.sh
+    └── mount-nfs.sh
+```
+
+With this structure, use `path: scripts/setup.sh` in your provisions.
+
 **Phase field (common provisions only):**
 
 The `phase` field controls when common provisions run relative to guest provisions:

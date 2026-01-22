@@ -806,6 +806,29 @@ provisions:
       NFS_ROOT: "/volume2/nfs"
 ```
 
+**脚本路径解析：**
+
+`path` 选项支持绝对路径和相对路径。相对路径从**项目根目录**（config 目录的父目录）解析。
+
+| 路径类型 | 示例                      | 解析结果                              |
+|------|-------------------------|-----------------------------------|
+| 绝对路径 | `/opt/scripts/setup.sh` | `/opt/scripts/setup.sh`（保持不变）     |
+| 相对路径 | `scripts/setup.sh`      | `{project_root}/scripts/setup.sh` |
+
+**推荐目录结构：**
+
+```
+myproject/                          # 项目根目录
+├── config/                         # 配置目录
+│   ├── vagrant.yaml
+│   └── vagrant-{env}.yaml
+└── scripts/                        # 外部脚本
+    ├── setup.sh
+    └── mount-nfs.sh
+```
+
+使用此结构时，在 provisions 中使用 `path: scripts/setup.sh`。
+
 **phase 字段（仅用于 common provisions）：**
 
 `phase` 字段控制 common provisions 相对于 guest provisions 的执行时机：
