@@ -48,10 +48,12 @@ ruby -r ./lib/radp_vagrant -e "RadpVagrant.generate_vagrantfile('config', 'Vagra
    - Base config: `config/vagrant.yaml` (must contain `radp.env`)
    - Environment config: `config/vagrant-{env}.yaml`
    - Deep merge with array concatenation
+   - **Plugins merge by name** (same-named plugins have options deep merged)
 
 2. **ConfigMerger** (`lib/radp_vagrant/config_merger.rb`) handles three-level inheritance:
    - Global common → Cluster common → Guest
    - Arrays concatenate, hashes merge, scalars override
+   - Provisions support `phase: pre|post` for execution order control
 
 3. **RadpVagrant** (`lib/radp_vagrant.rb`) orchestrates:
    - Plugin configuration
@@ -162,11 +164,13 @@ radp:
 ## Key Design Decisions
 
 1. **Array Concatenation**: provisions, triggers, synced-folders accumulate across inheritance levels
-2. **Convention-Based Defaults**: hostname, provider.name, provider.group-id auto-generated
-3. **Plugin Options**: Use underscores to match official Vagrant plugin documentation
-4. **Modular Plugins**: Each plugin configurator in separate file for maintainability
-5. **Machine Naming**: Vagrant machine name uses `provider.name` (default: `{env}-{cluster}-{id}`) for uniqueness in `$VAGRANT_DOTFILE_PATH/machines/<name>`
-6. **Clusters Only in Env Files**: Clusters must be defined in `vagrant-{env}.yaml`, not in base `vagrant.yaml`
+2. **Plugin Merge by Name**: Same-named plugins in base and env files have their options deep merged (env extends/overrides base)
+3. **Provisions Phase**: Common provisions support `phase: pre|post` for execution order (global-pre → cluster-pre → guest → cluster-post → global-post)
+4. **Convention-Based Defaults**: hostname, provider.name, provider.group-id auto-generated
+5. **Plugin Options**: Use underscores to match official Vagrant plugin documentation
+6. **Modular Plugins**: Each plugin configurator in separate file for maintainability
+7. **Machine Naming**: Vagrant machine name uses `provider.name` (default: `{env}-{cluster}-{id}`) for uniqueness in `$VAGRANT_DOTFILE_PATH/machines/<name>`
+8. **Clusters Only in Env Files**: Clusters must be defined in `vagrant-{env}.yaml`, not in base `vagrant.yaml`
 
 ## Validation Rules
 

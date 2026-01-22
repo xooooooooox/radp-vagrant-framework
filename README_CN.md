@@ -31,6 +31,7 @@
 ### 安装
 
 前置要求:
+
 - Ruby 2.7+
 - Vagrant 2.0+
 - VirtualBox（或其他支持的 provider）
@@ -38,24 +39,26 @@
 #### 脚本安装 (curl / wget / fetch)
 
 ```shell
-curl -fsSL https://raw.githubusercontent.com/xooooooooox/radp-vagrant-framework/main/tools/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/xooooooooox/radp-vagrant-framework/main/tools/install.sh
+  | bash
 ```
 
 或:
 
 ```shell
-wget -qO- https://raw.githubusercontent.com/xooooooooox/radp-vagrant-framework/main/tools/install.sh | bash
+wget -qO- https://raw.githubusercontent.com/xooooooooox/radp-vagrant-framework/main/tools/install.sh
+  | bash
 ```
 
 可选环境变量:
 
 ```shell
 RADP_VF_VERSION=vX.Y.Z \
-RADP_VF_REF=main \
-RADP_VF_INSTALL_DIR="$HOME/.local/lib/radp-vagrant-framework" \
-RADP_VF_BIN_DIR="$HOME/.local/bin" \
-RADP_VF_ALLOW_ANY_DIR=1 \
-bash -c "$(curl -fsSL https://raw.githubusercontent.com/xooooooooox/radp-vagrant-framework/main/tools/install.sh)"
+  RADP_VF_REF=main \
+  RADP_VF_INSTALL_DIR="$HOME/.local/lib/radp-vagrant-framework" \
+  RADP_VF_BIN_DIR="$HOME/.local/bin" \
+  RADP_VF_ALLOW_ANY_DIR=1 \
+  bash -c "$(curl -fsSL https://raw.githubusercontent.com/xooooooooox/radp-vagrant-framework/main/tools/install.sh)"
 ```
 
 `RADP_VF_REF` 可以是分支、标签或提交，优先级高于 `RADP_VF_VERSION`。
@@ -126,12 +129,12 @@ myproject/
 框架使用双文件配置方式：
 
 1. **`config/vagrant.yaml`** - 基础配置（必需）
-   - 必须包含 `radp.env` 来指定环境
-   - 定义全局设置、插件和公共配置
+    - 必须包含 `radp.env` 来指定环境
+    - 定义全局设置、插件和公共配置
 
 2. **`config/vagrant-{env}.yaml`** - 环境特定集群配置
-   - `{env}` 对应基础配置中 `radp.env` 的值
-   - 定义该环境的集群和虚拟机
+    - `{env}` 对应基础配置中 `radp.env` 的值
+    - 定义该环境的集群和虚拟机
 
 最小配置示例：
 
@@ -164,17 +167,20 @@ radp:
 
 ### 环境变量
 
-| 变量 | 说明 | 默认值 |
-|------|------|--------|
-| `RADP_VF_HOME` | 框架安装目录 | 从脚本位置自动检测 |
-| `RADP_VAGRANT_CONFIG_DIR` | 配置目录路径（`vg` 命令必需） | 当前目录下的 `./config`（如存在） |
-| `RADP_VAGRANT_ENV` | 覆盖环境名称 | `vagrant.yaml` 中的 `radp.env` |
+| 变量                        | 说明                | 默认值                          |
+|---------------------------|-------------------|------------------------------|
+| `RADP_VF_HOME`            | 框架安装目录            | 从脚本位置自动检测                    |
+| `RADP_VAGRANT_CONFIG_DIR` | 配置目录路径（`vg` 命令必需） | 当前目录下的 `./config`（如存在）       |
+| `RADP_VAGRANT_ENV`        | 覆盖环境名称            | `vagrant.yaml` 中的 `radp.env` |
 
 **RADP_VF_HOME 默认值：**
-- 脚本/Homebrew 安装：`~/.local/lib/radp-vagrant-framework` 或 `/opt/homebrew/Cellar/radp-vagrant-framework/<version>/libexec`
+
+- 脚本/Homebrew 安装：`~/.local/lib/radp-vagrant-framework` 或
+  `/opt/homebrew/Cellar/radp-vagrant-framework/<version>/libexec`
 - Git clone：`<repo>/src/main/ruby`（自动检测）
 
 **环境优先级（从高到低）：**
+
 ```
 -e 参数 > RADP_VAGRANT_ENV > vagrant.yaml 中的 radp.env
 ```
@@ -198,11 +204,12 @@ radp-vf vg status
 radp-vf vg up
 
 # 使用 -e 参数切换环境
-radp-vf -e dev vg status      # 使用 vagrant-dev.yaml
-radp-vf -e prod vg up         # 使用 vagrant-prod.yaml
+radp-vf -e dev vg status # 使用 vagrant-dev.yaml
+radp-vf -e prod vg up # 使用 vagrant-prod.yaml
 ```
 
-**注意：** 原生 `vagrant` 命令与 `radp-vf vg` 相互隔离。在包含自己 Vagrantfile 的目录中运行 `vagrant up` 不会受 RADP Vagrant Framework 影响。
+**注意：** 原生 `vagrant` 命令与 `radp-vf vg` 相互隔离。在包含自己 Vagrantfile 的目录中运行 `vagrant up` 不会受 RADP
+Vagrant Framework 影响。
 
 ### 调试命令
 
@@ -284,6 +291,7 @@ src/main/ruby/
 ### 多文件加载
 
 配置按顺序加载并深度合并：
+
 1. `vagrant.yaml` - 基础配置（必须包含 `radp.env`）
 2. `vagrant-{env}.yaml` - 环境特定集群配置
 
@@ -327,11 +335,13 @@ radp:
 ### 插件 (plugins)
 
 插件在 `plugins` 数组中配置。每个插件可以指定：
+
 - `name`：插件名称（必填）
 - `required`：缺失时自动安装（默认：false）
 - `options`：插件特定配置选项
 
 支持的插件：
+
 - `vagrant-hostmanager` - 主机文件管理
 - `vagrant-vbguest` - VirtualBox Guest Additions
 - `vagrant-proxyconf` - 代理配置
@@ -371,7 +381,8 @@ plugins:
 
 **自定义 IP 解析器：**
 
-默认情况下，hostmanager 使用 `vm.ssh_info[:host]`，对于 NAT 网络可能返回 `127.0.0.1`。使用 `ip_resolver` 从虚拟机提取正确的 IP：
+默认情况下，hostmanager 使用 `vm.ssh_info[:host]`，对于 NAT 网络可能返回 `127.0.0.1`。使用 `ip_resolver` 从虚拟机提取正确的
+IP：
 
 ```yaml
 plugins:
@@ -388,6 +399,7 @@ plugins:
 **执行时机：**
 
 当 `provisioner: enabled` 时，hostmanager 在**所有其他 provisions 之后**运行：
+
 ```
 global-pre → cluster-pre → guest → cluster-post → global-post → hostmanager
 ```
@@ -438,7 +450,7 @@ network:
   public-network:
     enabled: true
     type: static
-    ip:                           # 支持多个 IP（创建多个网络接口）
+    ip: # 支持多个 IP（创建多个网络接口）
       - 192.168.1.100
       - 192.168.1.101
     bridge:
@@ -512,6 +524,7 @@ provisions:
 **phase 字段（仅用于 common provisions）：**
 
 `phase` 字段控制 common provisions 相对于 guest provisions 的执行时机：
+
 - `pre`（默认）：在 guest provisions 之前运行
 - `post`：在 guest provisions 之后运行
 
@@ -557,10 +570,10 @@ triggers:
     enabled: true
     "on": before                  # before 或 after（必须加引号！）
     type: action                  # action, command, hook
-    action:                       # 触发的动作
+    action: # 触发的动作
       - up
       - reload
-    only-on:                      # 过滤 guest（支持正则）
+    only-on: # 过滤 guest（支持正则）
       - '/node-.*/'
     run:
       inline: |                   # 本地脚本
@@ -570,9 +583,64 @@ triggers:
 
 ## 配置继承
 
-配置从 global → cluster → guest 流动。数组类型（triggers、synced-folders）会被**连接**而非替换。
+框架支持两个层级的配置合并：
 
-**Provisions** 支持 `phase` 字段来控制执行顺序：
+### 文件级合并
+
+`vagrant.yaml`（基础）+ `vagrant-{env}.yaml`（环境）进行深度合并：
+
+| 类型     | 合并行为                          |
+|--------|-------------------------------|
+| 标量     | 覆盖（env 优先）                    |
+| 哈希     | 深度合并                          |
+| 数组     | 拼接                            |
+| **插件** | **按 name 合并**（env 扩展/覆盖 base） |
+
+**插件合并示例：**
+
+```yaml
+# vagrant.yaml
+plugins:
+  - name: vagrant-hostmanager
+    required: true
+    options:
+      manage_host: true
+      manage_guest: true
+
+# vagrant-dev.yaml
+plugins:
+  - name: vagrant-hostmanager
+    options:
+      provisioner: enabled
+      ip_resolver:
+        enabled: true
+        execute: "hostname -I | awk '{print $2}'"
+        regex: "^(\\S+)"
+
+# 合并结果（按 name 合并）
+plugins:
+  - name: vagrant-hostmanager
+    required: true                # 继承自 base
+    options:
+      manage_host: true           # 继承自 base
+      manage_guest: true          # 继承自 base
+      provisioner: enabled        # 从 env 新增
+      ip_resolver: { ... }        # 从 env 新增
+```
+
+### Guest 级继承
+
+在配置文件内，guest 设置继承自：**global common → cluster common → guest**
+
+| 配置项                              | 合并行为                                                                       |
+|----------------------------------|----------------------------------------------------------------------------|
+| box, provider, network, hostname | 深度合并（guest 覆盖）                                                             |
+| hostmanager                      | 深度合并（guest 覆盖）                                                             |
+| provisions                       | 按 phase 拼接：`global-pre → cluster-pre → guest → cluster-post → global-post` |
+| triggers                         | 拼接                                                                         |
+| synced-folders                   | 拼接                                                                         |
+
+**示例：**
 
 ```
 Global common:
@@ -587,19 +655,33 @@ Guest:
   - provisions: [C]
 
 Guest 最终结果:
-  - provisions: [A, B, C, E, D]   # 顺序: global-pre, cluster-pre, guest, cluster-post, global-post
-  - synced-folders: [X, Y]        # 全部累加
+  - provisions: [A, B, C, E, D]   # global-pre, cluster-pre, guest, cluster-post, global-post
+  - synced-folders: [X, Y]        # 拼接
 ```
+
+### 汇总表
+
+| 配置项            | 文件合并 (base + env) | Guest 继承 (common → guest) |
+|----------------|-------------------|---------------------------|
+| plugins        | 按 name 合并         | 不适用（仅全局）                  |
+| box            | 深度合并              | 深度合并                      |
+| provider       | 深度合并              | 深度合并                      |
+| network        | 深度合并              | 深度合并                      |
+| hostname       | 覆盖                | 覆盖                        |
+| hostmanager    | 深度合并              | 深度合并                      |
+| provisions     | 拼接                | 按 phase 拼接                |
+| triggers       | 拼接                | 拼接                        |
+| synced-folders | 拼接                | 拼接                        |
 
 ## 约定优于配置
 
 框架根据上下文自动应用合理的默认值：
 
-| 字段 | 默认值 | 示例 |
-|------|--------|------|
-| `hostname` | `{guest-id}.{cluster}.{env}` | `node-1.my-cluster.dev` |
-| `provider.name` | `{env}-{cluster}-{guest-id}` | `dev-my-cluster-node-1` |
-| `provider.group-id` | `{env}/{cluster}` | `dev/my-cluster` |
+| 字段                  | 默认值                          | 示例                      |
+|---------------------|------------------------------|-------------------------|
+| `hostname`          | `{guest-id}.{cluster}.{env}` | `node-1.my-cluster.dev` |
+| `provider.name`     | `{env}-{cluster}-{guest-id}` | `dev-my-cluster-node-1` |
+| `provider.group-id` | `{env}/{cluster}`            | `dev/my-cluster`        |
 
 ## 配置校验规则
 
@@ -611,15 +693,16 @@ Guest 最终结果:
 
 ## 机器命名
 
-Vagrant 机器名称使用 `provider.name`（默认: `{env}-{cluster}-{guest-id}`）以确保在 `$VAGRANT_DOTFILE_PATH/machines/<name>` 中的唯一性。这可以防止多个集群中存在相同 guest ID 时产生冲突。
+Vagrant 机器名称使用 `provider.name`（默认: `{env}-{cluster}-{guest-id}`）以确保在 `$VAGRANT_DOTFILE_PATH/machines/<name>`
+中的唯一性。这可以防止多个集群中存在相同 guest ID 时产生冲突。
 
 ## 环境变量
 
-| 变量 | 说明 |
-|------|------|
-| `RADP_VF_HOME` | 框架安装目录（自动检测） |
-| `RADP_VAGRANT_CONFIG_DIR` | 配置目录路径 |
-| `RADP_VAGRANT_ENV` | 覆盖环境名称 |
+| 变量                        | 说明           |
+|---------------------------|--------------|
+| `RADP_VF_HOME`            | 框架安装目录（自动检测） |
+| `RADP_VAGRANT_CONFIG_DIR` | 配置目录路径       |
+| `RADP_VAGRANT_ENV`        | 覆盖环境名称       |
 
 ## 扩展
 
@@ -666,7 +749,7 @@ def plugin_classes
     Vbguest,
     Proxyconf,
     Bindfs,
-    MyPlugin  # 添加到这里
+    MyPlugin # 添加到这里
   ]
 end
 ```
@@ -685,12 +768,13 @@ RadpVagrant::Configurators::Provider::CONFIGURATORS['vmware_desktop'] = lambda {
 
 ### 如何发布
 
-1. 触发 `release-prep` 并指定 `bump_type`（patch/minor/major/manual，默认 patch）。若选择 manual，需提供 `vX.Y.Z`。此步骤会更新 `version.rb` 并添加 changelog 条目（创建 `workflow/vX.Y.Z` 分支 + PR）。
+1. 触发 `release-prep` 并指定 `bump_type`（patch/minor/major/manual，默认 patch）。若选择 manual，需提供 `vX.Y.Z`。此步骤会更新
+   `version.rb` 并添加 changelog 条目（创建 `workflow/vX.Y.Z` 分支 + PR）。
 2. 审核/编辑 PR 中的 changelog，然后合并到 `main`。
 3. 后续工作流自动串联运行：
-   - `create-version-tag` → 创建并推送 Git 标签
-   - `release` → 创建包含归档文件的 GitHub Release
-   - `update-homebrew-tap` → 更新 Homebrew formula
+    - `create-version-tag` → 创建并推送 Git 标签
+    - `release` → 创建包含归档文件的 GitHub Release
+    - `update-homebrew-tap` → 更新 Homebrew formula
 
 ```
 release-prep (手动触发)
@@ -716,7 +800,8 @@ create-version-tag
 #### Release prep (`release-prep.yml`)
 
 - **触发**: 在 `main` 上手动触发（`workflow_dispatch`）。
-- **目的**: 从解析的版本（patch/minor/major 升级或手动指定 `vX.Y.Z`）创建发布分支（`workflow/vX.Y.Z`），更新 `version.rb`，插入 changelog 条目，并创建 PR 供审核。
+- **目的**: 从解析的版本（patch/minor/major 升级或手动指定 `vX.Y.Z`）创建发布分支（`workflow/vX.Y.Z`），更新 `version.rb`，插入
+  changelog 条目，并创建 PR 供审核。
 
 #### Create version tag (`create-version-tag.yml`)
 

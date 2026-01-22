@@ -37,6 +37,9 @@ module RadpVagrant
           final_config = base_config
         end
 
+        # Merge plugins by name (later entries override/extend earlier ones)
+        merge_plugins_by_name!(final_config)
+
         # Store resolved env for reference
         final_config['radp'] ||= {}
         final_config['radp']['_resolved_env'] = env
@@ -75,6 +78,27 @@ module RadpVagrant
       end
 
       private
+
+      # Merge plugins with the same name
+      # Later entries override/extend earlier ones (deep merge by name)
+      def merge_plugins_by_name!(config)
+        plugins = config.dig('radp', 'extend', 'vagrant', 'plugins')
+        return unless plugins.is_a?(Array) && plugins.size > 1
+
+        merged = {}
+        plugins.each do |plugin|
+          name = plugin['name']
+          next unless name
+
+          if merged.key?(name)
+            merged[name] = deep_merge(merged[name], plugin)
+          else
+            merged[name] = deep_dup(plugin)
+          end
+        end
+
+        config['radp']['extend']['vagrant']['plugins'] = merged.values
+      end
 
       def load_yaml_file(path)
         YAML.load_file(path, permitted_classes: [Symbol])

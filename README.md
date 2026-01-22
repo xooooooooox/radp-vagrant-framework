@@ -31,6 +31,7 @@ A YAML-driven framework for managing multi-machine Vagrant environments with dec
 ### Installation
 
 Prerequisites:
+
 - Ruby 2.7+. (You can install Ruby here: <https://www.ruby-lang.org/en/documentation/installation/>)
 - Vagrant 2.0+. (You can install Vagrant here: <https://developer.hashicorp.com/vagrant/install>)
 - VirtualBox (or other supported provider)
@@ -38,24 +39,26 @@ Prerequisites:
 #### Script (curl / wget / fetch)
 
 ```shell
-curl -fsSL https://raw.githubusercontent.com/xooooooooox/radp-vagrant-framework/main/tools/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/xooooooooox/radp-vagrant-framework/main/tools/install.sh
+  | bash
 ```
 
 Or:
 
 ```shell
-wget -qO- https://raw.githubusercontent.com/xooooooooox/radp-vagrant-framework/main/tools/install.sh | bash
+wget -qO- https://raw.githubusercontent.com/xooooooooox/radp-vagrant-framework/main/tools/install.sh
+  | bash
 ```
 
 Optional variables:
 
 ```shell
 RADP_VF_VERSION=vX.Y.Z \
-RADP_VF_REF=main \
-RADP_VF_INSTALL_DIR="$HOME/.local/lib/radp-vagrant-framework" \
-RADP_VF_BIN_DIR="$HOME/.local/bin" \
-RADP_VF_ALLOW_ANY_DIR=1 \
-bash -c "$(curl -fsSL https://raw.githubusercontent.com/xooooooooox/radp-vagrant-framework/main/tools/install.sh)"
+  RADP_VF_REF=main \
+  RADP_VF_INSTALL_DIR="$HOME/.local/lib/radp-vagrant-framework" \
+  RADP_VF_BIN_DIR="$HOME/.local/bin" \
+  RADP_VF_ALLOW_ANY_DIR=1 \
+  bash -c "$(curl -fsSL https://raw.githubusercontent.com/xooooooooox/radp-vagrant-framework/main/tools/install.sh)"
 ```
 
 `RADP_VF_REF` can be a branch, tag, or commit and takes precedence over `RADP_VF_VERSION`.
@@ -75,7 +78,8 @@ brew install radp-vagrant-framework
 
 #### Manual (Git clone / Release assets)
 
-Prebuilt release archives are attached to each release: <https://github.com/xooooooooox/radp-vagrant-framework/releases/latest>
+Prebuilt release archives are attached to each
+release: <https://github.com/xooooooooox/radp-vagrant-framework/releases/latest>
 
 Or clone the repository:
 
@@ -119,19 +123,20 @@ myproject/
     └── vagrant-sample.yaml   # Environment-specific clusters
 ```
 
-The framework's Vagrantfile is used automatically via `radp-vf vg` - no Vagrantfile is created in your project directory.
+The framework's Vagrantfile is used automatically via `radp-vf vg` - no Vagrantfile is created in your project
+directory.
 
 ### Configuration Files
 
 The framework uses a two-file configuration approach:
 
 1. **`config/vagrant.yaml`** - Base configuration (required)
-   - Must contain `radp.env` to specify the environment
-   - Defines global settings, plugins, and common configurations
+    - Must contain `radp.env` to specify the environment
+    - Defines global settings, plugins, and common configurations
 
 2. **`config/vagrant-{env}.yaml`** - Environment-specific clusters
-   - `{env}` matches the value of `radp.env` in the base config
-   - Defines clusters and guests for this environment
+    - `{env}` matches the value of `radp.env` in the base config
+    - Defines clusters and guests for this environment
 
 Example minimal configuration:
 
@@ -164,24 +169,28 @@ radp:
 
 ### Environment Variables
 
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `RADP_VF_HOME` | Framework installation directory | Auto-detected from script location |
-| `RADP_VAGRANT_CONFIG_DIR` | Configuration directory path (required for `vg`) | `./config` if exists |
-| `RADP_VAGRANT_ENV` | Override environment name | `radp.env` in vagrant.yaml |
+| Variable                  | Description                                      | Default                            |
+|---------------------------|--------------------------------------------------|------------------------------------|
+| `RADP_VF_HOME`            | Framework installation directory                 | Auto-detected from script location |
+| `RADP_VAGRANT_CONFIG_DIR` | Configuration directory path (required for `vg`) | `./config` if exists               |
+| `RADP_VAGRANT_ENV`        | Override environment name                        | `radp.env` in vagrant.yaml         |
 
 **RADP_VF_HOME defaults:**
-- Script/Homebrew install: `~/.local/lib/radp-vagrant-framework` or `/opt/homebrew/Cellar/radp-vagrant-framework/<version>/libexec`
+
+- Script/Homebrew install: `~/.local/lib/radp-vagrant-framework` or
+  `/opt/homebrew/Cellar/radp-vagrant-framework/<version>/libexec`
 - Git clone: `<repo>/src/main/ruby` (auto-detected)
 
 **Environment priority (highest to lowest):**
+
 ```
 -e flag > RADP_VAGRANT_ENV > radp.env in vagrant.yaml
 ```
 
 ### Running Vagrant Commands
 
-Use `radp-vf vg` to run vagrant commands. This works from the project directory or anywhere if `RADP_VAGRANT_CONFIG_DIR` is set:
+Use `radp-vf vg` to run vagrant commands. This works from the project directory or anywhere if `RADP_VAGRANT_CONFIG_DIR`
+is set:
 
 ```shell
 # From project directory (contains config/vagrant.yaml)
@@ -198,11 +207,12 @@ radp-vf vg status
 radp-vf vg up
 
 # Override environment with -e flag
-radp-vf -e dev vg status      # Uses vagrant-dev.yaml
-radp-vf -e prod vg up         # Uses vagrant-prod.yaml
+radp-vf -e dev vg status # Uses vagrant-dev.yaml
+radp-vf -e prod vg up # Uses vagrant-prod.yaml
 ```
 
-**Note:** Native `vagrant` commands are isolated from `radp-vf vg`. Running `vagrant up` in a directory with its own Vagrantfile works normally and is not affected by RADP Vagrant Framework.
+**Note:** Native `vagrant` commands are isolated from `radp-vf vg`. Running `vagrant up` in a directory with its own
+Vagrantfile works normally and is not affected by RADP Vagrant Framework.
 
 ### Debug Commands
 
@@ -284,6 +294,7 @@ src/main/ruby/
 ### Multi-File Loading
 
 Configuration is loaded in order with deep merging:
+
 1. `vagrant.yaml` - Base configuration (must contain `radp.env`)
 2. `vagrant-{env}.yaml` - Environment-specific clusters
 
@@ -327,11 +338,13 @@ radp:
 ### Plugins
 
 Plugins are configured in the `plugins` array. Each plugin can specify:
+
 - `name`: Plugin name (required)
 - `required`: Auto-install if missing (default: false)
 - `options`: Plugin-specific configuration options
 
 Supported plugins:
+
 - `vagrant-hostmanager` - Host file management
 - `vagrant-vbguest` - VirtualBox Guest Additions
 - `vagrant-proxyconf` - Proxy configuration
@@ -356,7 +369,8 @@ plugins:
 
 **Provisioner mode:**
 
-Use `provisioner: enabled` to run hostmanager as a provisioner instead of automatically. This gives you control over when hosts file is updated:
+Use `provisioner: enabled` to run hostmanager as a provisioner instead of automatically. This gives you control over
+when hosts file is updated:
 
 ```yaml
 plugins:
@@ -367,11 +381,13 @@ plugins:
       manage_guest: true
 ```
 
-> Note: `provisioner` and `enabled` are mutually exclusive. If both are set, the framework automatically disables `enabled` and logs a warning.
+> Note: `provisioner` and `enabled` are mutually exclusive. If both are set, the framework automatically disables
+`enabled` and logs a warning.
 
 **Custom IP resolver:**
 
-By default, hostmanager uses `vm.ssh_info[:host]` which may return `127.0.0.1` for NAT networking. Use `ip_resolver` to extract the correct IP from guest:
+By default, hostmanager uses `vm.ssh_info[:host]` which may return `127.0.0.1` for NAT networking. Use `ip_resolver` to
+extract the correct IP from guest:
 
 ```yaml
 plugins:
@@ -388,6 +404,7 @@ plugins:
 **Execution timing:**
 
 When `provisioner: enabled`, hostmanager runs **after all other provisions**:
+
 ```
 global-pre → cluster-pre → guest → cluster-post → global-post → hostmanager
 ```
@@ -438,7 +455,7 @@ network:
   public-network:
     enabled: true
     type: static
-    ip:                           # Multiple IPs supported (creates multiple interfaces)
+    ip: # Multiple IPs supported (creates multiple interfaces)
       - 192.168.1.100
       - 192.168.1.101
     bridge:
@@ -512,6 +529,7 @@ provisions:
 **Phase field (common provisions only):**
 
 The `phase` field controls when common provisions run relative to guest provisions:
+
 - `pre` (default): Runs before guest provisions
 - `post`: Runs after guest provisions
 
@@ -557,10 +575,10 @@ triggers:
     enabled: true
     "on": before                  # before or after (must be quoted!)
     type: action                  # action, command, hook
-    action:                       # Actions to trigger on
+    action: # Actions to trigger on
       - up
       - reload
-    only-on:                      # Filter guests (supports regex)
+    only-on: # Filter guests (supports regex)
       - '/node-.*/'
     run:
       inline: |                   # Local script
@@ -570,9 +588,64 @@ triggers:
 
 ## Configuration Inheritance
 
-Configuration flows from global → cluster → guest. Arrays (triggers, synced-folders) are **concatenated**, not replaced.
+The framework supports two levels of configuration merging:
 
-**Provisions** support the `phase` field for execution order control:
+### File-Level Merging
+
+`vagrant.yaml` (base) + `vagrant-{env}.yaml` (environment) are deep merged:
+
+| Type        | Merge Behavior                                 |
+|-------------|------------------------------------------------|
+| Scalars     | Override (env wins)                            |
+| Hashes      | Deep merge                                     |
+| Arrays      | Concatenate                                    |
+| **Plugins** | **Merge by name** (env extends/overrides base) |
+
+**Plugin merge example:**
+
+```yaml
+# vagrant.yaml
+plugins:
+  - name: vagrant-hostmanager
+    required: true
+    options:
+      manage_host: true
+      manage_guest: true
+
+# vagrant-dev.yaml
+plugins:
+  - name: vagrant-hostmanager
+    options:
+      provisioner: enabled
+      ip_resolver:
+        enabled: true
+        execute: "hostname -I | awk '{print $2}'"
+        regex: "^(\\S+)"
+
+# Result (merged by name)
+plugins:
+  - name: vagrant-hostmanager
+    required: true                # inherited from base
+    options:
+      manage_host: true           # inherited from base
+      manage_guest: true          # inherited from base
+      provisioner: enabled        # added from env
+      ip_resolver: { ... }        # added from env
+```
+
+### Guest-Level Inheritance
+
+Within a config file, guest settings inherit from: **global common → cluster common → guest**
+
+| Config                           | Merge Behavior                                                                      |
+|----------------------------------|-------------------------------------------------------------------------------------|
+| box, provider, network, hostname | Deep merge (guest overrides)                                                        |
+| hostmanager                      | Deep merge (guest overrides)                                                        |
+| provisions                       | Phase-aware concat: `global-pre → cluster-pre → guest → cluster-post → global-post` |
+| triggers                         | Concatenate                                                                         |
+| synced-folders                   | Concatenate                                                                         |
+
+**Example:**
 
 ```
 Global common:
@@ -587,19 +660,33 @@ Guest:
   - provisions: [C]
 
 Result for guest:
-  - provisions: [A, B, C, E, D]   # Order: global-pre, cluster-pre, guest, cluster-post, global-post
-  - synced-folders: [X, Y]        # All accumulated
+  - provisions: [A, B, C, E, D]   # global-pre, cluster-pre, guest, cluster-post, global-post
+  - synced-folders: [X, Y]        # concatenated
 ```
+
+### Summary Table
+
+| Config Item    | File Merge (base + env) | Guest Inheritance (common → guest) |
+|----------------|-------------------------|------------------------------------|
+| plugins        | Merge by name           | N/A (global only)                  |
+| box            | Deep merge              | Deep merge                         |
+| provider       | Deep merge              | Deep merge                         |
+| network        | Deep merge              | Deep merge                         |
+| hostname       | Override                | Override                           |
+| hostmanager    | Deep merge              | Deep merge                         |
+| provisions     | Concatenate             | Phase-aware concatenate            |
+| triggers       | Concatenate             | Concatenate                        |
+| synced-folders | Concatenate             | Concatenate                        |
 
 ## Convention-Based Defaults
 
 The framework applies sensible defaults based on context:
 
-| Field | Default Value | Example |
-|-------|--------------|---------|
-| `hostname` | `{guest-id}.{cluster}.{env}` | `node-1.my-cluster.dev` |
-| `provider.name` | `{env}-{cluster}-{guest-id}` | `dev-my-cluster-node-1` |
-| `provider.group-id` | `{env}/{cluster}` | `dev/my-cluster` |
+| Field               | Default Value                | Example                 |
+|---------------------|------------------------------|-------------------------|
+| `hostname`          | `{guest-id}.{cluster}.{env}` | `node-1.my-cluster.dev` |
+| `provider.name`     | `{env}-{cluster}-{guest-id}` | `dev-my-cluster-node-1` |
+| `provider.group-id` | `{env}/{cluster}`            | `dev/my-cluster`        |
 
 ## Validation Rules
 
@@ -611,15 +698,16 @@ The framework validates configurations and will raise errors for:
 
 ## Machine Naming
 
-Vagrant machine names use `provider.name` (default: `{env}-{cluster}-{guest-id}`) to ensure uniqueness in `$VAGRANT_DOTFILE_PATH/machines/<name>`. This prevents conflicts when multiple clusters have guests with the same ID.
+Vagrant machine names use `provider.name` (default: `{env}-{cluster}-{guest-id}`) to ensure uniqueness in
+`$VAGRANT_DOTFILE_PATH/machines/<name>`. This prevents conflicts when multiple clusters have guests with the same ID.
 
 ## Environment Variables
 
-| Variable | Description |
-|----------|-------------|
-| `RADP_VF_HOME` | Framework installation directory (auto-detected) |
-| `RADP_VAGRANT_CONFIG_DIR` | Configuration directory path |
-| `RADP_VAGRANT_ENV` | Override environment name |
+| Variable                  | Description                                      |
+|---------------------------|--------------------------------------------------|
+| `RADP_VF_HOME`            | Framework installation directory (auto-detected) |
+| `RADP_VAGRANT_CONFIG_DIR` | Configuration directory path                     |
+| `RADP_VAGRANT_ENV`        | Override environment name                        |
 
 ## Extending
 
@@ -666,7 +754,7 @@ def plugin_classes
     Vbguest,
     Proxyconf,
     Bindfs,
-    MyPlugin  # Add here
+    MyPlugin # Add here
   ]
 end
 ```
@@ -685,12 +773,13 @@ RadpVagrant::Configurators::Provider::CONFIGURATORS['vmware_desktop'] = lambda {
 
 ### How to release
 
-1. Trigger `release-prep` with a `bump_type` (patch/minor/major/manual, default patch). For manual, provide `vX.Y.Z`. This updates `version.rb` and adds a changelog entry (branch `workflow/vX.Y.Z` + PR).
+1. Trigger `release-prep` with a `bump_type` (patch/minor/major/manual, default patch). For manual, provide `vX.Y.Z`.
+   This updates `version.rb` and adds a changelog entry (branch `workflow/vX.Y.Z` + PR).
 2. Review/edit the changelog in the PR and merge to `main`.
 3. All subsequent workflows run automatically in sequence:
-   - `create-version-tag` → creates and pushes the Git tag
-   - `release` → creates GitHub Release with archives
-   - `update-homebrew-tap` → updates the Homebrew formula
+    - `create-version-tag` → creates and pushes the Git tag
+    - `release` → creates GitHub Release with archives
+    - `update-homebrew-tap` → updates the Homebrew formula
 
 ```
 release-prep (manual)
@@ -711,27 +800,33 @@ create-version-tag
 #### CI (`ci.yml`)
 
 - **Trigger:** Push/PR to `main`.
-- **Purpose:** Validate Ruby syntax, test framework loading, config loading, and Vagrantfile generation across multiple Ruby versions (3.1-3.3) on Ubuntu and macOS.
+- **Purpose:** Validate Ruby syntax, test framework loading, config loading, and Vagrantfile generation across multiple
+  Ruby versions (3.1-3.3) on Ubuntu and macOS.
 
 #### Release prep (`release-prep.yml`)
 
 - **Trigger:** Manual (`workflow_dispatch`) on `main`.
-- **Purpose:** Create a release branch (`workflow/vX.Y.Z`) from the resolved version (patch/minor/major bump, or manual `vX.Y.Z`), update `version.rb`, insert a changelog entry, and open a PR for review.
+- **Purpose:** Create a release branch (`workflow/vX.Y.Z`) from the resolved version (patch/minor/major bump, or manual
+  `vX.Y.Z`), update `version.rb`, insert a changelog entry, and open a PR for review.
 
 #### Create version tag (`create-version-tag.yml`)
 
 - **Trigger:** Manual (`workflow_dispatch`) on `main`, or merge of a `workflow/vX.Y.Z` PR.
-- **Purpose:** Read version from `version.rb`, validate the changelog entry, then create/push the Git tag if it does not already exist.
+- **Purpose:** Read version from `version.rb`, validate the changelog entry, then create/push the Git tag if it does not
+  already exist.
 
 #### Release (`release.yml`)
 
-- **Trigger:** Successful completion of `create-version-tag`, push of a version tag (`v*`), or manual (`workflow_dispatch`).
+- **Trigger:** Successful completion of `create-version-tag`, push of a version tag (`v*`), or manual (
+  `workflow_dispatch`).
 - **Purpose:** Create GitHub Release with tar.gz and zip archives, extracting changelog for release notes.
 
 #### Update Homebrew tap (`update-homebrew-tap.yml`)
 
-- **Trigger:** Successful completion of `create-version-tag`, push of a version tag (`v*`), or manual (`workflow_dispatch`).
-- **Purpose:** Update the Homebrew tap formula using the template from `packaging/homebrew/radp-vagrant-framework.rb` with the new version and SHA256.
+- **Trigger:** Successful completion of `create-version-tag`, push of a version tag (`v*`), or manual (
+  `workflow_dispatch`).
+- **Purpose:** Update the Homebrew tap formula using the template from `packaging/homebrew/radp-vagrant-framework.rb`
+  with the new version and SHA256.
 
 ## License
 
