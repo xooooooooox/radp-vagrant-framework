@@ -19,7 +19,8 @@ module RadpVagrant
   BANNER_FILE = File.join(__dir__, 'radp_vagrant', 'banner.txt')
 
   def self.banner
-    version_str = VERSION.ljust(7)
+    # {{VERSION}} placeholder is 11 characters, so pad version to match
+    version_str = VERSION.ljust(11)
     template = File.read(BANNER_FILE)
     content = template.gsub('{{VERSION}}', version_str)
     "\e[36m#{content}\e[0m"
