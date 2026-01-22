@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## v0.0.18 - 2026-01-22
+
+- 529c239 refactor: Move banner content to an external file template
+
 ## v0.0.17 - 2026-01-22
 
 - d2cf9d6 docs: Add detailed tables for provider, network, provision, and trigger options in README files
