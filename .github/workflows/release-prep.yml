@@ -206,14 +206,20 @@ jobs:
 
       - name: Create pull request
         env:
-          GH_TOKEN: ${{ secrets.RELEASE_PREP_TOKEN || github.token }}
+          GH_TOKEN: ${{ secrets.RELEASE_PREP_TOKEN }}
+          GITHUB_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           version="${{ steps.version.outputs.version }}"
           branch="${{ steps.branch.outputs.branch }}"
           title="Release ${version}"
           body="Release prep for ${version}. When merged, create-version-tag will run automatically."
-          
+
+          # Use RELEASE_PREP_TOKEN if set, otherwise fall back to GITHUB_TOKEN
+          if [[ -z "${GH_TOKEN}" ]]; then
+            export GH_TOKEN="${GITHUB_TOKEN}"
+          fi
+
           if gh pr create --base main --head "${branch}" --title "${title}" --body "${body}"; then
             exit 0
           fi
