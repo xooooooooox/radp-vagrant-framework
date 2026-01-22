@@ -815,27 +815,39 @@ provisions:
 
 **Script path resolution:**
 
-The `path` option supports both absolute and relative paths. Relative paths are resolved from the **project root
-directory** (parent of the config directory).
+The `path` option supports both absolute and relative paths. Relative paths are resolved using smart detection:
 
-| Path Type | Example                 | Resolved To                         |
-|-----------|-------------------------|-------------------------------------|
-| Absolute  | `/opt/scripts/setup.sh` | `/opt/scripts/setup.sh` (unchanged) |
-| Relative  | `scripts/setup.sh`      | `{project_root}/scripts/setup.sh`   |
+1. First, check if the path exists **relative to config directory**
+2. If not found, check if the path exists **relative to project root** (config directory's parent)
+3. If neither exists, use config-relative path (Vagrant will report the error)
 
-**Recommended directory structure:**
+This supports both standard project structures and custom `RADP_VAGRANT_CONFIG_DIR` setups.
+
+| Path Type | Example                 | Resolution Order                                                           |
+|-----------|-------------------------|----------------------------------------------------------------------------|
+| Absolute  | `/opt/scripts/setup.sh` | Used as-is                                                                 |
+| Relative  | `scripts/setup.sh`      | 1. `{config_dir}/scripts/setup.sh`<br>2. `{project_root}/scripts/setup.sh` |
+
+**Supported directory structures:**
 
 ```
+# Structure A: Standard project (radp-vf init)
 myproject/                          # project root
-├── config/                         # config directory
+├── config/                         # RADP_VAGRANT_CONFIG_DIR
 │   ├── vagrant.yaml
 │   └── vagrant-{env}.yaml
-└── scripts/                        # external scripts
-    ├── setup.sh
-    └── mount-nfs.sh
+└── scripts/                        # path: scripts/setup.sh ✓
+    └── setup.sh
+
+# Structure B: Custom config directory
+~/.config/radp-vagrant/             # RADP_VAGRANT_CONFIG_DIR
+├── vagrant.yaml
+├── vagrant-{env}.yaml
+└── scripts/                        # path: scripts/setup.sh ✓
+    └── setup.sh
 ```
 
-With this structure, use `path: scripts/setup.sh` in your provisions.
+Both structures work with `path: scripts/setup.sh`.
 
 **Phase field (common provisions only):**
 

@@ -808,26 +808,39 @@ provisions:
 
 **脚本路径解析：**
 
-`path` 选项支持绝对路径和相对路径。相对路径从**项目根目录**（config 目录的父目录）解析。
+`path` 选项支持绝对路径和相对路径。相对路径使用智能检测：
 
-| 路径类型 | 示例                      | 解析结果                              |
-|------|-------------------------|-----------------------------------|
-| 绝对路径 | `/opt/scripts/setup.sh` | `/opt/scripts/setup.sh`（保持不变）     |
-| 相对路径 | `scripts/setup.sh`      | `{project_root}/scripts/setup.sh` |
+1. 首先检查路径是否存在于 **config 目录内**
+2. 如果不存在，检查路径是否存在于 **项目根目录**（config 目录的父目录）
+3. 如果都不存在，使用 config 相对路径（Vagrant 会报告错误）
 
-**推荐目录结构：**
+这同时支持标准项目结构和自定义 `RADP_VAGRANT_CONFIG_DIR` 设置。
+
+| 路径类型 | 示例                      | 解析顺序                                                                       |
+|------|-------------------------|----------------------------------------------------------------------------|
+| 绝对路径 | `/opt/scripts/setup.sh` | 直接使用                                                                       |
+| 相对路径 | `scripts/setup.sh`      | 1. `{config_dir}/scripts/setup.sh`<br>2. `{project_root}/scripts/setup.sh` |
+
+**支持的目录结构：**
 
 ```
+# 结构 A：标准项目 (radp-vf init)
 myproject/                          # 项目根目录
-├── config/                         # 配置目录
+├── config/                         # RADP_VAGRANT_CONFIG_DIR
 │   ├── vagrant.yaml
 │   └── vagrant-{env}.yaml
-└── scripts/                        # 外部脚本
-    ├── setup.sh
-    └── mount-nfs.sh
+└── scripts/                        # path: scripts/setup.sh ✓
+    └── setup.sh
+
+# 结构 B：自定义配置目录
+~/.config/radp-vagrant/             # RADP_VAGRANT_CONFIG_DIR
+├── vagrant.yaml
+├── vagrant-{env}.yaml
+└── scripts/                        # path: scripts/setup.sh ✓
+    └── setup.sh
 ```
 
-使用此结构时，在 provisions 中使用 `path: scripts/setup.sh`。
+两种结构都可以使用 `path: scripts/setup.sh`。
 
 **phase 字段（仅用于 common provisions）：**
 
