@@ -326,20 +326,37 @@ radp:
 
 ### 插件 (plugins)
 
+插件在 `plugins` 数组中配置。每个插件可以指定：
+- `name`：插件名称（必填）
+- `required`：缺失时自动安装（默认：false）
+- `options`：插件特定配置选项
+
+支持的插件：
+- `vagrant-hostmanager` - 主机文件管理
+- `vagrant-vbguest` - VirtualBox Guest Additions
+- `vagrant-proxyconf` - 代理配置
+- `vagrant-bindfs` - 绑定挂载（按 synced-folder 配置）
+
+#### vagrant-hostmanager
+
+管理宿主机和虚拟机上的 `/etc/hosts` 文件，用于主机名解析。
+
+**基本配置（自动模式）：**
+
 ```yaml
 plugins:
-  - name: vagrant-hostmanager     # 插件名称
-    required: true                # 缺失时自动安装
-    options:                      # 插件特定选项（使用下划线）
-      enabled: true
-      manage_host: true
-      manage_guest: true
-      include_offline: true
+  - name: vagrant-hostmanager
+    required: true
+    options:
+      enabled: true               # vagrant up/destroy 时更新 hosts
+      manage_host: true           # 更新宿主机的 /etc/hosts
+      manage_guest: true          # 更新虚拟机的 /etc/hosts
+      include_offline: false      # 将离线 VM 包含在 hosts 文件中
 ```
 
-**vagrant-hostmanager provisioner 模式：**
+**Provisioner 模式：**
 
-使用 `provisioner: enabled` 将 hostmanager 作为 provisioner 运行，而不是在 `vagrant up` 时自动运行。这可以控制 hosts 文件在配置过程中何时更新：
+使用 `provisioner: enabled` 将 hostmanager 作为 provisioner 运行，而不是自动运行。这可以控制 hosts 文件的更新时机：
 
 ```yaml
 plugins:
@@ -350,13 +367,40 @@ plugins:
       manage_guest: true
 ```
 
-注意：`provisioner` 和 `enabled` 是互斥的。如果两者都设置，框架会自动禁用 `enabled` 并输出警告日志。
+> 注意：`provisioner` 和 `enabled` 是互斥的。如果两者都设置，框架会自动禁用 `enabled` 并输出警告日志。
 
-支持的插件：
-- `vagrant-hostmanager` - 主机文件管理
-- `vagrant-vbguest` - VirtualBox Guest Additions
-- `vagrant-proxyconf` - 代理配置
-- `vagrant-bindfs` - 绑定挂载（按 synced-folder 配置）
+**自定义 IP 解析器：**
+
+默认情况下，hostmanager 使用 `vm.ssh_info[:host]`，对于 NAT 网络可能返回 `127.0.0.1`。使用 `ip_resolver` 从虚拟机提取正确的 IP：
+
+```yaml
+plugins:
+  - name: vagrant-hostmanager
+    options:
+      provisioner: enabled
+      manage_host: true
+      ip_resolver:
+        enabled: true
+        execute: "hostname -I"    # 在 guest 上执行的命令
+        regex: "^(\\S+)"          # 提取 IP 的正则表达式（使用第一个捕获组）
+```
+
+**执行时机：**
+
+当 `provisioner: enabled` 时，hostmanager 在**所有其他 provisions 之后**运行：
+```
+global-pre → cluster-pre → guest → cluster-post → global-post → hostmanager
+```
+
+**在运行中的 VM 上触发：**
+
+```bash
+# 仅触发 hostmanager（跳过其他 provisions）
+radp-vf vg provision --provision-with hostmanager
+
+# 运行所有 provisioners（包括 hostmanager）
+radp-vf vg provision
+```
 
 ### Box
 

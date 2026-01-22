@@ -326,20 +326,37 @@ radp:
 
 ### Plugins
 
+Plugins are configured in the `plugins` array. Each plugin can specify:
+- `name`: Plugin name (required)
+- `required`: Auto-install if missing (default: false)
+- `options`: Plugin-specific configuration options
+
+Supported plugins:
+- `vagrant-hostmanager` - Host file management
+- `vagrant-vbguest` - VirtualBox Guest Additions
+- `vagrant-proxyconf` - Proxy configuration
+- `vagrant-bindfs` - Bind mounts (per synced-folder)
+
+#### vagrant-hostmanager
+
+Manages `/etc/hosts` on host and guest machines for hostname resolution.
+
+**Basic configuration (automatic mode):**
+
 ```yaml
 plugins:
-  - name: vagrant-hostmanager     # Plugin name
-    required: true                # Auto-install if missing
-    options:                      # Plugin-specific options (use underscores)
-      enabled: true
-      manage_host: true
-      manage_guest: true
-      include_offline: true
+  - name: vagrant-hostmanager
+    required: true
+    options:
+      enabled: true               # Update hosts on vagrant up/destroy
+      manage_host: true           # Update host machine's /etc/hosts
+      manage_guest: true          # Update guest machines' /etc/hosts
+      include_offline: false      # Include offline VMs in hosts file
 ```
 
-**vagrant-hostmanager provisioner mode:**
+**Provisioner mode:**
 
-Use `provisioner: enabled` to run hostmanager as a provisioner instead of automatically on `vagrant up`. This gives you control over when hosts file is updated during provisioning:
+Use `provisioner: enabled` to run hostmanager as a provisioner instead of automatically. This gives you control over when hosts file is updated:
 
 ```yaml
 plugins:
@@ -350,13 +367,40 @@ plugins:
       manage_guest: true
 ```
 
-Note: `provisioner` and `enabled` are mutually exclusive. If both are set, the framework automatically disables `enabled` and logs a warning.
+> Note: `provisioner` and `enabled` are mutually exclusive. If both are set, the framework automatically disables `enabled` and logs a warning.
 
-Supported plugins:
-- `vagrant-hostmanager` - Host file management
-- `vagrant-vbguest` - VirtualBox Guest Additions
-- `vagrant-proxyconf` - Proxy configuration
-- `vagrant-bindfs` - Bind mounts (per synced-folder)
+**Custom IP resolver:**
+
+By default, hostmanager uses `vm.ssh_info[:host]` which may return `127.0.0.1` for NAT networking. Use `ip_resolver` to extract the correct IP from guest:
+
+```yaml
+plugins:
+  - name: vagrant-hostmanager
+    options:
+      provisioner: enabled
+      manage_host: true
+      ip_resolver:
+        enabled: true
+        execute: "hostname -I"    # Command to run on guest
+        regex: "^(\\S+)"          # Regex to extract IP (first capture group)
+```
+
+**Execution timing:**
+
+When `provisioner: enabled`, hostmanager runs **after all other provisions**:
+```
+global-pre → cluster-pre → guest → cluster-post → global-post → hostmanager
+```
+
+**Triggering on running VMs:**
+
+```bash
+# Trigger only hostmanager (skip other provisions)
+radp-vf vg provision --provision-with hostmanager
+
+# Run all provisioners including hostmanager
+radp-vf vg provision
+```
 
 ### Box
 

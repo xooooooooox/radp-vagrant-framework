@@ -43,6 +43,32 @@ module RadpVagrant
             set_if_present(config, :manage_guest, options, 'manage_guest')
             set_if_present(config, :include_offline, options, 'include_offline')
             set_if_present(config, :ignore_private_ip, options, 'ignore_private_ip')
+
+            # Configure custom IP resolver
+            configure_ip_resolver(config, options['ip_resolver'])
+          end
+
+          # Configure custom IP resolver for hostmanager
+          # Reference: https://github.com/devopsgroup-io/vagrant-hostmanager#custom-ip-resolver
+          def configure_ip_resolver(config, resolver_options)
+            return unless resolver_options && resolver_options['enabled']
+
+            execute_cmd = resolver_options['execute']
+            regex_pattern = resolver_options['regex']
+
+            return unless execute_cmd && regex_pattern
+
+            config.ip_resolver = proc do |vm, _resolving_vm|
+              result = nil
+              if vm.communicate.ready?
+                vm.communicate.execute(execute_cmd) do |_type, data|
+                  if (match = data.match(Regexp.new(regex_pattern)))
+                    result = match[1]
+                  end
+                end
+              end
+              result
+            end
           end
 
           # Configure hostmanager as a provisioner for a VM
