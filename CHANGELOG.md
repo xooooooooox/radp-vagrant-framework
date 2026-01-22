@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## v0.0.16 - 2026-01-22
+
+- feat(bindfs): Add setup and configuration details for vagrant-bindfs plugin
+
 ## v0.0.15 - 2026-01-22
 
 - feat(vbguest): Enhance vbguest configurator with extended options and hooks
