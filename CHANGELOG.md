@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## v0.0.11 - 2026-01-22
+
+- f4fd517 fix: fix homebrew formula
+
 ## v0.0.10 - 2026-01-22
 
 - ed0f004 feat(formula): Update homebrew formula
