@@ -1,5 +1,10 @@
 # CHANGELOG
 
+## v0.0.12 - 2026-01-22
+
+- bcd8257 feat(hostmanager): Add provisioner mode
+- 759e4fe docs: Add comment for phase field in common provisions
+
 ## v0.0.11 - 2026-01-22
 
 - f4fd517 fix: fix homebrew formula
