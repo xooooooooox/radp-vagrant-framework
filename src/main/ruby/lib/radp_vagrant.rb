@@ -16,21 +16,13 @@ require_relative 'radp_vagrant/configurators/trigger'
 require_relative 'radp_vagrant/configurators/plugin'
 
 module RadpVagrant
+  BANNER_FILE = File.join(__dir__, 'radp_vagrant', 'banner.txt')
+
   def self.banner
     version_str = VERSION.ljust(7)
-    <<~BANNER
-      \e[36m╔════════════════════════════════════════════════════════════════════════╗
-      ║                                                                        ║
-      ║   ██████╗  █████╗ ██████╗ ██████╗     ██╗   ██╗ █████╗  ██████╗       ║
-      ║   ██╔══██╗██╔══██╗██╔══██╗██╔══██╗    ██║   ██║██╔══██╗██╔════╝       ║
-      ║   ██████╔╝███████║██║  ██║██████╔╝    ██║   ██║███████║██║  ███╗      ║
-      ║   ██╔══██╗██╔══██║██║  ██║██╔═══╝     ╚██╗ ██╔╝██╔══██║██║   ██║      ║
-      ║   ██║  ██║██║  ██║██████╔╝██║          ╚████╔╝ ██║  ██║╚██████╔╝      ║
-      ║   ╚═╝  ╚═╝╚═╝  ╚═╝╚═════╝ ╚═╝           ╚═══╝  ╚═╝  ╚═╝ ╚═════╝       ║
-      ║                                                                        ║
-      ║                 RADP Vagrant Framework #{version_str}                      ║
-      ╚════════════════════════════════════════════════════════════════════════╝\e[0m
-    BANNER
+    template = File.read(BANNER_FILE)
+    content = template.gsub('{{VERSION}}', version_str)
+    "\e[36m#{content}\e[0m"
   end
 
   class << self
