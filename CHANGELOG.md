@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## v0.0.15 - 2026-01-22
+
+- 6dd24b9 feat(vbguest): Enhance vbguest configurator with extended options and hooks
+
 ## v0.0.14 - 2026-01-22
 
 - feat(config): Implement deep merge for plugins by name
