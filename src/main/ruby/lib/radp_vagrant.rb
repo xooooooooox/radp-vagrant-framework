@@ -109,6 +109,7 @@ module RadpVagrant
 
       common_config = vagrant_section.dig('config', 'common')
       clusters = vagrant_section.dig('config', 'clusters') || []
+      resolved_config_dir = config.dig('radp', '_config_dir')
 
       # Build merged clusters with fully resolved guests
       merged_clusters = clusters.map do |cluster|
@@ -119,7 +120,7 @@ module RadpVagrant
         merged_guests = guests.filter_map do |guest|
           next if guest['enabled'] == false
 
-          merge_guest_config(common_config, cluster_common, guest, cluster_name, env)
+          merge_guest_config(common_config, cluster_common, guest, cluster_name, env, config_dir: resolved_config_dir)
         end
 
         { 'name' => cluster_name, 'guests' => merged_guests }
@@ -135,13 +136,14 @@ module RadpVagrant
 
     private
 
-    def merge_guest_config(global_common, cluster_common, guest, cluster_name, env)
+    def merge_guest_config(global_common, cluster_common, guest, cluster_name, env, config_dir: nil)
       # Merge: global common -> cluster common -> guest
       merged = ConfigMerger.merge_guest_config(global_common, cluster_common, guest)
 
       # Inject context
       merged['_cluster_name'] = cluster_name
       merged['_env'] = env
+      merged['_config_dir'] = config_dir
 
       # Apply conventions for provider
       apply_provider_conventions(merged, cluster_name, env)

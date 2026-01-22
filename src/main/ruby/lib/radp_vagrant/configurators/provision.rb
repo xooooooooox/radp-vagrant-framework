@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require 'pathname'
+
 module RadpVagrant
   module Configurators
     # Configures VM provisioners (shell, file)
@@ -10,28 +12,30 @@ module RadpVagrant
           provisions = guest['provisions']
           return unless provisions
 
+          config_dir = guest['_config_dir']
+
           provisions.each do |provision|
             next unless provision['enabled']
 
-            configure_provision(vm_config, provision)
+            configure_provision(vm_config, provision, config_dir)
           end
         end
 
         private
 
-        def configure_provision(vm_config, provision)
+        def configure_provision(vm_config, provision, config_dir)
           name = provision['name']
           provision_type = provision['type'] || 'shell'
 
           case provision_type
           when 'shell'
-            configure_shell(vm_config, name, provision)
+            configure_shell(vm_config, name, provision, config_dir)
           when 'file'
-            configure_file(vm_config, name, provision)
+            configure_file(vm_config, name, provision, config_dir)
           end
         end
 
-        def configure_shell(vm_config, name, provision)
+        def configure_shell(vm_config, name, provision, config_dir)
           options = {}
           options[:name] = name if name
 
@@ -43,7 +47,7 @@ module RadpVagrant
 
           # Script content - one of inline or path required
           options[:inline] = provision['inline'] if provision['inline']
-          options[:path] = provision['path'] if provision['path']
+          options[:path] = resolve_path(provision['path'], config_dir) if provision['path']
 
           # args: arguments to pass to the script
           options[:args] = provision['args'] if provision['args']
@@ -66,16 +70,30 @@ module RadpVagrant
           vm_config.vm.provision 'shell', **options
         end
 
-        def configure_file(vm_config, name, provision)
+        def configure_file(vm_config, name, provision, config_dir)
           options = {}
           options[:name] = name if name
-          options[:source] = provision['source']
+          options[:source] = resolve_path(provision['source'], config_dir)
           options[:destination] = provision['destination']
 
           # run: once, always, never
           options[:run] = provision['run'] if provision['run']
 
           vm_config.vm.provision 'file', **options
+        end
+
+        # Resolve relative paths against config directory
+        # Absolute paths are returned as-is
+        def resolve_path(path, config_dir)
+          return path unless path
+          return path if Pathname.new(path).absolute?
+          return path unless config_dir
+
+          # Resolve relative to config directory's parent (project root)
+          # config_dir is typically /path/to/project/config
+          # scripts are typically /path/to/project/scripts
+          project_root = File.dirname(config_dir)
+          File.expand_path(path, project_root)
         end
       end
     end
