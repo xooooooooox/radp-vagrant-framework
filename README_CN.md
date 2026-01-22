@@ -374,14 +374,17 @@ network:
   private-network:
     enabled: true
     type: dhcp                    # dhcp 或 static
-    ip: 172.168.56.10             # static 类型时使用
+    ip: 192.168.56.10             # static 类型时使用（单个 IP）
     netmask: 255.255.255.0
   public-network:
     enabled: true
     type: static
-    ip: 192.168.1.100
+    ip:                           # 支持多个 IP（创建多个网络接口）
+      - 192.168.1.100
+      - 192.168.1.101
     bridge:
       - "en0: Wi-Fi"
+      - "en0: Ethernet"
   forwarded-ports:
     - enabled: true
       guest: 80

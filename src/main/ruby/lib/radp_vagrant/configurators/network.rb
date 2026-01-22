@@ -36,34 +36,45 @@ module RadpVagrant
         def configure_private_network(vm_config, config)
           return unless config && config['enabled']
 
-          options = {}
-          if config['type'] == 'dhcp'
-            options[:type] = 'dhcp'
-          else
-            options[:ip] = config['ip'] if config['ip']
-            options[:netmask] = config['netmask'] if config['netmask']
-          end
-          options[:auto_config] = config['auto-config'] if config.key?('auto-config')
+          base_options = {}
+          base_options[:auto_config] = config['auto-config'] if config.key?('auto-config')
 
-          vm_config.vm.network 'private_network', **options
+          if config['type'] == 'dhcp'
+            base_options[:type] = 'dhcp'
+            vm_config.vm.network 'private_network', **base_options
+          else
+            # Support single IP (string) or multiple IPs (array)
+            ips = Array(config['ip'])
+            ips.each do |ip|
+              options = base_options.dup
+              options[:ip] = ip
+              options[:netmask] = config['netmask'] if config['netmask']
+              vm_config.vm.network 'private_network', **options
+            end
+          end
         end
 
         def configure_public_network(vm_config, config)
           return unless config && config['enabled']
 
-          options = {}
+          base_options = {}
+          base_options[:bridge] = config['bridge'] if config['bridge']
+          base_options[:auto_config] = config['auto-config'] if config.key?('auto-config')
+          base_options[:use_dhcp_assigned_default_route] = config['use-dhcp-assigned-default-route'] if config.key?('use-dhcp-assigned-default-route')
+
           if config['type'] == 'dhcp'
-            options[:type] = 'dhcp'
+            base_options[:type] = 'dhcp'
+            vm_config.vm.network 'public_network', **base_options
           else
-            options[:ip] = config['ip'] if config['ip']
-            options[:netmask] = config['netmask'] if config['netmask']
+            # Support single IP (string) or multiple IPs (array)
+            ips = Array(config['ip'])
+            ips.each do |ip|
+              options = base_options.dup
+              options[:ip] = ip
+              options[:netmask] = config['netmask'] if config['netmask']
+              vm_config.vm.network 'public_network', **options
+            end
           end
-
-          options[:bridge] = config['bridge'] if config['bridge']
-          options[:auto_config] = config['auto-config'] if config.key?('auto-config')
-          options[:use_dhcp_assigned_default_route] = config['use-dhcp-assigned-default-route'] if config.key?('use-dhcp-assigned-default-route')
-
-          vm_config.vm.network 'public_network', **options
         end
 
         def configure_forwarded_ports(vm_config, ports)

@@ -374,14 +374,17 @@ network:
   private-network:
     enabled: true
     type: dhcp                    # dhcp or static
-    ip: 172.168.56.10             # For static type
+    ip: 192.168.56.10             # For static type (single IP)
     netmask: 255.255.255.0
   public-network:
     enabled: true
     type: static
-    ip: 192.168.1.100
+    ip:                           # Multiple IPs supported (creates multiple interfaces)
+      - 192.168.1.100
+      - 192.168.1.101
     bridge:
       - "en0: Wi-Fi"
+      - "en0: Ethernet"
   forwarded-ports:
     - enabled: true
       guest: 80
