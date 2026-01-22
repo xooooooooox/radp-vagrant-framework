@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## v0.0.13 - 2026-01-22
+
+- c91cb71 feat(hostmanager): Add support for vagrant-hostmanager plugin with provisioner mode and custom IP resolver
+
 ## v0.0.12 - 2026-01-22
 
 - bcd8257 feat(hostmanager): Add provisioner mode
