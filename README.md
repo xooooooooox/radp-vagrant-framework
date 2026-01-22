@@ -541,7 +541,9 @@ Fixes NFS permission issues by remapping user/group ownership via bindfs mounts.
 
 ##### Why use bindfs?
 
-NFS shares inherit host numeric user/group IDs (e.g., macOS users appear as `501:20` inside guest). This causes permission issues when guest user (typically `vagrant:vagrant`) cannot access the mounted files. vagrant-bindfs solves this by remounting NFS shares with corrected ownership.
+NFS shares inherit host numeric user/group IDs (e.g., macOS users appear as `501:20` inside guest). This causes
+permission issues when guest user (typically `vagrant:vagrant`) cannot access the mounted files. vagrant-bindfs solves
+this by remounting NFS shares with corrected ownership.
 
 ##### Recommended configuration
 
@@ -559,6 +561,7 @@ synced-folders:
 ```
 
 This will:
+
 1. Mount NFS to `/mnt-bindfs/data` (temp path)
 2. Use bindfs to remount to `/data` with `vagrant:vagrant` ownership
 
@@ -585,10 +588,10 @@ plugins:
     options:
       debug: false                       # Enable debug output
       force_empty_mountpoints: true      # Clean mount point before mounting
-      skip_validations:                  # Skip user/group existence checks
+      skip_validations: # Skip user/group existence checks
         - user
         - group
-      default_options:                   # Default options for all bind_folder calls
+      default_options: # Default options for all bind_folder calls
         force_user: vagrant
         force_group: vagrant
 ```
@@ -596,32 +599,32 @@ plugins:
 <details>
 <summary><b>All bindfs options (per folder)</b></summary>
 
-| Option | Type | Description |
-|--------|------|-------------|
-| `enabled` | boolean | Enable bindfs for this folder |
-| `force_user` | string | Force all files to be owned by this user |
-| `force_group` | string | Force all files to be owned by this group |
-| `perms` | string | Permission mapping (e.g., `u=rwX:g=rD:o=rD`) |
-| `create_with_perms` | string | Permissions for newly created files |
-| `create_as_user` | boolean | Create files as the accessing user |
-| `chown_ignore` | boolean | Ignore chown operations |
-| `chgrp_ignore` | boolean | Ignore chgrp operations |
-| `o` | string | Additional mount options |
-| `after` | string | When to bind: `synced_folders` (default) or `provision` |
+| Option              | Type    | Description                                             |
+|---------------------|---------|---------------------------------------------------------|
+| `enabled`           | boolean | Enable bindfs for this folder                           |
+| `force_user`        | string  | Force all files to be owned by this user                |
+| `force_group`       | string  | Force all files to be owned by this group               |
+| `perms`             | string  | Permission mapping (e.g., `u=rwX:g=rD:o=rD`)            |
+| `create_with_perms` | string  | Permissions for newly created files                     |
+| `create_as_user`    | boolean | Create files as the accessing user                      |
+| `chown_ignore`      | boolean | Ignore chown operations                                 |
+| `chgrp_ignore`      | boolean | Ignore chgrp operations                                 |
+| `o`                 | string  | Additional mount options                                |
+| `after`             | string  | When to bind: `synced_folders` (default) or `provision` |
 
 </details>
 
 <details>
 <summary><b>All global plugin options</b></summary>
 
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| `debug` | boolean | `false` | Enable verbose output |
-| `force_empty_mountpoints` | boolean | `false` | Clean mount destination before binding |
-| `skip_validations` | array | `[]` | Skip validations: `user`, `group` |
-| `bindfs_version` | string | - | Specific bindfs version to install |
-| `install_bindfs_from_source` | boolean | `false` | Build bindfs from source |
-| `default_options` | hash | - | Default options for all bind_folder calls |
+| Option                       | Type    | Default | Description                               |
+|------------------------------|---------|---------|-------------------------------------------|
+| `debug`                      | boolean | `false` | Enable verbose output                     |
+| `force_empty_mountpoints`    | boolean | `false` | Clean mount destination before binding    |
+| `skip_validations`           | array   | `[]`    | Skip validations: `user`, `group`         |
+| `bindfs_version`             | string  | -       | Specific bindfs version to install        |
+| `install_bindfs_from_source` | boolean | `false` | Build bindfs from source                  |
+| `default_options`            | hash    | -       | Default options for all bind_folder calls |
 
 </details>
 
