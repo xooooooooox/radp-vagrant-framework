@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## v0.0.14 - 2026-01-22
+
+- 0020287 feat(config): Implement deep merge for plugins by name
+
 ## v0.0.13 - 2026-01-22
 
 - c91cb71 feat(hostmanager): Add support for vagrant-hostmanager plugin with provisioner mode and custom IP resolver
