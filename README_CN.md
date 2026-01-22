@@ -640,7 +640,24 @@ provider:
   mem: 2048                       # 内存（MB）
   cpus: 2                         # CPU 数量
   gui: false                      # 显示 GUI
+  customize: # VirtualBox 自定义命令
+    - [ 'modifyvm', ':id', '--nictype1', 'virtio' ]
 ```
+
+<details>
+<summary><b>所有 provider 选项 (VirtualBox)</b></summary>
+
+| 选项          | 类型      | 默认值                          | 说明                             |
+|-------------|---------|------------------------------|--------------------------------|
+| `type`      | string  | `virtualbox`                 | Provider 类型                    |
+| `name`      | string  | `{env}-{cluster}-{guest-id}` | 虚拟机名称（用作 Vagrant machine name） |
+| `group-id`  | string  | `{env}/{cluster}`            | VirtualBox 分组（用于组织虚拟机）         |
+| `mem`       | number  | `2048`                       | 内存（MB）                         |
+| `cpus`      | number  | `2`                          | CPU 数量                         |
+| `gui`       | boolean | `false`                      | 显示 VirtualBox GUI              |
+| `customize` | array   | -                            | VirtualBox 自定义命令（modifyvm 等）   |
+
+</details>
 
 ### 网络 (network)
 
@@ -669,6 +686,50 @@ network:
       host: 8080
       protocol: tcp
 ```
+
+<details>
+<summary><b>所有网络选项</b></summary>
+
+**主机名：**
+
+| 选项         | 类型     | 默认值                          | 说明                 |
+|------------|--------|------------------------------|--------------------|
+| `hostname` | string | `{guest-id}.{cluster}.{env}` | 虚拟机主机名（guest 级别配置） |
+
+**私有网络 (private-network)：**
+
+| 选项            | 类型           | 默认值      | 说明                       |
+|---------------|--------------|----------|--------------------------|
+| `enabled`     | boolean      | -        | 启用私有网络                   |
+| `type`        | string       | `static` | 网络类型：`dhcp` 或 `static`   |
+| `ip`          | string/array | -        | 静态 IP 地址；多个 IP 会创建多个网络接口 |
+| `netmask`     | string       | -        | 子网掩码（如 `255.255.255.0`）  |
+| `auto-config` | boolean      | `true`   | 自动配置网络接口                 |
+
+**公有网络 (public-network)：**
+
+| 选项                                | 类型           | 默认值      | 说明                       |
+|-----------------------------------|--------------|----------|--------------------------|
+| `enabled`                         | boolean      | -        | 启用公有网络                   |
+| `type`                            | string       | `static` | 网络类型：`dhcp` 或 `static`   |
+| `ip`                              | string/array | -        | 静态 IP 地址；多个 IP 会创建多个网络接口 |
+| `netmask`                         | string       | -        | 子网掩码                     |
+| `bridge`                          | string/array | -        | 宿主机桥接网卡                  |
+| `auto-config`                     | boolean      | `true`   | 自动配置网络接口                 |
+| `use-dhcp-assigned-default-route` | boolean      | `false`  | 使用 DHCP 分配的默认路由          |
+
+**端口转发 (forwarded-ports)：**
+
+| 选项             | 类型      | 默认值     | 说明               |
+|----------------|---------|---------|------------------|
+| `enabled`      | boolean | -       | 启用此端口转发          |
+| `guest`        | number  | -       | 虚拟机端口（必填）        |
+| `host`         | number  | -       | 宿主机端口（必填）        |
+| `protocol`     | string  | `tcp`   | 协议：`tcp` 或 `udp` |
+| `id`           | string  | -       | 端口转发的唯一标识符       |
+| `auto-correct` | boolean | `false` | 端口冲突时自动修正宿主机端口   |
+
+</details>
 
 ### Hostmanager（Guest 级别）
 
@@ -716,16 +777,33 @@ provisions:
     desc: '配置脚本描述'            # 描述
     enabled: true
     type: shell                   # shell 或 file
-    privileged: false             # 是否以 root 运行
+    privileged: true              # 是否以 root 运行（默认: false）
     run: once                     # once, always, never
     phase: pre                    # pre（默认）或 post - 仅用于 common provisions
     inline: |                     # 内联脚本
-      echo "Hello"
+      echo "Hello $MY_VAR"
+    env: # 环境变量
+      MY_VAR: "world"
     # 或使用文件路径:
     # path: ./scripts/setup.sh
     # args: arg1 arg2
     # before: other-provision     # 在某脚本之前运行（脚本必须存在）
     # after: other-provision      # 在某脚本之后运行
+```
+
+**使用外部脚本和环境变量：**
+
+```yaml
+provisions:
+  - name: mount-nfs
+    enabled: true
+    type: shell
+    privileged: true
+    run: always
+    path: scripts/mount-nfs.sh
+    env:
+      NFS_SERVER: "nas.example.com"
+      NFS_ROOT: "/volume2/nfs"
 ```
 
 **phase 字段（仅用于 common provisions）：**
@@ -766,6 +844,39 @@ clusters:
 
 执行顺序：`global-pre → cluster-pre → guest → cluster-post → global-post`
 
+<details>
+<summary><b>所有 provision 选项</b></summary>
+
+| 选项            | 类型           | 默认值                  | 说明                                       |
+|---------------|--------------|----------------------|------------------------------------------|
+| `name`        | string       | -                    | provision 名称                             |
+| `enabled`     | boolean      | `true`               | 是否启用                                     |
+| `type`        | string       | `shell`              | 类型：`shell` 或 `file`                      |
+| `privileged`  | boolean      | `false`              | 以 root 运行                                |
+| `run`         | string       | `once`               | 运行时机：`once`、`always`、`never`             |
+| `phase`       | string       | `pre`                | 执行阶段：`pre` 或 `post`（仅 common provisions） |
+| `inline`      | string       | -                    | 内联脚本内容                                   |
+| `path`        | string       | -                    | 外部脚本路径                                   |
+| `args`        | string/array | -                    | 脚本参数                                     |
+| `env`         | hash         | -                    | 环境变量                                     |
+| `before`      | string       | -                    | 在指定 provision 之前运行                       |
+| `after`       | string       | -                    | 在指定 provision 之后运行                       |
+| `keep-color`  | boolean      | `false`              | 保持颜色输出                                   |
+| `upload-path` | string       | `/tmp/vagrant-shell` | 脚本在虚拟机中的上传路径                             |
+| `reboot`      | boolean      | `false`              | 执行后重启                                    |
+| `reset`       | boolean      | `false`              | 执行后重置 SSH 连接                             |
+| `sensitive`   | boolean      | `false`              | 隐藏输出（敏感数据）                               |
+| `binary`      | boolean      | `false`              | 以二进制传输脚本（不转换行尾）                          |
+
+**File provisioner 选项：**
+
+| 选项            | 类型     | 说明         |
+|---------------|--------|------------|
+| `source`      | string | 宿主机上的源文件路径 |
+| `destination` | string | 虚拟机上的目标路径  |
+
+</details>
+
 ### 触发器 (triggers)
 
 注意：`on` 键在 YAML 中必须加引号，否则会被解析为布尔值。
@@ -787,6 +898,42 @@ triggers:
         echo "Starting..."
     # 或 run-remote 在虚拟机内执行
 ```
+
+<details>
+<summary><b>所有触发器选项</b></summary>
+
+| 选项         | 类型           | 默认值      | 说明                                    |
+|------------|--------------|----------|---------------------------------------|
+| `name`     | string       | -        | 触发器名称                                 |
+| `enabled`  | boolean      | `true`   | 是否启用                                  |
+| `"on"`     | string       | `before` | 时机：`before` 或 `after`（在 YAML 中必须加引号！） |
+| `type`     | string       | `action` | 作用域：`action`、`command` 或 `hook`       |
+| `action`   | string/array | `[:up]`  | 触发的动作/命令（如 `up`、`destroy`、`reload`）   |
+| `only-on`  | string/array | -        | 按 machine name 过滤；支持正则表达式 `/pattern/` |
+| `ignore`   | string/array | -        | 忽略的动作                                 |
+| `on-error` | string       | -        | 错误处理：`:halt`、`:continue`              |
+| `abort`    | boolean      | `false`  | 触发器失败时中止 Vagrant 操作                   |
+| `desc`     | string       | -        | 触发器运行前显示的描述/信息                        |
+| `info`     | string       | -        | `desc` 的别名                            |
+| `warn`     | string       | -        | 触发器运行前显示的警告信息                         |
+
+**run 选项（宿主机执行）：**
+
+| 选项       | 类型           | 说明           |
+|----------|--------------|--------------|
+| `inline` | string       | 在宿主机上运行的内联脚本 |
+| `path`   | string       | 宿主机上的脚本路径    |
+| `args`   | string/array | 传递给脚本的参数     |
+
+**run-remote 选项（虚拟机内执行）：**
+
+| 选项       | 类型           | 说明                 |
+|----------|--------------|--------------------|
+| `inline` | string       | 在虚拟机内运行的内联脚本       |
+| `path`   | string       | 宿主机上的脚本路径（会上传到虚拟机） |
+| `args`   | string/array | 传递给脚本的参数           |
+
+</details>
 
 ## 配置继承
 

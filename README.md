@@ -647,7 +647,24 @@ provider:
   mem: 2048                       # Memory in MB
   cpus: 2                         # CPU count
   gui: false                      # Show GUI
+  customize: # VirtualBox-specific customizations
+    - [ 'modifyvm', ':id', '--nictype1', 'virtio' ]
 ```
+
+<details>
+<summary><b>All provider options (VirtualBox)</b></summary>
+
+| Option      | Type    | Default                      | Description                                    |
+|-------------|---------|------------------------------|------------------------------------------------|
+| `type`      | string  | `virtualbox`                 | Provider type                                  |
+| `name`      | string  | `{env}-{cluster}-{guest-id}` | VM name (used as Vagrant machine name)         |
+| `group-id`  | string  | `{env}/{cluster}`            | VirtualBox group for organizing VMs            |
+| `mem`       | number  | `2048`                       | Memory in MB                                   |
+| `cpus`      | number  | `2`                          | Number of CPUs                                 |
+| `gui`       | boolean | `false`                      | Show VirtualBox GUI                            |
+| `customize` | array   | -                            | VirtualBox customize commands (modifyvm, etc.) |
+
+</details>
 
 ### Network
 
@@ -676,6 +693,50 @@ network:
       host: 8080
       protocol: tcp
 ```
+
+<details>
+<summary><b>All network options</b></summary>
+
+**Hostname:**
+
+| Option     | Type   | Default                      | Description                  |
+|------------|--------|------------------------------|------------------------------|
+| `hostname` | string | `{guest-id}.{cluster}.{env}` | VM hostname (at guest level) |
+
+**Private Network:**
+
+| Option        | Type         | Default  | Description                                        |
+|---------------|--------------|----------|----------------------------------------------------|
+| `enabled`     | boolean      | -        | Enable private network                             |
+| `type`        | string       | `static` | Network type: `dhcp` or `static`                   |
+| `ip`          | string/array | -        | Static IP address(es); multiple creates interfaces |
+| `netmask`     | string       | -        | Subnet mask (e.g., `255.255.255.0`)                |
+| `auto-config` | boolean      | `true`   | Auto-configure network interface                   |
+
+**Public Network:**
+
+| Option                            | Type         | Default  | Description                                        |
+|-----------------------------------|--------------|----------|----------------------------------------------------|
+| `enabled`                         | boolean      | -        | Enable public network                              |
+| `type`                            | string       | `static` | Network type: `dhcp` or `static`                   |
+| `ip`                              | string/array | -        | Static IP address(es); multiple creates interfaces |
+| `netmask`                         | string       | -        | Subnet mask                                        |
+| `bridge`                          | string/array | -        | Bridge interface(s) on host                        |
+| `auto-config`                     | boolean      | `true`   | Auto-configure network interface                   |
+| `use-dhcp-assigned-default-route` | boolean      | `false`  | Use DHCP-assigned default route                    |
+
+**Forwarded Ports:**
+
+| Option         | Type    | Default | Description                                |
+|----------------|---------|---------|--------------------------------------------|
+| `enabled`      | boolean | -       | Enable this port forwarding                |
+| `guest`        | number  | -       | Guest port (required)                      |
+| `host`         | number  | -       | Host port (required)                       |
+| `protocol`     | string  | `tcp`   | Protocol: `tcp` or `udp`                   |
+| `id`           | string  | -       | Unique identifier for this port forward    |
+| `auto-correct` | boolean | `false` | Auto-correct host port if collision occurs |
+
+</details>
 
 ### Hostmanager (Per-Guest)
 
@@ -723,16 +784,33 @@ provisions:
     desc: 'Setup script'          # Description
     enabled: true
     type: shell                   # shell or file
-    privileged: false             # Run as root
+    privileged: true              # Run as root (default: false)
     run: once                     # once, always, never
     phase: pre                    # pre (default) or post - for common provisions only
     inline: |                     # Inline script
-      echo "Hello"
+      echo "Hello $MY_VAR"
+    env: # Environment variables
+      MY_VAR: "world"
     # Or use path:
     # path: ./scripts/setup.sh
     # args: arg1 arg2
     # before: other-provision     # Run before (provision must exist)
     # after: other-provision      # Run after
+```
+
+**With external script and environment variables:**
+
+```yaml
+provisions:
+  - name: mount-nfs
+    enabled: true
+    type: shell
+    privileged: true
+    run: always
+    path: scripts/mount-nfs.sh
+    env:
+      NFS_SERVER: "nas.example.com"
+      NFS_ROOT: "/volume2/nfs"
 ```
 
 **Phase field (common provisions only):**
@@ -773,6 +851,39 @@ clusters:
 
 Execution order: `global-pre → cluster-pre → guest → cluster-post → global-post`
 
+<details>
+<summary><b>All provision options</b></summary>
+
+| Option        | Type         | Default              | Description                                               |
+|---------------|--------------|----------------------|-----------------------------------------------------------|
+| `name`        | string       | -                    | Provision name                                            |
+| `enabled`     | boolean      | `true`               | Enable this provision                                     |
+| `type`        | string       | `shell`              | Provision type: `shell` or `file`                         |
+| `privileged`  | boolean      | `false`              | Run as root                                               |
+| `run`         | string       | `once`               | When to run: `once`, `always`, `never`                    |
+| `phase`       | string       | `pre`                | Execution phase: `pre` or `post` (common provisions only) |
+| `inline`      | string       | -                    | Inline script content                                     |
+| `path`        | string       | -                    | External script path                                      |
+| `args`        | string/array | -                    | Script arguments                                          |
+| `env`         | hash         | -                    | Environment variables                                     |
+| `before`      | string       | -                    | Run before specified provision                            |
+| `after`       | string       | -                    | Run after specified provision                             |
+| `keep-color`  | boolean      | `false`              | Preserve color output                                     |
+| `upload-path` | string       | `/tmp/vagrant-shell` | Script upload path on guest                               |
+| `reboot`      | boolean      | `false`              | Reboot after execution                                    |
+| `reset`       | boolean      | `false`              | Reset SSH connection after execution                      |
+| `sensitive`   | boolean      | `false`              | Hide output (for sensitive data)                          |
+| `binary`      | boolean      | `false`              | Transfer script as binary (no line ending conversion)     |
+
+**File provisioner options:**
+
+| Option        | Type   | Description               |
+|---------------|--------|---------------------------|
+| `source`      | string | Source file path on host  |
+| `destination` | string | Destination path on guest |
+
+</details>
+
 ### Triggers
 
 Note: The `on` key must be quoted in YAML to prevent parsing as boolean.
@@ -794,6 +905,42 @@ triggers:
         echo "Starting..."
     # Or run-remote for guest execution
 ```
+
+<details>
+<summary><b>All trigger options</b></summary>
+
+| Option     | Type         | Default  | Description                                                      |
+|------------|--------------|----------|------------------------------------------------------------------|
+| `name`     | string       | -        | Trigger name                                                     |
+| `enabled`  | boolean      | `true`   | Enable this trigger                                              |
+| `"on"`     | string       | `before` | Timing: `before` or `after` (must be quoted in YAML!)            |
+| `type`     | string       | `action` | Scope: `action`, `command`, or `hook`                            |
+| `action`   | string/array | `[:up]`  | Actions/commands to trigger on (e.g., `up`, `destroy`, `reload`) |
+| `only-on`  | string/array | -        | Filter by machine name; supports regex `/pattern/`               |
+| `ignore`   | string/array | -        | Actions to ignore                                                |
+| `on-error` | string       | -        | Error behavior: `:halt`, `:continue`                             |
+| `abort`    | boolean      | `false`  | Abort Vagrant operation if trigger fails                         |
+| `desc`     | string       | -        | Description/info message displayed before trigger runs           |
+| `info`     | string       | -        | Alias for `desc`                                                 |
+| `warn`     | string       | -        | Warning message displayed before trigger runs                    |
+
+**Run options (local execution):**
+
+| Option   | Type         | Description                  |
+|----------|--------------|------------------------------|
+| `inline` | string       | Inline script to run on host |
+| `path`   | string       | Script path on host          |
+| `args`   | string/array | Arguments to pass to script  |
+
+**Run-remote options (guest execution):**
+
+| Option   | Type         | Description                             |
+|----------|--------------|-----------------------------------------|
+| `inline` | string       | Inline script to run on guest           |
+| `path`   | string       | Script path on host (uploaded to guest) |
+| `args`   | string/array | Arguments to pass to script             |
+
+</details>
 
 ## Configuration Inheritance
 
