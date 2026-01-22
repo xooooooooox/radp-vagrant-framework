@@ -2,11 +2,7 @@
 
 ## v0.0.21 - 2026-01-22
 
-- c93ead4 fix: pad version placeholder to ensure consistent banner formatting
-
-## v0.0.20 - 2026-01-22
-
-- 086f4be chore: adjust banner formatting for consistent spacing alignment
+- fix: pad version placeholder to ensure consistent banner formatting
 
 ## v0.0.19 - 2026-01-22
 
