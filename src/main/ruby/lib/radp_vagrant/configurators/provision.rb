@@ -82,18 +82,29 @@ module RadpVagrant
           vm_config.vm.provision 'file', **options
         end
 
-        # Resolve relative paths against config directory
+        # Resolve relative paths against config directory or project root
         # Absolute paths are returned as-is
+        #
+        # Resolution order:
+        # 1. If path exists relative to config_dir, use it (scripts inside config dir)
+        # 2. If path exists relative to config_dir's parent, use it (standard project structure)
+        # 3. Otherwise, return path relative to config_dir (let Vagrant report the error)
         def resolve_path(path, config_dir)
           return path unless path
           return path if Pathname.new(path).absolute?
           return path unless config_dir
 
-          # Resolve relative to config directory's parent (project root)
-          # config_dir is typically /path/to/project/config
-          # scripts are typically /path/to/project/scripts
+          # Try 1: relative to config directory (e.g., config/scripts/setup.sh)
+          config_relative = File.expand_path(path, config_dir)
+          return config_relative if File.exist?(config_relative)
+
+          # Try 2: relative to project root (e.g., project/scripts/setup.sh)
           project_root = File.dirname(config_dir)
-          File.expand_path(path, project_root)
+          project_relative = File.expand_path(path, project_root)
+          return project_relative if File.exist?(project_relative)
+
+          # Fallback: return config-relative path (Vagrant will report file not found)
+          config_relative
         end
       end
     end
