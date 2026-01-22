@@ -1,5 +1,10 @@
 # CHANGELOG
 
+## v0.0.17 - 2026-01-22
+
+- d2cf9d6 docs: Add detailed tables for provider, network, provision, and trigger options in README files
+- 3feb87f fix(provision): set default `privileged` option to false in provision settings
+
 ## v0.0.16 - 2026-01-22
 
 - feat(bindfs): Add setup and configuration details for vagrant-bindfs plugin
