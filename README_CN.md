@@ -211,6 +211,23 @@ radp-vf -e prod vg up # 使用 vagrant-prod.yaml
 **注意：** 原生 `vagrant` 命令与 `radp-vf vg` 相互隔离。在包含自己 Vagrantfile 的目录中运行 `vagrant up` 不会受 RADP
 Vagrant Framework 影响。
 
+**推荐：为远程配置目录设置 `VAGRANT_DOTFILE_PATH`**
+
+当使用 `RADP_VAGRANT_CONFIG_DIR` 从任意目录运行命令时，Vagrant 默认会在当前工作目录创建 `.vagrant` 目录来存储机器状态。这可能导致以下问题：
+
+- 机器状态分散在不同目录中
+- 从不同路径运行时出现 "This machine used to live in..." 警告
+
+为避免这些问题，建议将 `VAGRANT_DOTFILE_PATH` 设置为固定位置：
+
+```shell
+# 添加到 ~/.bashrc 或 ~/.zshrc
+export RADP_VAGRANT_CONFIG_DIR="$HOME/.config/radp-vagrant"
+export VAGRANT_DOTFILE_PATH="$HOME/.config/radp-vagrant/.vagrant"
+```
+
+这可以确保 Vagrant 始终使用同一个 `.vagrant` 目录，无论你从哪里运行命令。
+
 ### 调试命令
 
 ```shell

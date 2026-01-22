@@ -214,6 +214,24 @@ radp-vf -e prod vg up # Uses vagrant-prod.yaml
 **Note:** Native `vagrant` commands are isolated from `radp-vf vg`. Running `vagrant up` in a directory with its own
 Vagrantfile works normally and is not affected by RADP Vagrant Framework.
 
+**Recommended: Set `VAGRANT_DOTFILE_PATH` for remote config directories**
+
+When using `RADP_VAGRANT_CONFIG_DIR` to run commands from any directory, Vagrant stores machine state (`.vagrant`
+directory) in the current working directory by default. This can cause issues:
+
+- Machine state scattered across different directories
+- "This machine used to live in..." warnings when running from different paths
+
+To avoid these issues, set `VAGRANT_DOTFILE_PATH` to a fixed location:
+
+```shell
+# Add to ~/.bashrc or ~/.zshrc
+export RADP_VAGRANT_CONFIG_DIR="$HOME/.config/radp-vagrant"
+export VAGRANT_DOTFILE_PATH="$HOME/.config/radp-vagrant/.vagrant"
+```
+
+This ensures Vagrant always uses the same `.vagrant` directory regardless of where you run commands.
+
 ### Debug Commands
 
 ```shell
