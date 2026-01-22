@@ -76,6 +76,8 @@ radp:
               # optional: support before or after
               # before: provision_name (commented: provision must exist)
               privileged: false
+              # pre (default) or post - for common provisions only
+              phase: pre
               # support once, always, never
               run: once
               # support inline, path
