@@ -337,6 +337,21 @@ plugins:
       include_offline: true
 ```
 
+**vagrant-hostmanager provisioner 模式：**
+
+使用 `provisioner: enabled` 将 hostmanager 作为 provisioner 运行，而不是在 `vagrant up` 时自动运行。这可以控制 hosts 文件在配置过程中何时更新：
+
+```yaml
+plugins:
+  - name: vagrant-hostmanager
+    options:
+      provisioner: enabled        # 作为 provisioner 运行（与 enabled 互斥）
+      manage_host: true
+      manage_guest: true
+```
+
+注意：`provisioner` 和 `enabled` 是互斥的。如果两者都设置，框架会自动禁用 `enabled` 并输出警告日志。
+
 支持的插件：
 - `vagrant-hostmanager` - 主机文件管理
 - `vagrant-vbguest` - VirtualBox Guest Additions

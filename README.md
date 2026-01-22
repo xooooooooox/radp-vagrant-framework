@@ -337,6 +337,21 @@ plugins:
       include_offline: true
 ```
 
+**vagrant-hostmanager provisioner mode:**
+
+Use `provisioner: enabled` to run hostmanager as a provisioner instead of automatically on `vagrant up`. This gives you control over when hosts file is updated during provisioning:
+
+```yaml
+plugins:
+  - name: vagrant-hostmanager
+    options:
+      provisioner: enabled        # Run as provisioner (mutually exclusive with enabled)
+      manage_host: true
+      manage_guest: true
+```
+
+Note: `provisioner` and `enabled` are mutually exclusive. If both are set, the framework automatically disables `enabled` and logs a warning.
+
 Supported plugins:
 - `vagrant-hostmanager` - Host file management
 - `vagrant-vbguest` - VirtualBox Guest Additions
