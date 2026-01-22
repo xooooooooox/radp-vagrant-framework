@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## v0.0.9 - 2026-01-22
+
+- 2104cb9 feat(network): Support multi static ips
+- b09919c docs: Update README
+- 929fdf8 docs: Update README
+
 ## v0.0.8 - 2026-01-21
 
 - b962293 feat: Optimize inited project
