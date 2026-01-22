@@ -440,6 +440,7 @@ provisions:
     type: shell                   # shell or file
     privileged: false             # Run as root
     run: once                     # once, always, never
+    phase: pre                    # pre (default) or post - for common provisions only
     inline: |                     # Inline script
       echo "Hello"
     # Or use path:
@@ -448,6 +449,43 @@ provisions:
     # before: other-provision     # Run before (provision must exist)
     # after: other-provision      # Run after
 ```
+
+**Phase field (common provisions only):**
+
+The `phase` field controls when common provisions run relative to guest provisions:
+- `pre` (default): Runs before guest provisions
+- `post`: Runs after guest provisions
+
+```yaml
+# vagrant.yaml - global common
+common:
+  provisions:
+    - name: global-init
+      phase: pre                  # Runs first (default)
+      inline: echo "1. Global init"
+    - name: global-cleanup
+      phase: post                 # Runs last
+      inline: echo "5. Global cleanup"
+
+# vagrant-dev.yaml - cluster common
+clusters:
+  - name: my-cluster
+    common:
+      provisions:
+        - name: cluster-init
+          phase: pre
+          inline: echo "2. Cluster init"
+        - name: cluster-cleanup
+          phase: post
+          inline: echo "4. Cluster cleanup"
+    guests:
+      - id: node-1
+        provisions:
+          - name: guest-setup     # Guest provisions run in middle
+            inline: echo "3. Guest setup"
+```
+
+Execution order: `global-pre → cluster-pre → guest → cluster-post → global-post`
 
 ### Triggers
 
@@ -473,22 +511,24 @@ triggers:
 
 ## Configuration Inheritance
 
-Configuration flows from global → cluster → guest. Arrays (provisions, triggers, synced-folders) are **concatenated**, not replaced:
+Configuration flows from global → cluster → guest. Arrays (triggers, synced-folders) are **concatenated**, not replaced.
+
+**Provisions** support the `phase` field for execution order control:
 
 ```
 Global common:
-  - provisions: [A]
+  - provisions: [A(pre), D(post)]
   - synced-folders: [X]
 
 Cluster common:
-  - provisions: [B]
+  - provisions: [B(pre), E(post)]
   - synced-folders: [Y]
 
 Guest:
   - provisions: [C]
 
 Result for guest:
-  - provisions: [A, B, C]         # All accumulated
+  - provisions: [A, B, C, E, D]   # Order: global-pre, cluster-pre, guest, cluster-post, global-post
   - synced-folders: [X, Y]        # All accumulated
 ```
 

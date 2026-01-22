@@ -440,6 +440,7 @@ provisions:
     type: shell                   # shell 或 file
     privileged: false             # 是否以 root 运行
     run: once                     # once, always, never
+    phase: pre                    # pre（默认）或 post - 仅用于 common provisions
     inline: |                     # 内联脚本
       echo "Hello"
     # 或使用文件路径:
@@ -448,6 +449,43 @@ provisions:
     # before: other-provision     # 在某脚本之前运行（脚本必须存在）
     # after: other-provision      # 在某脚本之后运行
 ```
+
+**phase 字段（仅用于 common provisions）：**
+
+`phase` 字段控制 common provisions 相对于 guest provisions 的执行时机：
+- `pre`（默认）：在 guest provisions 之前运行
+- `post`：在 guest provisions 之后运行
+
+```yaml
+# vagrant.yaml - global common
+common:
+  provisions:
+    - name: global-init
+      phase: pre                  # 最先运行（默认）
+      inline: echo "1. Global init"
+    - name: global-cleanup
+      phase: post                 # 最后运行
+      inline: echo "5. Global cleanup"
+
+# vagrant-dev.yaml - cluster common
+clusters:
+  - name: my-cluster
+    common:
+      provisions:
+        - name: cluster-init
+          phase: pre
+          inline: echo "2. Cluster init"
+        - name: cluster-cleanup
+          phase: post
+          inline: echo "4. Cluster cleanup"
+    guests:
+      - id: node-1
+        provisions:
+          - name: guest-setup     # Guest provisions 在中间运行
+            inline: echo "3. Guest setup"
+```
+
+执行顺序：`global-pre → cluster-pre → guest → cluster-post → global-post`
 
 ### 触发器 (triggers)
 
@@ -473,22 +511,24 @@ triggers:
 
 ## 配置继承
 
-配置从 global → cluster → guest 流动。数组类型（provisions、triggers、synced-folders）会被**连接**而非替换：
+配置从 global → cluster → guest 流动。数组类型（triggers、synced-folders）会被**连接**而非替换。
+
+**Provisions** 支持 `phase` 字段来控制执行顺序：
 
 ```
 Global common:
-  - provisions: [A]
+  - provisions: [A(pre), D(post)]
   - synced-folders: [X]
 
 Cluster common:
-  - provisions: [B]
+  - provisions: [B(pre), E(post)]
   - synced-folders: [Y]
 
 Guest:
   - provisions: [C]
 
 Guest 最终结果:
-  - provisions: [A, B, C]         # 全部累加
+  - provisions: [A, B, C, E, D]   # 顺序: global-pre, cluster-pre, guest, cluster-post, global-post
   - synced-folders: [X, Y]        # 全部累加
 ```
 
