@@ -1,5 +1,10 @@
 # CHANGELOG
 
+## v0.0.10 - 2026-01-22
+
+- ed0f004 feat(formula): Update homebrew formula
+- e0c103f feat(provisions): Add phase field to common provisions
+
 ## v0.0.9 - 2026-01-22
 
 - 2104cb9 feat(network): Support multi static ips
