@@ -10,18 +10,36 @@ radp:
           # if required: true, 则表示该插件必须安装
           required: true
           options:
-            enabled: true
+            # vagrant up/destroy 时更新 hosts
+            enabled: false
+            # 作为 provisioner 运行（与 enabled 互斥）
+            provisioner: enabled
+            # 在宿主机上的 hosts 文件中添加虚拟机的主机名解析信息
             manage_host: true
+            # 在各自虚拟机中添加各虚拟机的主机名解析信息
             manage_guest: true
+            # 是否包含已经 offline 的 guest
             include_offline: true
-            ignore_private_ip: false
+            # 忽略私有网络的地址
+            ignore_private_ip: true
+            # 如果 guest 有多张网卡，可借助这个特性获取你需要的网卡 ip
+            ip_resolver:
+              enabled: true
+              # 这里借助 hostmanager ip_resolve 特性，获取 guest 第2张网卡也就是 private_network ip
+              execute: "hostname -I | awk '{print $2}'"
+              regex: "^(\\S+)"
         # see: https://github.com/dotless-de/vagrant-vbguest
         - name: vagrant-vbguest
           required: true
           options:
+            # 启动时检查/更新 Guest Additions (默认: true)
             auto_update: false
-            install_options:
-              allow_kernel_upgrade: false
+            # 禁止从远程下载 ISO (默认: false)
+            no_remote: false
+            # 安装后需要时自动重启 (默认: true)
+            auto_reboot: true
+            # 允许安装旧版本 (默认: true)
+            allow_downgrade: true
         # see: https://github.com/tmatilai/vagrant-proxyconf
         - name: vagrant-proxyconf
           required: true

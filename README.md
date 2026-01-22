@@ -40,14 +40,14 @@ Prerequisites:
 
 ```shell
 curl -fsSL https://raw.githubusercontent.com/xooooooooox/radp-vagrant-framework/main/tools/install.sh
-  | bash
+| bash
 ```
 
 Or:
 
 ```shell
 wget -qO- https://raw.githubusercontent.com/xooooooooox/radp-vagrant-framework/main/tools/install.sh
-  | bash
+| bash
 ```
 
 Optional variables:
@@ -418,6 +418,122 @@ radp-vf vg provision --provision-with hostmanager
 # Run all provisioners including hostmanager
 radp-vf vg provision
 ```
+
+#### vagrant-vbguest
+
+Automatically installs and updates VirtualBox Guest Additions on guest machines.
+
+##### Recommended configuration
+
+```yaml
+plugins:
+  - name: vagrant-vbguest
+    options:
+      auto_update: true           # Check/update on VM start (default: true)
+      auto_reboot: true           # Reboot after installation if needed
+```
+
+##### Distribution-specific configurations
+
+<details>
+<summary><b>Ubuntu / Debian</b></summary>
+
+```yaml
+plugins:
+  - name: vagrant-vbguest
+    options:
+      installer: ubuntu           # or debian
+      auto_update: true
+      auto_reboot: true
+```
+
+</details>
+
+<details>
+<summary><b>CentOS / RHEL / Rocky Linux</b></summary>
+
+```yaml
+plugins:
+  - name: vagrant-vbguest
+    options:
+      installer: centos
+      auto_update: true
+      auto_reboot: true
+      installer_options:
+        allow_kernel_upgrade: true    # Allow kernel upgrade if needed
+        reboot_timeout: 300           # Wait time after kernel upgrade (seconds)
+```
+
+> Note: CentOS may require kernel upgrade when Guest Additions version mismatches. Set `allow_kernel_upgrade: true` to
+> allow this.
+
+</details>
+
+<details>
+<summary><b>Fedora</b></summary>
+
+```yaml
+plugins:
+  - name: vagrant-vbguest
+    options:
+      installer: fedora
+      auto_update: true
+      auto_reboot: true
+```
+
+</details>
+
+##### Common use cases
+
+| Scenario               | Configuration                                  |
+|------------------------|------------------------------------------------|
+| Disable auto-update    | `auto_update: false`                           |
+| Check only, no install | `no_install: true`                             |
+| Offline environment    | `no_remote: true` + `iso_path: "/path/to/iso"` |
+| Allow downgrade        | `allow_downgrade: true` (default)              |
+
+**Offline / Air-gapped environment:**
+
+```yaml
+plugins:
+  - name: vagrant-vbguest
+    options:
+      no_remote: true
+      iso_path: "/shared/VBoxGuestAdditions.iso"
+      iso_upload_path: "/tmp"
+      iso_mount_point: "/mnt"
+```
+
+**Disable completely (use box's built-in Guest Additions):**
+
+```yaml
+plugins:
+  - name: vagrant-vbguest
+    options:
+      auto_update: false
+      no_install: true
+```
+
+<details>
+<summary><b>All available options</b></summary>
+
+| Option                | Type    | Default       | Description                                                           |
+|-----------------------|---------|---------------|-----------------------------------------------------------------------|
+| `auto_update`         | boolean | `true`        | Check/update Guest Additions on VM start                              |
+| `no_remote`           | boolean | `false`       | Prevent downloading ISO from remote                                   |
+| `no_install`          | boolean | `false`       | Only check version, don't install                                     |
+| `auto_reboot`         | boolean | `true`        | Reboot after installation if needed                                   |
+| `allow_downgrade`     | boolean | `true`        | Allow installing older versions                                       |
+| `iso_path`            | string  | -             | Custom ISO path (local or URL with `%{version}`)                      |
+| `iso_upload_path`     | string  | `/tmp`        | Guest directory for ISO upload                                        |
+| `iso_mount_point`     | string  | `/mnt`        | Guest mount point for ISO                                             |
+| `installer`           | string  | auto          | Installer type: `linux`, `ubuntu`, `debian`, `centos`, `fedora`, etc. |
+| `installer_arguments` | array   | `["--nox11"]` | Arguments passed to installer                                         |
+| `yes`                 | boolean | `true`        | Auto-respond yes to prompts                                           |
+| `installer_options`   | hash    | -             | Distro-specific options                                               |
+| `installer_hooks`     | hash    | -             | Hooks: `before_install`, `after_install`, etc.                        |
+
+</details>
 
 ### Box
 

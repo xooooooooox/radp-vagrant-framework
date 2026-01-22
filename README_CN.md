@@ -40,14 +40,14 @@
 
 ```shell
 curl -fsSL https://raw.githubusercontent.com/xooooooooox/radp-vagrant-framework/main/tools/install.sh
-  | bash
+| bash
 ```
 
 或:
 
 ```shell
 wget -qO- https://raw.githubusercontent.com/xooooooooox/radp-vagrant-framework/main/tools/install.sh
-  | bash
+| bash
 ```
 
 可选环境变量:
@@ -413,6 +413,121 @@ radp-vf vg provision --provision-with hostmanager
 # 运行所有 provisioners（包括 hostmanager）
 radp-vf vg provision
 ```
+
+#### vagrant-vbguest
+
+自动在虚拟机上安装和更新 VirtualBox Guest Additions。
+
+##### 推荐配置
+
+```yaml
+plugins:
+  - name: vagrant-vbguest
+    options:
+      auto_update: true           # 启动时检查/更新（默认: true）
+      auto_reboot: true           # 安装后需要时自动重启
+```
+
+##### 不同发行版配置
+
+<details>
+<summary><b>Ubuntu / Debian</b></summary>
+
+```yaml
+plugins:
+  - name: vagrant-vbguest
+    options:
+      installer: ubuntu           # 或 debian
+      auto_update: true
+      auto_reboot: true
+```
+
+</details>
+
+<details>
+<summary><b>CentOS / RHEL / Rocky Linux</b></summary>
+
+```yaml
+plugins:
+  - name: vagrant-vbguest
+    options:
+      installer: centos
+      auto_update: true
+      auto_reboot: true
+      installer_options:
+        allow_kernel_upgrade: true    # 需要时允许内核升级
+        reboot_timeout: 300           # 内核升级后等待时间（秒）
+```
+
+> 注意：CentOS 在 Guest Additions 版本不匹配时可能需要内核升级。设置 `allow_kernel_upgrade: true` 允许此操作。
+
+</details>
+
+<details>
+<summary><b>Fedora</b></summary>
+
+```yaml
+plugins:
+  - name: vagrant-vbguest
+    options:
+      installer: fedora
+      auto_update: true
+      auto_reboot: true
+```
+
+</details>
+
+##### 常用场景
+
+| 场景     | 配置                                             |
+|--------|------------------------------------------------|
+| 禁用自动更新 | `auto_update: false`                           |
+| 仅检查不安装 | `no_install: true`                             |
+| 离线环境   | `no_remote: true` + `iso_path: "/path/to/iso"` |
+| 允许降级   | `allow_downgrade: true`（默认）                    |
+
+**离线 / 内网环境：**
+
+```yaml
+plugins:
+  - name: vagrant-vbguest
+    options:
+      no_remote: true
+      iso_path: "/shared/VBoxGuestAdditions.iso"
+      iso_upload_path: "/tmp"
+      iso_mount_point: "/mnt"
+```
+
+**完全禁用（使用 box 内置的 Guest Additions）：**
+
+```yaml
+plugins:
+  - name: vagrant-vbguest
+    options:
+      auto_update: false
+      no_install: true
+```
+
+<details>
+<summary><b>所有可用选项</b></summary>
+
+| 选项                    | 类型      | 默认值           | 说明                                                  |
+|-----------------------|---------|---------------|-----------------------------------------------------|
+| `auto_update`         | boolean | `true`        | 启动时检查/更新 Guest Additions                            |
+| `no_remote`           | boolean | `false`       | 禁止从远程下载 ISO                                         |
+| `no_install`          | boolean | `false`       | 仅检查版本，不安装                                           |
+| `auto_reboot`         | boolean | `true`        | 安装后需要时自动重启                                          |
+| `allow_downgrade`     | boolean | `true`        | 允许安装旧版本                                             |
+| `iso_path`            | string  | -             | 自定义 ISO 路径（本地或带 `%{version}` 的 URL）                 |
+| `iso_upload_path`     | string  | `/tmp`        | 虚拟机中存放 ISO 的目录                                      |
+| `iso_mount_point`     | string  | `/mnt`        | 虚拟机中的挂载点                                            |
+| `installer`           | string  | auto          | 安装器类型：`linux`、`ubuntu`、`debian`、`centos`、`fedora` 等 |
+| `installer_arguments` | array   | `["--nox11"]` | 传递给安装器的参数                                           |
+| `yes`                 | boolean | `true`        | 自动回答 yes                                            |
+| `installer_options`   | hash    | -             | 发行版特定选项                                             |
+| `installer_hooks`     | hash    | -             | 钩子：`before_install`、`after_install` 等               |
+
+</details>
 
 ### Box
 
