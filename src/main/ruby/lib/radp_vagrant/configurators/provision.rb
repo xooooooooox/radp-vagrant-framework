@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'pathname'
+require_relative '../provisions/registry'
 
 module RadpVagrant
   module Configurators
@@ -17,11 +18,42 @@ module RadpVagrant
           provisions.each do |provision|
             next unless provision['enabled']
 
-            configure_provision(vm_config, provision, config_dir)
+            # Resolve builtin provisions
+            resolved_provision = resolve_builtin(provision)
+            configure_provision(vm_config, resolved_provision, config_dir)
           end
         end
 
         private
+
+        # Resolve builtin provision by merging definition defaults with user config
+        # User config takes precedence over definition defaults
+        def resolve_builtin(provision)
+          name = provision['name']
+          return provision unless Provisions::Registry.builtin?(name)
+
+          definition = Provisions::Registry.get(name)
+          return provision unless definition
+
+          # Start with definition defaults
+          resolved = {}
+          if definition['defaults']
+            definition['defaults'].each do |key, value|
+              resolved[key] = value
+            end
+          end
+
+          # Merge user config (user values override defaults)
+          provision.each do |key, value|
+            resolved[key] = value
+          end
+
+          # Set script path from builtin scripts directory
+          resolved['path'] = Provisions::Registry.script_path(name)
+          resolved['_builtin'] = true
+
+          resolved
+        end
 
         def configure_provision(vm_config, provision, config_dir)
           name = provision['name']
@@ -47,7 +79,10 @@ module RadpVagrant
 
           # Script content - one of inline or path required
           options[:inline] = provision['inline'] if provision['inline']
-          options[:path] = resolve_path(provision['path'], config_dir) if provision['path']
+          if provision['path']
+            # Builtin provisions already have absolute paths
+            options[:path] = provision['_builtin'] ? provision['path'] : resolve_path(provision['path'], config_dir)
+          end
 
           # args: arguments to pass to the script
           options[:args] = provision['args'] if provision['args']

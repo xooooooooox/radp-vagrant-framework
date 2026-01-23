@@ -84,6 +84,19 @@ To add a new plugin:
 2. Implement `.plugin_name` and `.configure` methods
 3. Add class to `registry.rb` `plugin_classes` array
 
+### Builtin Provisions System
+Builtin provisions are framework-provided provisions under `lib/radp_vagrant/provisions/`:
+- `registry.rb` - Central registry with auto-discovery from YAML definitions
+- `definitions/*.yaml` - Provision metadata (description, defaults, required_env, script)
+- `scripts/*.sh` - Implementation scripts
+
+Builtin provisions use `radp:` prefix (e.g., `radp:synology-nfs`). User config merges with definition defaults (user values take precedence).
+
+To add a new builtin provision:
+1. Create `definitions/my-provision.yaml` with description, defaults, required_env, script
+2. Create `scripts/my-provision.sh` implementation
+3. Registry auto-discovers from YAML files (no code changes needed)
+
 ## Directory Structure
 
 ```
@@ -98,22 +111,26 @@ src/main/ruby/
     └── radp_vagrant/
         ├── config_loader.rb        # Multi-file YAML loading
         ├── config_merger.rb        # Deep merge with array concatenation
-        └── configurators/
-            ├── box.rb
-            ├── provider.rb
-            ├── network.rb
-            ├── hostmanager.rb
-            ├── synced_folder.rb
-            ├── provision.rb
-            ├── trigger.rb
-            ├── plugin.rb
-            └── plugins/
-                ├── base.rb
-                ├── registry.rb
-                ├── hostmanager.rb
-                ├── vbguest.rb
-                ├── proxyconf.rb
-                └── bindfs.rb
+        ├── configurators/
+        │   ├── box.rb
+        │   ├── provider.rb
+        │   ├── network.rb
+        │   ├── hostmanager.rb
+        │   ├── synced_folder.rb
+        │   ├── provision.rb
+        │   ├── trigger.rb
+        │   ├── plugin.rb
+        │   └── plugins/
+        │       ├── base.rb
+        │       ├── registry.rb
+        │       ├── hostmanager.rb
+        │       ├── vbguest.rb
+        │       ├── proxyconf.rb
+        │       └── bindfs.rb
+        └── provisions/             # Builtin provisions
+            ├── registry.rb         # Auto-discovery registry
+            ├── definitions/        # YAML definitions
+            └── scripts/            # Shell scripts
 ```
 
 ## Configuration Structure
