@@ -1,3 +1,8 @@
+## v0.0.24 - 2026-01-23
+
+- 17ae299 docs: update README to document new SSH cluster trust provision
+- 5bad091 docs(shell): clarify SSH trust descriptions in provision help message
+- 4cf48c4 feat(provision): add SSH cluster trust provision to enable seamless same-user VM access within clusters
 ## v0.0.23 - 2026-01-23
 
 - e076122 docs: update README to include new SSH host trust and chrony time sync provisions
