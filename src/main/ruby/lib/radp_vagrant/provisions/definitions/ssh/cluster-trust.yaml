@@ -1,0 +1,17 @@
+desc: Configure SSH trust between same users across VMs in the same cluster
+defaults:
+  privileged: true
+  run: once
+  env:
+    required: []
+    optional:
+      - name: CLUSTER_SSH_KEY_DIR
+        value: ""
+        desc: "Directory containing per-user key pairs: {dir}/id_{env}_{cluster}_{user} and {dir}/id_{env}_{cluster}_{user}.pub"
+      - name: SSH_USERS
+        value: vagrant
+        desc: Comma-separated list of users to configure
+      - name: TRUSTED_HOST_PATTERN
+        value: ""
+        desc: "Custom host pattern for SSH config (default: auto-detect *.{cluster}.{env} from hostname)"
+  script: cluster-trust.sh
