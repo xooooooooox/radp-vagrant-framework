@@ -1,0 +1,10 @@
+desc: Disable swap partition (required for Kubernetes)
+defaults:
+  "on": after
+  action:
+    - up
+    - reload
+  type: action
+  on-error: continue
+  run-remote:
+    script: disable-swap.sh

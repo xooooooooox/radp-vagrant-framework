@@ -1,0 +1,10 @@
+desc: Disable firewalld service
+defaults:
+  "on": after
+  action:
+    - up
+    - reload
+  type: action
+  on-error: continue
+  run-remote:
+    script: disable-firewalld.sh
