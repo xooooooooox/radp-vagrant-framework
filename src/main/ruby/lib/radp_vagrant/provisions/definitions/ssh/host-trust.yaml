@@ -1,0 +1,17 @@
+desc: Add host SSH public key to guest authorized_keys for passwordless SSH access
+defaults:
+  privileged: false
+  run: once
+  env:
+    required: []
+    optional:
+      - name: HOST_SSH_PUBLIC_KEY
+        value: ""
+        desc: Host SSH public key content (e.g., "ssh-rsa AAAA... user@host")
+      - name: HOST_SSH_PUBLIC_KEY_FILE
+        value: ""
+        desc: Path to host SSH public key file (e.g., ~/.ssh/id_rsa.pub)
+      - name: SSH_USERS
+        value: vagrant
+        desc: Comma-separated list of users to configure
+  script: host-trust.sh

@@ -1,0 +1,20 @@
+desc: Configure chrony for time synchronization with NTP servers
+defaults:
+  privileged: true
+  run: once
+  env:
+    required: []
+    optional:
+      - name: NTP_SERVERS
+        value: ""
+        desc: Comma-separated list of NTP servers (e.g., "ntp.aliyun.com,ntp1.aliyun.com")
+      - name: NTP_POOL
+        value: pool.ntp.org
+        desc: NTP pool to use if NTP_SERVERS not specified
+      - name: TIMEZONE
+        value: ""
+        desc: Timezone to set (e.g., "Asia/Shanghai"), empty keeps current
+      - name: SYNC_NOW
+        value: "true"
+        desc: Force immediate time sync after configuration
+  script: chrony-sync.sh
