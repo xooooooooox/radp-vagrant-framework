@@ -80,23 +80,35 @@ configure_ntp_servers() {
   if [[ -n "$NTP_SERVERS" ]]; then
     echo "[INFO] Configuring custom NTP servers: $NTP_SERVERS"
 
-    # Remove existing server/pool lines and add new ones
-    local tmp_conf
-    tmp_conf=$(mktemp)
+    # Check if already configured by this script
+    if grep -q "# Added by radp:time/chrony-sync" "$chrony_conf" 2>/dev/null; then
+      echo "[OK] NTP servers already configured by this script"
+      return 0
+    fi
 
-    # Keep non-server/pool lines
-    grep -vE "^(server|pool)\s+" "$chrony_conf" > "$tmp_conf" 2>/dev/null || true
+    # Comment out existing server/pool lines (only uncommented ones)
+    sed -i.bak -E 's/^([^#]*)(server|pool)\s+/#\1\2 /' "$chrony_conf"
 
-    # Add custom servers
+    # Build new server lines
+    local new_servers=""
     IFS=',' read -ra servers <<< "$NTP_SERVERS"
     for server in "${servers[@]}"; do
       server=$(echo "$server" | xargs)  # Trim whitespace
       if [[ -n "$server" ]]; then
-        echo "server $server iburst" >> "$tmp_conf"
+        new_servers="${new_servers}server ${server} iburst\n"
       fi
     done
 
-    mv "$tmp_conf" "$chrony_conf"
+    # Append new servers at the end of the file
+    echo -e "\n# Added by radp:time/chrony-sync\n${new_servers}" >> "$chrony_conf"
+
+    # Clean up sed backup
+    rm -f "${chrony_conf}.bak"
+
+    # Ensure correct permissions (chronyd runs as chrony user and needs read access)
+    chmod 644 "$chrony_conf"
+    chown root:root "$chrony_conf"
+
     echo "[INFO] Configured NTP servers in $chrony_conf"
   elif [[ -n "$NTP_POOL" ]]; then
     # Use pool if no custom servers
@@ -126,11 +138,26 @@ configure_timezone() {
 
 # Start and enable chrony service
 start_chrony() {
-  local service_name="chronyd"
+  local service_name=""
 
-  # On Debian/Ubuntu, service might be called chrony
-  if ! systemctl list-unit-files | grep -q "^${service_name}"; then
+  # Detect the correct service name
+  # CentOS/RHEL/Fedora: chronyd
+  # Debian/Ubuntu: chrony
+  if systemctl list-unit-files chronyd.service &>/dev/null; then
+    service_name="chronyd"
+  elif systemctl list-unit-files chrony.service &>/dev/null; then
     service_name="chrony"
+  elif [[ -f /usr/lib/systemd/system/chronyd.service ]]; then
+    service_name="chronyd"
+  elif [[ -f /lib/systemd/system/chrony.service ]]; then
+    service_name="chrony"
+  else
+    # Default based on OS
+    if [[ -f /etc/redhat-release ]]; then
+      service_name="chronyd"
+    else
+      service_name="chrony"
+    fi
   fi
 
   echo "[INFO] Enabling and starting $service_name service..."
