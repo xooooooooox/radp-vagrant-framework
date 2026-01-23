@@ -1,3 +1,7 @@
+## v0.0.26 - 2026-01-23
+
+- 26ddf2c fix(provision): ensure provisioner names support `--provision-with` compatibility for shell and file types
+- 6b76582 fix(provision): improve custom NTP server configuration and chrony service detection
 ## v0.0.25 - 2026-01-23
 
 - 1c37753 fix(radp-vf): resolve relative output path to absolute before directory change
