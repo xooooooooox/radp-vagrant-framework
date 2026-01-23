@@ -149,7 +149,6 @@ module RadpVagrant
 
         def configure_shell(vm_config, name, provision, config_dir)
           options = {}
-          options[:name] = name if name
 
           # run: once, always, never (renamed from freq)
           options[:run] = provision['run'] if provision['run']
@@ -186,19 +185,29 @@ module RadpVagrant
           options[:reset] = provision['reset'] if provision.key?('reset')
           options[:sensitive] = provision['sensitive'] if provision.key?('sensitive')
 
-          vm_config.vm.provision 'shell', **options
+          # Use name as first argument for --provision-with compatibility
+          # Vagrant only recognizes provisioner names when defined this way
+          if name
+            vm_config.vm.provision name, type: 'shell', **options
+          else
+            vm_config.vm.provision 'shell', **options
+          end
         end
 
         def configure_file(vm_config, name, provision, config_dir)
           options = {}
-          options[:name] = name if name
           options[:source] = PathResolver.resolve_with_fallback(provision['source'], config_dir)
           options[:destination] = provision['destination']
 
           # run: once, always, never
           options[:run] = provision['run'] if provision['run']
 
-          vm_config.vm.provision 'file', **options
+          # Use name as first argument for --provision-with compatibility
+          if name
+            vm_config.vm.provision name, type: 'file', **options
+          else
+            vm_config.vm.provision 'file', **options
+          end
         end
       end
     end
