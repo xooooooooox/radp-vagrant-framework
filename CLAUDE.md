@@ -89,13 +89,32 @@ Builtin provisions are framework-provided provisions under `lib/radp_vagrant/pro
 - `registry.rb` - Central registry with auto-discovery from YAML definitions
 - `definitions/*.yaml` - Provision metadata (description, defaults, required_env, script)
 - `scripts/*.sh` - Implementation scripts
+- Supports subdirectories with path naming: `definitions/nfs/mount.yaml` → `radp:nfs/mount`
 
-Builtin provisions use `radp:` prefix (e.g., `radp:synology-nfs`). User config merges with definition defaults (user values take precedence).
+Builtin provisions use `radp:` prefix (e.g., `radp:nfs/external-nfs-mount`). User config merges with definition defaults (user values take precedence).
 
 To add a new builtin provision:
-1. Create `definitions/my-provision.yaml` with description, defaults, required_env, script
-2. Create `scripts/my-provision.sh` implementation
-3. Registry auto-discovers from YAML files (no code changes needed)
+1. Create `definitions/my-provision.yaml` (or `definitions/category/my-provision.yaml` for subdirectory)
+2. Create `scripts/my-provision.sh` (or `scripts/category/my-provision.sh` for subdirectory)
+3. Registry auto-discovers from YAML files recursively (no code changes needed)
+
+### User Provisions System
+User provisions are project-defined provisions under `{config_dir}/provisions/` or `{project_root}/provisions/`:
+- `user_registry.rb` - Registry for user provisions with two-level path lookup
+- User provisions use `user:` prefix (e.g., `user:docker-setup` or `user:nfs/external-mount`)
+- Supports subdirectories with path naming: `definitions/nfs/mount.yaml` → `user:nfs/mount`
+- Scripts mirror definitions structure: `scripts/nfs/mount.sh`
+
+Path resolution (consistent with script path resolution):
+1. `{config_dir}/provisions/definitions/xxx.yaml`
+2. `{project_root}/provisions/definitions/xxx.yaml`
+If found in both, config_dir takes precedence with a warning.
+
+### Path Resolution
+All relative paths use unified two-level resolution via `PathResolver`:
+- `{config_dir}/path` (first priority)
+- `{project_root}/path` (fallback)
+Applies to: provision `path`, file `source`, user provision definitions
 
 ## Directory Structure
 
@@ -111,6 +130,7 @@ src/main/ruby/
     └── radp_vagrant/
         ├── config_loader.rb        # Multi-file YAML loading
         ├── config_merger.rb        # Deep merge with array concatenation
+        ├── path_resolver.rb        # Unified two-level path resolution
         ├── configurators/
         │   ├── box.rb
         │   ├── provider.rb
@@ -128,7 +148,8 @@ src/main/ruby/
         │       ├── proxyconf.rb
         │       └── bindfs.rb
         └── provisions/             # Builtin provisions
-            ├── registry.rb         # Auto-discovery registry
+            ├── registry.rb         # Builtin provisions registry
+            ├── user_registry.rb    # User provisions registry
             ├── definitions/        # YAML definitions
             └── scripts/            # Shell scripts
 ```

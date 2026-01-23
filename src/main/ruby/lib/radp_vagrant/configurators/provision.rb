@@ -1,7 +1,8 @@
 # frozen_string_literal: true
 
-require 'pathname'
+require_relative '../path_resolver'
 require_relative '../provisions/registry'
+require_relative '../provisions/user_registry'
 
 module RadpVagrant
   module Configurators
@@ -18,25 +19,69 @@ module RadpVagrant
           provisions.each do |provision|
             next unless provision['enabled']
 
-            # Resolve builtin provisions
-            resolved_provision = resolve_builtin(provision)
+            # Resolve builtin or user provisions
+            resolved_provision = resolve_provision(provision, config_dir)
             configure_provision(vm_config, resolved_provision, config_dir)
           end
         end
 
         private
 
+        # Resolve provision by checking builtin (radp:) and user (user:) prefixes
+        # @param provision [Hash] The provision configuration
+        # @param config_dir [String] The configuration directory
+        # @return [Hash] The resolved provision with defaults merged
+        def resolve_provision(provision, config_dir)
+          name = provision['name']
+
+          # Check for builtin provision (radp:)
+          if Provisions::Registry.builtin?(name)
+            return resolve_builtin(provision)
+          end
+
+          # Check for user provision (user:)
+          if Provisions::UserRegistry.user_provision?(name)
+            return resolve_user_provision(provision, config_dir)
+          end
+
+          # Regular provision, no resolution needed
+          provision
+        end
+
         # Resolve builtin provision by merging definition defaults with user config
         # User config takes precedence over definition defaults
         def resolve_builtin(provision)
           name = provision['name']
-          return provision unless Provisions::Registry.builtin?(name)
-
           definition = Provisions::Registry.get(name)
           return provision unless definition
 
-          # Start with definition defaults
+          resolved = merge_with_defaults(provision, definition)
+          resolved['path'] = Provisions::Registry.script_path(name)
+          resolved['_builtin'] = true
+          resolved
+        end
+
+        # Resolve user provision by merging definition defaults with user config
+        # User config takes precedence over definition defaults
+        def resolve_user_provision(provision, config_dir)
+          name = provision['name']
+          definition = Provisions::UserRegistry.get(name, config_dir)
+          return provision unless definition
+
+          resolved = merge_with_defaults(provision, definition)
+          resolved['path'] = Provisions::UserRegistry.script_path(name, config_dir)
+          resolved['_user_provision'] = true
+          resolved
+        end
+
+        # Merge user config with definition defaults
+        # @param provision [Hash] User provision configuration
+        # @param definition [Hash] Definition with defaults
+        # @return [Hash] Merged configuration
+        def merge_with_defaults(provision, definition)
           resolved = {}
+
+          # Start with definition defaults
           if definition['defaults']
             definition['defaults'].each do |key, value|
               resolved[key] = value
@@ -47,10 +92,6 @@ module RadpVagrant
           provision.each do |key, value|
             resolved[key] = value
           end
-
-          # Set script path from builtin scripts directory
-          resolved['path'] = Provisions::Registry.script_path(name)
-          resolved['_builtin'] = true
 
           resolved
         end
@@ -80,8 +121,12 @@ module RadpVagrant
           # Script content - one of inline or path required
           options[:inline] = provision['inline'] if provision['inline']
           if provision['path']
-            # Builtin provisions already have absolute paths
-            options[:path] = provision['_builtin'] ? provision['path'] : resolve_path(provision['path'], config_dir)
+            # Builtin/user provisions already have absolute paths resolved
+            if provision['_builtin'] || provision['_user_provision']
+              options[:path] = provision['path']
+            else
+              options[:path] = PathResolver.resolve_with_fallback(provision['path'], config_dir)
+            end
           end
 
           # args: arguments to pass to the script
@@ -108,38 +153,13 @@ module RadpVagrant
         def configure_file(vm_config, name, provision, config_dir)
           options = {}
           options[:name] = name if name
-          options[:source] = resolve_path(provision['source'], config_dir)
+          options[:source] = PathResolver.resolve_with_fallback(provision['source'], config_dir)
           options[:destination] = provision['destination']
 
           # run: once, always, never
           options[:run] = provision['run'] if provision['run']
 
           vm_config.vm.provision 'file', **options
-        end
-
-        # Resolve relative paths against config directory or project root
-        # Absolute paths are returned as-is
-        #
-        # Resolution order:
-        # 1. If path exists relative to config_dir, use it (scripts inside config dir)
-        # 2. If path exists relative to config_dir's parent, use it (standard project structure)
-        # 3. Otherwise, return path relative to config_dir (let Vagrant report the error)
-        def resolve_path(path, config_dir)
-          return path unless path
-          return path if Pathname.new(path).absolute?
-          return path unless config_dir
-
-          # Try 1: relative to config directory (e.g., config/scripts/setup.sh)
-          config_relative = File.expand_path(path, config_dir)
-          return config_relative if File.exist?(config_relative)
-
-          # Try 2: relative to project root (e.g., project/scripts/setup.sh)
-          project_root = File.dirname(config_dir)
-          project_relative = File.expand_path(path, project_root)
-          return project_relative if File.exist?(project_relative)
-
-          # Fallback: return config-relative path (Vagrant will report file not found)
-          config_relative
         end
       end
     end

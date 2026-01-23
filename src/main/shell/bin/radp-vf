@@ -251,16 +251,65 @@ radp:
                     type: dhcp
 VAGRANT_DEV_YAML
 
+  # Create user provisions directory structure with example
+  local provisions_dir="${abs_config_dir}/provisions"
+  mkdir -p "${provisions_dir}/definitions"
+  mkdir -p "${provisions_dir}/scripts"
+
+  # Create example user provision definition
+  cat > "${provisions_dir}/definitions/example.yaml" << 'PROVISION_DEF'
+# Example user provision definition
+# Usage in vagrant.yaml or vagrant-{env}.yaml:
+#   provisions:
+#     - name: user:example
+#       enabled: true
+#       env:
+#         MESSAGE: "Hello from user provision"
+description: Example user provision - demonstrates user-defined provisions
+defaults:
+  privileged: false
+  run: once
+required_env: []
+script: example.sh
+PROVISION_DEF
+
+  # Create example user provision script
+  cat > "${provisions_dir}/scripts/example.sh" << 'PROVISION_SCRIPT'
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Example user provision script
+# This script is executed when the provision runs
+#
+# Environment variables from provision config are available:
+#   ${MESSAGE} - example variable
+
+echo "[INFO] Running example user provision"
+echo "[INFO] MESSAGE=${MESSAGE:-not set}"
+echo "[INFO] User provision completed"
+PROVISION_SCRIPT
+
+  chmod +x "${provisions_dir}/scripts/example.sh"
+
   echo "Project initialized successfully!"
   echo ""
   echo "Created:"
   echo "  ${abs_config_dir}/"
-  echo "  ├── vagrant.yaml          # Base config (env: sample)"
-  echo "  └── vagrant-sample.yaml   # Cluster definitions"
+  echo "  ├── vagrant.yaml              # Base config (env: sample)"
+  echo "  ├── vagrant-sample.yaml       # Cluster definitions"
+  echo "  └── provisions/               # User-defined provisions"
+  echo "      ├── definitions/"
+  echo "      │   └── example.yaml      # Example provision definition"
+  echo "      └── scripts/"
+  echo "          └── example.sh        # Example provision script"
   echo ""
   echo "Framework:"
   echo "  RADP_VF_HOME: ${RADP_VF_HOME}"
   echo "  Vagrantfile:  ${RADP_VF_HOME}/Vagrantfile"
+  echo ""
+  echo "Provisions:"
+  echo "  - Framework builtin: radp:nfs/external-nfs-mount"
+  echo "  - User-defined:      user:example (see provisions/definitions/example.yaml)"
   echo ""
   echo "Next steps:"
   echo "  # Option 1: Run from project directory"
@@ -272,6 +321,7 @@ VAGRANT_DEV_YAML
   echo "  radp-vf vg status"
   echo ""
   echo "Edit vagrant.yaml to change 'env' and create your own environment file."
+  echo "Add custom provisions in provisions/definitions/ with user: prefix."
 }
 
 cmd_dump_config() {

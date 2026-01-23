@@ -120,7 +120,12 @@ This creates the following structure:
 myproject/
 └── config/
     ├── vagrant.yaml          # Base configuration (sets env)
-    └── vagrant-sample.yaml   # Environment-specific clusters
+    ├── vagrant-sample.yaml   # Environment-specific clusters
+    └── provisions/           # User-defined provisions
+        ├── definitions/
+        │   └── example.yaml  # Example provision definition
+        └── scripts/
+            └── example.sh    # Example provision script
 ```
 
 The framework's Vagrantfile is used automatically via `radp-vf vg` - no Vagrantfile is created in your project
@@ -289,22 +294,32 @@ src/main/ruby/
         ├── config_loader.rb        # Multi-file YAML loading
         ├── config_merger.rb        # Deep merge with array concatenation
         ├── generator.rb            # Vagrantfile generator (dry-run)
-        └── configurators/
-            ├── box.rb              # Box configuration
-            ├── provider.rb         # Provider (VirtualBox, etc.)
-            ├── network.rb          # Network & hostname
-            ├── hostmanager.rb      # Per-guest hostmanager
-            ├── synced_folder.rb    # Synced folders
-            ├── provision.rb        # Provisioners
-            ├── trigger.rb          # Triggers
-            ├── plugin.rb           # Plugin orchestrator
-            └── plugins/            # Modular plugin configurators
-                ├── base.rb         # Base class
-                ├── registry.rb     # Plugin registry
-                ├── hostmanager.rb  # vagrant-hostmanager
-                ├── vbguest.rb      # vagrant-vbguest
-                ├── proxyconf.rb    # vagrant-proxyconf
-                └── bindfs.rb       # vagrant-bindfs
+        ├── path_resolver.rb        # Unified two-level path resolution
+        ├── configurators/
+        │   ├── box.rb              # Box configuration
+        │   ├── provider.rb         # Provider (VirtualBox, etc.)
+        │   ├── network.rb          # Network & hostname
+        │   ├── hostmanager.rb      # Per-guest hostmanager
+        │   ├── synced_folder.rb    # Synced folders
+        │   ├── provision.rb        # Provisioners
+        │   ├── trigger.rb          # Triggers
+        │   ├── plugin.rb           # Plugin orchestrator
+        │   └── plugins/            # Modular plugin configurators
+        │       ├── base.rb         # Base class
+        │       ├── registry.rb     # Plugin registry
+        │       ├── hostmanager.rb  # vagrant-hostmanager
+        │       ├── vbguest.rb      # vagrant-vbguest
+        │       ├── proxyconf.rb    # vagrant-proxyconf
+        │       └── bindfs.rb       # vagrant-bindfs
+        └── provisions/             # Builtin & user provisions
+            ├── registry.rb         # Builtin provision registry (radp:)
+            ├── user_registry.rb    # User provision registry (user:)
+            ├── definitions/        # Provision definitions (YAML)
+            │   └── nfs/
+            │       └── external-nfs-mount.yaml
+            └── scripts/            # Provision scripts
+                └── nfs/
+                    └── external-nfs-mount.sh
 ```
 
 ## Configuration Structure
@@ -904,6 +919,138 @@ clusters:
 ```
 
 Execution order: `global-pre → cluster-pre → guest → cluster-post → global-post`
+
+#### Builtin Provisions
+
+The framework provides builtin provisions for common tasks. Builtin provisions are identified by the `radp:` prefix and come with sensible defaults.
+
+**Available builtin provisions:**
+
+| Name                          | Description                                                | Defaults                        |
+|-------------------------------|------------------------------------------------------------|---------------------------------|
+| `radp:nfs/external-nfs-mount` | Mount external NFS shares with auto-directory and verification | `privileged: true, run: always` |
+
+**Usage:**
+
+```yaml
+provisions:
+  - name: radp:nfs/external-nfs-mount
+    enabled: true
+    env:
+      NFS_SERVER: "nas.example.com"
+      NFS_ROOT: "/volume1/nfs"
+```
+
+**Override defaults:**
+
+User configuration takes precedence over builtin defaults:
+
+```yaml
+provisions:
+  - name: radp:nfs/external-nfs-mount
+    enabled: true
+    run: once            # Override default (always -> once)
+    privileged: false    # Override default (true -> false)
+    env:
+      NFS_SERVER: "nas.example.com"
+      NFS_ROOT: "/volume1/nfs"
+```
+
+**Required environment variables:**
+
+Each builtin provision may require specific environment variables:
+
+| Provision                     | Required Variables       |
+|-------------------------------|--------------------------|
+| `radp:nfs/external-nfs-mount` | `NFS_SERVER`, `NFS_ROOT` |
+
+#### User Provisions
+
+You can define your own reusable provisions with the `user:` prefix. User provisions work like builtin provisions but are defined in your project.
+
+**Directory structure:**
+
+After running `radp-vf init`, your project will have:
+
+```
+myproject/
+└── config/
+    ├── vagrant.yaml
+    ├── vagrant-{env}.yaml
+    └── provisions/
+        ├── definitions/
+        │   └── example.yaml      # Provision definition
+        └── scripts/
+            └── example.sh        # Provision script
+```
+
+**Subdirectory support:**
+
+You can organize provisions into subdirectories. The subdirectory path becomes part of the provision name:
+
+```
+provisions/
+├── definitions/
+│   ├── example.yaml              # -> user:example
+│   ├── nfs/
+│   │   └── external-mount.yaml   # -> user:nfs/external-mount
+│   └── docker/
+│       └── setup.yaml            # -> user:docker/setup
+└── scripts/
+    ├── example.sh
+    ├── nfs/
+    │   └── external-mount.sh     # Mirror definitions structure
+    └── docker/
+        └── setup.sh
+```
+
+**Creating a user provision:**
+
+1. Create a definition file in `provisions/definitions/`:
+
+```yaml
+# config/provisions/definitions/docker/setup.yaml
+description: Install and configure Docker
+defaults:
+  privileged: true
+  run: once
+required_env:
+  - DOCKER_VERSION
+script: setup.sh    # Script in provisions/scripts/docker/setup.sh
+```
+
+2. Create the script in `provisions/scripts/` (mirroring the subdirectory structure):
+
+```bash
+#!/usr/bin/env bash
+# config/provisions/scripts/docker/setup.sh
+set -euo pipefail
+
+echo "[INFO] Installing Docker ${DOCKER_VERSION}"
+# Installation logic here...
+```
+
+3. Use it in your YAML config:
+
+```yaml
+provisions:
+  - name: user:docker/setup
+    enabled: true
+    env:
+      DOCKER_VERSION: "24.0"
+```
+
+**Path resolution:**
+
+User provisions use the same two-level path resolution as regular provisions:
+
+```
+Search order:
+1. {config_dir}/provisions/definitions/xxx.yaml
+2. {project_root}/provisions/definitions/xxx.yaml
+```
+
+If the same provision exists in both locations, `config_dir` takes precedence and a warning is displayed.
 
 <details>
 <summary><b>All provision options</b></summary>

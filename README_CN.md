@@ -119,7 +119,12 @@ radp-vf init myproject
 myproject/
 └── config/
     ├── vagrant.yaml          # 基础配置（设置 env）
-    └── vagrant-sample.yaml   # 环境特定集群配置
+    ├── vagrant-sample.yaml   # 环境特定集群配置
+    └── provisions/           # 用户自定义 provisions
+        ├── definitions/
+        │   └── example.yaml  # 示例 provision 定义
+        └── scripts/
+            └── example.sh    # 示例 provision 脚本
 ```
 
 框架的 Vagrantfile 会通过 `radp-vf vg` 自动使用 - 项目目录中无需创建 Vagrantfile。
@@ -285,22 +290,32 @@ src/main/ruby/
         ├── config_loader.rb        # 多文件 YAML 加载
         ├── config_merger.rb        # 深度合并（数组连接）
         ├── generator.rb            # Vagrantfile 生成器（dry-run）
-        └── configurators/
-            ├── box.rb              # Box 配置
-            ├── provider.rb         # Provider 配置（VirtualBox 等）
-            ├── network.rb          # 网络和主机名
-            ├── hostmanager.rb      # Guest 级别 hostmanager
-            ├── synced_folder.rb    # 同步文件夹
-            ├── provision.rb        # 配置脚本
-            ├── trigger.rb          # 触发器
-            ├── plugin.rb           # 插件协调器
-            └── plugins/            # 模块化插件配置器
-                ├── base.rb         # 基类
-                ├── registry.rb     # 插件注册表
-                ├── hostmanager.rb  # vagrant-hostmanager
-                ├── vbguest.rb      # vagrant-vbguest
-                ├── proxyconf.rb    # vagrant-proxyconf
-                └── bindfs.rb       # vagrant-bindfs
+        ├── path_resolver.rb        # 统一的两级路径解析
+        ├── configurators/
+        │   ├── box.rb              # Box 配置
+        │   ├── provider.rb         # Provider 配置（VirtualBox 等）
+        │   ├── network.rb          # 网络和主机名
+        │   ├── hostmanager.rb      # Guest 级别 hostmanager
+        │   ├── synced_folder.rb    # 同步文件夹
+        │   ├── provision.rb        # 配置脚本
+        │   ├── trigger.rb          # 触发器
+        │   ├── plugin.rb           # 插件协调器
+        │   └── plugins/            # 模块化插件配置器
+        │       ├── base.rb         # 基类
+        │       ├── registry.rb     # 插件注册表
+        │       ├── hostmanager.rb  # vagrant-hostmanager
+        │       ├── vbguest.rb      # vagrant-vbguest
+        │       ├── proxyconf.rb    # vagrant-proxyconf
+        │       └── bindfs.rb       # vagrant-bindfs
+        └── provisions/             # 内置 & 用户 provisions
+            ├── registry.rb         # 内置 provision 注册表 (radp:)
+            ├── user_registry.rb    # 用户 provision 注册表 (user:)
+            ├── definitions/        # Provision 定义文件 (YAML)
+            │   └── nfs/
+            │       └── external-nfs-mount.yaml
+            └── scripts/            # Provision 脚本
+                └── nfs/
+                    └── external-nfs-mount.sh
 ```
 
 ## 配置结构
@@ -896,6 +911,138 @@ clusters:
 ```
 
 执行顺序：`global-pre → cluster-pre → guest → cluster-post → global-post`
+
+#### 内置 Provisions
+
+框架提供了用于常见任务的内置 provisions。内置 provisions 以 `radp:` 前缀标识，并带有合理的默认配置。
+
+**可用的内置 provisions：**
+
+| 名称                          | 描述                                  | 默认值                           |
+|-------------------------------|--------------------------------------|---------------------------------|
+| `radp:nfs/external-nfs-mount` | 挂载外部 NFS 共享并自动创建目录和验证    | `privileged: true, run: always` |
+
+**使用方法：**
+
+```yaml
+provisions:
+  - name: radp:nfs/external-nfs-mount
+    enabled: true
+    env:
+      NFS_SERVER: "nas.example.com"
+      NFS_ROOT: "/volume1/nfs"
+```
+
+**覆盖默认值：**
+
+用户配置优先于内置默认值：
+
+```yaml
+provisions:
+  - name: radp:nfs/external-nfs-mount
+    enabled: true
+    run: once            # 覆盖默认值 (always -> once)
+    privileged: false    # 覆盖默认值 (true -> false)
+    env:
+      NFS_SERVER: "nas.example.com"
+      NFS_ROOT: "/volume1/nfs"
+```
+
+**必需的环境变量：**
+
+每个内置 provision 可能需要特定的环境变量：
+
+| Provision                     | 必需变量                    |
+|-------------------------------|--------------------------|
+| `radp:nfs/external-nfs-mount` | `NFS_SERVER`, `NFS_ROOT` |
+
+#### 用户自定义 Provisions
+
+你可以使用 `user:` 前缀定义自己的可复用 provisions。用户 provisions 的工作方式与内置 provisions 相同，但定义在你的项目中。
+
+**目录结构：**
+
+运行 `radp-vf init` 后，你的项目将包含：
+
+```
+myproject/
+└── config/
+    ├── vagrant.yaml
+    ├── vagrant-{env}.yaml
+    └── provisions/
+        ├── definitions/
+        │   └── example.yaml      # Provision 定义
+        └── scripts/
+            └── example.sh        # Provision 脚本
+```
+
+**子目录支持：**
+
+你可以将 provisions 组织到子目录中。子目录路径会成为 provision 名称的一部分：
+
+```
+provisions/
+├── definitions/
+│   ├── example.yaml              # -> user:example
+│   ├── nfs/
+│   │   └── external-mount.yaml   # -> user:nfs/external-mount
+│   └── docker/
+│       └── setup.yaml            # -> user:docker/setup
+└── scripts/
+    ├── example.sh
+    ├── nfs/
+    │   └── external-mount.sh     # 镜像 definitions 目录结构
+    └── docker/
+        └── setup.sh
+```
+
+**创建用户 provision：**
+
+1. 在 `provisions/definitions/` 中创建定义文件：
+
+```yaml
+# config/provisions/definitions/docker/setup.yaml
+description: 安装和配置 Docker
+defaults:
+  privileged: true
+  run: once
+required_env:
+  - DOCKER_VERSION
+script: setup.sh    # 脚本位于 provisions/scripts/docker/setup.sh
+```
+
+2. 在 `provisions/scripts/` 中创建脚本（镜像子目录结构）：
+
+```bash
+#!/usr/bin/env bash
+# config/provisions/scripts/docker/setup.sh
+set -euo pipefail
+
+echo "[INFO] Installing Docker ${DOCKER_VERSION}"
+# 安装逻辑...
+```
+
+3. 在 YAML 配置中使用：
+
+```yaml
+provisions:
+  - name: user:docker/setup
+    enabled: true
+    env:
+      DOCKER_VERSION: "24.0"
+```
+
+**路径解析：**
+
+用户 provisions 使用与普通 provisions 相同的两级路径解析：
+
+```
+查找顺序：
+1. {config_dir}/provisions/definitions/xxx.yaml
+2. {project_root}/provisions/definitions/xxx.yaml
+```
+
+如果同一 provision 在两个位置都存在，`config_dir` 优先，并显示警告。
 
 <details>
 <summary><b>所有 provision 选项</b></summary>
