@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require 'pathname'
+
 module RadpVagrant
   # Unified path resolver for relative paths
   # Provides consistent two-level lookup: config_dir -> project_root
