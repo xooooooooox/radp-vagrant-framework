@@ -1,31 +1,8 @@
-# CHANGELOG
-
 ## v0.0.22 - 2026-01-23
 
-- 06dccc5 feat(provision): Support predefined builitin provisions and user predefined provisions
-- e17b828 feat(provision): support builtin provision
-- 93b6abf docs: update README files to rename vagrant-sample.yaml to vagrant-dev.yaml
-- 0acb1e6 docs: clarify VAGRANT_DOTFILE_PATH usage and recommend fixed directory setup
-
-## v0.0.21 - 2026-01-22
-
-- fix: pad version placeholder to ensure consistent banner formatting
-
-## v0.0.19 - 2026-01-22
-
-- 985bdc2 docs: update README files to clarify script path resolution logic and supported directory structures
-- 83e16b7 feat(provision): enhance path resolution logic with additional fallbacks
-- 8903aef docs: Explain script path resolution and recommended directory structure in README files
-- 6d08a46 feat(provision): Add support for resolving relative paths against config directory
-
-## v0.0.18 - 2026-01-22
-
-- 529c239 refactor: Move banner content to an external file template
-
-## v0.0.17 - 2026-01-22
-
-- d2cf9d6 docs: Add detailed tables for provider, network, provision, and trigger options in README files
-- 3feb87f fix(provision): set default `privileged` option to false in provision settings
+- Support predefined builitin provisions and user predefined provisions
+- Pad version placeholder to ensure consistent banner formatting
+- Set default `privileged` option to false in provision settings
 
 ## v0.0.16 - 2026-01-22
 
