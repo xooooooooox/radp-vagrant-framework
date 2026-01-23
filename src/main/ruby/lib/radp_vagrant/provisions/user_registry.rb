@@ -58,7 +58,8 @@ module RadpVagrant
           return nil unless config_dir
 
           definition = get(name, config_dir)
-          return nil unless definition && definition['script']
+          script_name = definition&.dig('defaults', 'script')
+          return nil unless script_name
 
           provision_name = extract_name(name)
           # Get subdirectory from provision name (e.g., 'nfs/external-mount' -> 'nfs')
@@ -67,9 +68,9 @@ module RadpVagrant
 
           # Build script path: provisions/scripts/{subdir}/{script}
           script_relative = if subdir.empty?
-                              File.join(PROVISIONS_DIR, SCRIPTS_DIR, definition['script'])
+                              File.join(PROVISIONS_DIR, SCRIPTS_DIR, script_name)
                             else
-                              File.join(PROVISIONS_DIR, SCRIPTS_DIR, subdir, definition['script'])
+                              File.join(PROVISIONS_DIR, SCRIPTS_DIR, subdir, script_name)
                             end
 
           PathResolver.resolve(script_relative, config_dir, warn_on_conflict: true)
@@ -113,7 +114,7 @@ module RadpVagrant
                 definition = YAML.load_file(file, permitted_classes: [Symbol])
                 provisions[name] = {
                   name: "#{USER_PREFIX}#{name}",
-                  description: definition['description'] || 'No description',
+                  description: definition['desc'] || 'No description',
                   location: file
                 }
               rescue StandardError => e

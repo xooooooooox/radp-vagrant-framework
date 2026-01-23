@@ -47,7 +47,8 @@ module RadpVagrant
         # @return [String, nil] Absolute path to script or nil
         def script_path(name)
           definition = get(name)
-          return nil unless definition && definition['script']
+          script_name = definition&.dig('defaults', 'script')
+          return nil unless script_name
 
           builtin_name = extract_name(name)
           # Get subdirectory from provision name (e.g., 'nfs/mount' -> 'nfs')
@@ -56,9 +57,9 @@ module RadpVagrant
 
           # Build script path: scripts/{subdir}/{script}
           if subdir.empty?
-            File.join(SCRIPTS_DIR, definition['script'])
+            File.join(SCRIPTS_DIR, script_name)
           else
-            File.join(SCRIPTS_DIR, subdir, definition['script'])
+            File.join(SCRIPTS_DIR, subdir, script_name)
           end
         end
 
@@ -68,7 +69,7 @@ module RadpVagrant
           provisions.map do |name, definition|
             {
               name: "#{BUILTIN_PREFIX}#{name}",
-              description: definition['description'] || 'No description'
+              description: definition['desc'] || 'No description'
             }
           end
         end

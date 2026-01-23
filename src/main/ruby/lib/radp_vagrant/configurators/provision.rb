@@ -75,25 +75,64 @@ module RadpVagrant
         end
 
         # Merge user config with definition defaults
+        # New definition format:
+        #   desc: Human-readable description
+        #   defaults:
+        #     privileged: true
+        #     run: once
+        #     env:
+        #       required: [{name, desc}]
+        #       optional: [{name, value, desc}]
+        #     script: xxx.sh
+        #
         # @param provision [Hash] User provision configuration
         # @param definition [Hash] Definition with defaults
         # @return [Hash] Merged configuration
         def merge_with_defaults(provision, definition)
           resolved = {}
+          defaults = definition['defaults'] || {}
 
-          # Start with definition defaults
-          if definition['defaults']
-            definition['defaults'].each do |key, value|
-              resolved[key] = value
-            end
-          end
+          # Apply simple defaults (privileged, run)
+          resolved['privileged'] = defaults['privileged'] if defaults.key?('privileged')
+          resolved['run'] = defaults['run'] if defaults.key?('run')
 
           # Merge user config (user values override defaults)
           provision.each do |key, value|
             resolved[key] = value
           end
 
+          # Apply optional env defaults
+          optional_env = defaults.dig('env', 'optional')
+          resolved['env'] = merge_optional_env(resolved['env'], optional_env)
+
           resolved
+        end
+
+        # Merge optional env defaults with user-provided env
+        # User-provided env values take precedence over optional env defaults
+        # @param user_env [Hash, nil] User-provided environment variables
+        # @param optional_env [Array<Hash>, nil] Optional env definitions with value defaults
+        # @return [Hash] Merged environment variables
+        def merge_optional_env(user_env, optional_env)
+          return user_env || {} unless optional_env
+
+          merged = {}
+
+          # First, apply optional env defaults (using 'value' field)
+          optional_env.each do |opt|
+            name = opt['name']
+            default_value = opt['value']
+            merged[name] = default_value unless default_value.nil?
+          end
+
+          # Then, override with user-provided values
+          if user_env
+            user_env.each do |key, value|
+              merged[key] = value
+            end
+          end
+
+          merged
         end
 
         def configure_provision(vm_config, provision, config_dir)
