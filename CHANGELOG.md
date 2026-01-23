@@ -3,6 +3,7 @@
 - 17ae299 docs: update README to document new SSH cluster trust provision
 - 5bad091 docs(shell): clarify SSH trust descriptions in provision help message
 - 4cf48c4 feat(provision): add SSH cluster trust provision to enable seamless same-user VM access within clusters
+
 ## v0.0.23 - 2026-01-23
 
 - e076122 docs: update README to include new SSH host trust and chrony time sync provisions
@@ -10,6 +11,7 @@
 - b54cac9 feat(provision): restructure NFS mount definition to enhance env variable descriptions
 - 850a1b2 feat(provision): update user provision structure and enhance provision descriptions
 - 7c67c8d feat(provision): refactor provision script handling and enhance default merging logic
+
 ## v0.0.22 - 2026-01-23
 
 - Support predefined builitin provisions and user predefined provisions
