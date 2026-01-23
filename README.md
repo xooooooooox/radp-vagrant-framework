@@ -311,23 +311,37 @@ src/main/ruby/
         │       ├── vbguest.rb      # vagrant-vbguest
         │       ├── proxyconf.rb    # vagrant-proxyconf
         │       └── bindfs.rb       # vagrant-bindfs
-        └── provisions/             # Builtin & user provisions
-            ├── registry.rb         # Builtin provision registry (radp:)
-            ├── user_registry.rb    # User provision registry (user:)
-            ├── definitions/        # Provision definitions (YAML)
-            │   ├── nfs/
-            │   │   └── external-nfs-mount.yaml
-            │   ├── ssh/
-            │   │   └── host-trust.yaml
-            │   └── time/
-            │       └── chrony-sync.yaml
-            └── scripts/            # Provision scripts
-                ├── nfs/
-                │   └── external-nfs-mount.sh
-                ├── ssh/
-                │   └── host-trust.sh
-                └── time/
-                    └── chrony-sync.sh
+        ├── provisions/             # Builtin & user provisions
+        │   ├── registry.rb         # Builtin provision registry (radp:)
+        │   ├── user_registry.rb    # User provision registry (user:)
+        │   ├── definitions/        # Provision definitions (YAML)
+        │   │   ├── nfs/
+        │   │   │   └── external-nfs-mount.yaml
+        │   │   ├── ssh/
+        │   │   │   ├── host-trust.yaml
+        │   │   │   └── cluster-trust.yaml
+        │   │   └── time/
+        │   │       └── chrony-sync.yaml
+        │   └── scripts/            # Provision scripts
+        │       ├── nfs/
+        │       │   └── external-nfs-mount.sh
+        │       ├── ssh/
+        │       │   ├── host-trust.sh
+        │       │   └── cluster-trust.sh
+        │       └── time/
+        │           └── chrony-sync.sh
+        └── triggers/               # Builtin triggers
+            ├── registry.rb         # Builtin trigger registry (radp:)
+            ├── definitions/        # Trigger definitions (YAML)
+            │   └── system/
+            │       ├── disable-swap.yaml
+            │       ├── disable-selinux.yaml
+            │       └── disable-firewalld.yaml
+            └── scripts/            # Trigger scripts
+                └── system/
+                    ├── disable-swap.sh
+                    ├── disable-selinux.sh
+                    └── disable-firewalld.sh
 ```
 
 ## Configuration Structure
@@ -1202,6 +1216,66 @@ triggers:
 | `args`   | string/array | Arguments to pass to script             |
 
 </details>
+
+#### Builtin Triggers
+
+The framework provides builtin triggers for common system configuration tasks. Builtin triggers are identified by the
+`radp:` prefix and execute scripts on the guest VM after `up` or `reload` actions.
+
+**Available builtin triggers:**
+
+| Name                            | Description                               | Default Timing  |
+|---------------------------------|-------------------------------------------|-----------------|
+| `radp:system/disable-swap`      | Disable swap partition (required for K8s) | after up/reload |
+| `radp:system/disable-selinux`   | Disable SELinux (set to permissive mode)  | after up/reload |
+| `radp:system/disable-firewalld` | Disable firewalld service                 | after up/reload |
+
+**Usage:**
+
+```yaml
+triggers:
+  # Disable swap (required for Kubernetes)
+  - name: radp:system/disable-swap
+    enabled: true
+
+  # Disable SELinux
+  - name: radp:system/disable-selinux
+    enabled: true
+
+  # Disable firewalld
+  - name: radp:system/disable-firewalld
+    enabled: true
+```
+
+**Override defaults:**
+
+User configuration takes precedence over builtin defaults:
+
+```yaml
+triggers:
+  - name: radp:system/disable-swap
+    enabled: true
+    "on": after                # Override timing (default: after)
+    action: up                 # Override actions (default: [up, reload])
+    on-error: halt             # Override error behavior (default: continue)
+```
+
+**Builtin trigger definition format:**
+
+Builtin triggers are defined in YAML with the following structure:
+
+```yaml
+desc: Human-readable description
+defaults:
+  "on": after
+  action:
+    - up
+    - reload
+  type: action
+  on-error: continue
+  run-remote:
+    script: script-name.sh
+```
 
 ## Configuration Inheritance
 

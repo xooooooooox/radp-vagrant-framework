@@ -307,23 +307,37 @@ src/main/ruby/
         │       ├── vbguest.rb      # vagrant-vbguest
         │       ├── proxyconf.rb    # vagrant-proxyconf
         │       └── bindfs.rb       # vagrant-bindfs
-        └── provisions/             # 内置 & 用户 provisions
-            ├── registry.rb         # 内置 provision 注册表 (radp:)
-            ├── user_registry.rb    # 用户 provision 注册表 (user:)
-            ├── definitions/        # Provision 定义文件 (YAML)
-            │   ├── nfs/
-            │   │   └── external-nfs-mount.yaml
-            │   ├── ssh/
-            │   │   └── host-trust.yaml
-            │   └── time/
-            │       └── chrony-sync.yaml
-            └── scripts/            # Provision 脚本
-                ├── nfs/
-                │   └── external-nfs-mount.sh
-                ├── ssh/
-                │   └── host-trust.sh
-                └── time/
-                    └── chrony-sync.sh
+        ├── provisions/             # 内置 & 用户 provisions
+        │   ├── registry.rb         # 内置 provision 注册表 (radp:)
+        │   ├── user_registry.rb    # 用户 provision 注册表 (user:)
+        │   ├── definitions/        # Provision 定义文件 (YAML)
+        │   │   ├── nfs/
+        │   │   │   └── external-nfs-mount.yaml
+        │   │   ├── ssh/
+        │   │   │   ├── host-trust.yaml
+        │   │   │   └── cluster-trust.yaml
+        │   │   └── time/
+        │   │       └── chrony-sync.yaml
+        │   └── scripts/            # Provision 脚本
+        │       ├── nfs/
+        │       │   └── external-nfs-mount.sh
+        │       ├── ssh/
+        │       │   ├── host-trust.sh
+        │       │   └── cluster-trust.sh
+        │       └── time/
+        │           └── chrony-sync.sh
+        └── triggers/               # 内置触发器
+            ├── registry.rb         # 内置触发器注册表 (radp:)
+            ├── definitions/        # 触发器定义文件 (YAML)
+            │   └── system/
+            │       ├── disable-swap.yaml
+            │       ├── disable-selinux.yaml
+            │       └── disable-firewalld.yaml
+            └── scripts/            # 触发器脚本
+                └── system/
+                    ├── disable-swap.sh
+                    ├── disable-selinux.sh
+                    └── disable-firewalld.sh
 ```
 
 ## 配置结构
@@ -1191,6 +1205,65 @@ triggers:
 | `args`   | string/array | 传递给脚本的参数           |
 
 </details>
+
+#### 内置触发器
+
+框架提供了用于常见系统配置任务的内置触发器。内置触发器以 `radp:` 前缀标识，在 `up` 或 `reload` 动作后在虚拟机内执行脚本。
+
+**可用的内置触发器：**
+
+| 名称                              | 描述                            | 默认时机            |
+|---------------------------------|-------------------------------|-----------------|
+| `radp:system/disable-swap`      | 禁用 swap 分区（Kubernetes 必需）     | after up/reload |
+| `radp:system/disable-selinux`   | 禁用 SELinux（设置为 permissive 模式） | after up/reload |
+| `radp:system/disable-firewalld` | 禁用 firewalld 服务               | after up/reload |
+
+**使用方法：**
+
+```yaml
+triggers:
+  # 禁用 swap（Kubernetes 必需）
+  - name: radp:system/disable-swap
+    enabled: true
+
+  # 禁用 SELinux
+  - name: radp:system/disable-selinux
+    enabled: true
+
+  # 禁用 firewalld
+  - name: radp:system/disable-firewalld
+    enabled: true
+```
+
+**覆盖默认值：**
+
+用户配置优先于内置默认值：
+
+```yaml
+triggers:
+  - name: radp:system/disable-swap
+    enabled: true
+    "on": after                # 覆盖时机（默认: after）
+    action: up                 # 覆盖动作（默认: [up, reload]）
+    on-error: halt             # 覆盖错误处理（默认: continue）
+```
+
+**内置触发器定义格式：**
+
+内置触发器使用以下 YAML 结构定义：
+
+```yaml
+desc: 人类可读的描述
+defaults:
+  "on": after
+  action:
+    - up
+    - reload
+  type: action
+  on-error: continue
+  run-remote:
+    script: script-name.sh
+```
 
 ## 配置继承
 
