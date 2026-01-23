@@ -127,6 +127,39 @@ Path resolution (consistent with script path resolution):
 2. `{project_root}/provisions/definitions/xxx.yaml`
 If found in both, config_dir takes precedence with a warning.
 
+### Builtin Triggers System
+Builtin triggers are framework-provided triggers under `lib/radp_vagrant/triggers/`:
+- `registry.rb` - Central registry with auto-discovery from YAML definitions
+- `definitions/**/*.yaml` - Trigger metadata (desc, defaults with timing, action, run/run-remote)
+- `scripts/**/*.sh` - Implementation scripts
+- Supports subdirectories with path naming: `definitions/system/disable-swap.yaml` → `radp:system/disable-swap`
+
+Trigger definition format:
+```yaml
+desc: Human-readable description
+defaults:
+  "on": after           # timing: before/after
+  action:               # trigger actions (single or array)
+    - up
+    - reload
+  type: action          # trigger type: action/command/hook
+  on-error: continue    # error handling: continue/halt
+  run-remote:           # execute on guest (or use 'run' for host)
+    script: script-name.sh
+```
+
+Builtin triggers use `radp:` prefix (e.g., `radp:system/disable-swap`). User config merges with definition defaults (user values take precedence).
+
+Available builtin triggers:
+- `radp:system/disable-swap` - Disable swap partition (required for Kubernetes)
+- `radp:system/disable-selinux` - Disable SELinux (set to permissive mode)
+- `radp:system/disable-firewalld` - Disable firewalld service
+
+To add a new builtin trigger:
+1. Create `definitions/my-trigger.yaml` (or `definitions/category/my-trigger.yaml` for subdirectory)
+2. Create `scripts/my-trigger.sh` (or `scripts/category/my-trigger.sh` for subdirectory)
+3. Registry auto-discovers from YAML files recursively (no code changes needed)
+
 ### Path Resolution
 All relative paths use unified two-level resolution via `PathResolver`:
 - `{config_dir}/path` (first priority)
@@ -164,9 +197,13 @@ src/main/ruby/
         │       ├── vbguest.rb
         │       ├── proxyconf.rb
         │       └── bindfs.rb
-        └── provisions/             # Builtin provisions
-            ├── registry.rb         # Builtin provisions registry
-            ├── user_registry.rb    # User provisions registry
+        ├── provisions/             # Builtin provisions
+        │   ├── registry.rb         # Builtin provisions registry
+        │   ├── user_registry.rb    # User provisions registry
+        │   ├── definitions/        # YAML definitions
+        │   └── scripts/            # Shell scripts
+        └── triggers/               # Builtin triggers
+            ├── registry.rb         # Builtin triggers registry
             ├── definitions/        # YAML definitions
             └── scripts/            # Shell scripts
 ```
