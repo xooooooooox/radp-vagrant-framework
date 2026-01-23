@@ -371,7 +371,6 @@ module RadpVagrant
     def generate_provision(lines, var, call)
       opts = call[:options].dup
       inline = opts.delete(:inline)
-      name = opts[:name]
 
       if inline && inline.include?("\n")
         # Multi-line inline script
