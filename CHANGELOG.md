@@ -1,5 +1,12 @@
 # CHANGELOG
 
+## v0.0.22 - 2026-01-23
+
+- 06dccc5 feat(provision): Support predefined builitin provisions and user predefined provisions
+- e17b828 feat(provision): support builtin provision
+- 93b6abf docs: update README files to rename vagrant-sample.yaml to vagrant-dev.yaml
+- 0acb1e6 docs: clarify VAGRANT_DOTFILE_PATH usage and recommend fixed directory setup
+
 ## v0.0.21 - 2026-01-22
 
 - fix: pad version placeholder to ensure consistent banner formatting
