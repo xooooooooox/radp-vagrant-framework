@@ -926,11 +926,12 @@ clusters:
 
 **可用的内置 provisions：**
 
-| 名称                          | 描述                                      | 默认值                           |
-|-------------------------------|------------------------------------------|---------------------------------|
-| `radp:nfs/external-nfs-mount` | 挂载外部 NFS 共享并自动创建目录和验证        | `privileged: true, run: always` |
-| `radp:ssh/host-trust`         | 添加宿主机 SSH 公钥到虚拟机实现免密登录      | `privileged: false, run: once`  |
-| `radp:time/chrony-sync`       | 使用 chrony 配置 NTP 时间同步              | `privileged: true, run: once`   |
+| 名称                            | 描述                     | 默认值                             |
+|-------------------------------|------------------------|---------------------------------|
+| `radp:nfs/external-nfs-mount` | 挂载外部 NFS 共享并自动创建目录和验证  | `privileged: true, run: always` |
+| `radp:ssh/host-trust`         | 添加宿主机 SSH 公钥到虚拟机实现免密登录 | `privileged: false, run: once`  |
+| `radp:ssh/cluster-trust`      | 配置同一集群内虚拟机之间的 SSH 互信   | `privileged: true, run: once`   |
+| `radp:time/chrony-sync`       | 使用 chrony 配置 NTP 时间同步  | `privileged: true, run: once`   |
 
 **使用方法：**
 
@@ -943,18 +944,20 @@ provisions:
       NFS_SERVER: "nas.example.com"
       NFS_ROOT: "/volume1/nfs"
 
-  # SSH 宿主机信任 - 方式 1：直接指定公钥内容
-  - name: radp:ssh/host-trust
-    enabled: true
-    env:
-      HOST_SSH_PUBLIC_KEY: "ssh-rsa AAAA... user@host"
-      SSH_USERS: "vagrant,root"  # 可选，默认: vagrant
-
-  # SSH 宿主机信任 - 方式 2：指定公钥文件路径
+  # SSH 宿主机信任（宿主机 -> 虚拟机）
   - name: radp:ssh/host-trust
     enabled: true
     env:
       HOST_SSH_PUBLIC_KEY_FILE: "/vagrant/host_ssh_key.pub"
+
+  # SSH 集群互信（虚拟机 <-> 虚拟机，仅同用户互信，通常在 cluster.common 级别配置）
+  # 密钥文件: {dir}/id_{env}_{cluster}_{user} 和 {dir}/id_{env}_{cluster}_{user}.pub
+  # 示例（env 为 "dev"，cluster 为 "hadoop"）: /vagrant/keys/id_dev_hadoop_vagrant[.pub]
+  - name: radp:ssh/cluster-trust
+    enabled: true
+    env:
+      CLUSTER_SSH_KEY_DIR: "/vagrant/keys"
+      SSH_USERS: "vagrant,root"
 
   # 使用 chrony 进行时间同步
   - name: radp:time/chrony-sync
@@ -983,11 +986,12 @@ provisions:
 
 内置 provisions 在其 YAML 定义中声明必需和可选的环境变量。可选变量会自动应用默认值。
 
-| Provision                     | 必需变量                    | 可选变量（默认值）                                                |
-|-------------------------------|--------------------------|------------------------------------------------------------------|
-| `radp:nfs/external-nfs-mount` | `NFS_SERVER`, `NFS_ROOT` | 无                                                                |
-| `radp:ssh/host-trust`         | 无（需提供以下之一）          | `HOST_SSH_PUBLIC_KEY`, `HOST_SSH_PUBLIC_KEY_FILE`, `SSH_USERS`(vagrant) |
-| `radp:time/chrony-sync`       | 无                        | `NTP_SERVERS`, `NTP_POOL`(pool.ntp.org), `TIMEZONE`, `SYNC_NOW`(true) |
+| Provision                     | 必需变量                     | 可选变量（默认值）                                                               |
+|-------------------------------|--------------------------|-------------------------------------------------------------------------|
+| `radp:nfs/external-nfs-mount` | `NFS_SERVER`, `NFS_ROOT` | 无                                                                       |
+| `radp:ssh/host-trust`         | 无（需提供以下之一）               | `HOST_SSH_PUBLIC_KEY`, `HOST_SSH_PUBLIC_KEY_FILE`, `SSH_USERS`(vagrant) |
+| `radp:ssh/cluster-trust`      | `CLUSTER_SSH_KEY_DIR`    | `SSH_USERS`(vagrant), `TRUSTED_HOST_PATTERN`(自动)                        |
+| `radp:time/chrony-sync`       | 无                        | `NTP_SERVERS`, `NTP_POOL`(pool.ntp.org), `TIMEZONE`, `SYNC_NOW`(true)   |
 
 **Provision 定义格式：**
 

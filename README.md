@@ -930,7 +930,8 @@ Execution order: `global-pre → cluster-pre → guest → cluster-post → glob
 
 #### Builtin Provisions
 
-The framework provides builtin provisions for common tasks. Builtin provisions are identified by the `radp:` prefix and come with sensible defaults.
+The framework provides builtin provisions for common tasks. Builtin provisions are identified by the `radp:` prefix and
+come with sensible defaults.
 
 **Available builtin provisions:**
 
@@ -938,6 +939,7 @@ The framework provides builtin provisions for common tasks. Builtin provisions a
 |-------------------------------|----------------------------------------------------------------|---------------------------------|
 | `radp:nfs/external-nfs-mount` | Mount external NFS shares with auto-directory and verification | `privileged: true, run: always` |
 | `radp:ssh/host-trust`         | Add host SSH public key to guest for passwordless SSH access   | `privileged: false, run: once`  |
+| `radp:ssh/cluster-trust`      | Configure SSH trust between VMs in the same cluster            | `privileged: true, run: once`   |
 | `radp:time/chrony-sync`       | Configure chrony for time synchronization with NTP servers     | `privileged: true, run: once`   |
 
 **Usage:**
@@ -951,18 +953,20 @@ provisions:
       NFS_SERVER: "nas.example.com"
       NFS_ROOT: "/volume1/nfs"
 
-  # SSH host trust - Option 1: key content
-  - name: radp:ssh/host-trust
-    enabled: true
-    env:
-      HOST_SSH_PUBLIC_KEY: "ssh-rsa AAAA... user@host"
-      SSH_USERS: "vagrant,root"  # Optional, default: vagrant
-
-  # SSH host trust - Option 2: key file path
+  # SSH host trust (host -> guest)
   - name: radp:ssh/host-trust
     enabled: true
     env:
       HOST_SSH_PUBLIC_KEY_FILE: "/vagrant/host_ssh_key.pub"
+
+  # SSH cluster trust (guest <-> guest, same user only, typically at cluster.common level)
+  # Key files: {dir}/id_{env}_{cluster}_{user} and {dir}/id_{env}_{cluster}_{user}.pub
+  # Example for env "dev", cluster "hadoop": /vagrant/keys/id_dev_hadoop_vagrant[.pub]
+  - name: radp:ssh/cluster-trust
+    enabled: true
+    env:
+      CLUSTER_SSH_KEY_DIR: "/vagrant/keys"
+      SSH_USERS: "vagrant,root"
 
   # Time synchronization with chrony
   - name: radp:time/chrony-sync
@@ -989,13 +993,15 @@ provisions:
 
 **Environment variables:**
 
-Builtin provisions define required and optional environment variables in their YAML definitions. Optional variables have defaults that are automatically applied.
+Builtin provisions define required and optional environment variables in their YAML definitions. Optional variables have
+defaults that are automatically applied.
 
-| Provision                     | Required Variables       | Optional Variables (defaults)                                      |
-|-------------------------------|--------------------------|-------------------------------------------------------------------|
-| `radp:nfs/external-nfs-mount` | `NFS_SERVER`, `NFS_ROOT` | None                                                              |
+| Provision                     | Required Variables       | Optional Variables (defaults)                                           |
+|-------------------------------|--------------------------|-------------------------------------------------------------------------|
+| `radp:nfs/external-nfs-mount` | `NFS_SERVER`, `NFS_ROOT` | None                                                                    |
 | `radp:ssh/host-trust`         | None (one of below)      | `HOST_SSH_PUBLIC_KEY`, `HOST_SSH_PUBLIC_KEY_FILE`, `SSH_USERS`(vagrant) |
-| `radp:time/chrony-sync`       | None                     | `NTP_SERVERS`, `NTP_POOL`(pool.ntp.org), `TIMEZONE`, `SYNC_NOW`(true) |
+| `radp:ssh/cluster-trust`      | `CLUSTER_SSH_KEY_DIR`    | `SSH_USERS`(vagrant), `TRUSTED_HOST_PATTERN`(auto)                      |
+| `radp:time/chrony-sync`       | None                     | `NTP_SERVERS`, `NTP_POOL`(pool.ntp.org), `TIMEZONE`, `SYNC_NOW`(true)   |
 
 **Provision definition format:**
 
@@ -1019,7 +1025,8 @@ defaults:
 
 #### User Provisions
 
-You can define your own reusable provisions with the `user:` prefix. User provisions work like builtin provisions but are defined in your project.
+You can define your own reusable provisions with the `user:` prefix. User provisions work like builtin provisions but
+are defined in your project.
 
 **Directory structure:**
 
