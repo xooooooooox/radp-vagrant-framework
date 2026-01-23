@@ -1,8 +1,12 @@
-description: Mount external NFS shares with auto-directory creation and verification
+desc: Mount external NFS shares with auto-directory creation and verification
 defaults:
   privileged: true
   run: always
-required_env:
-  - NFS_SERVER
-  - NFS_ROOT
-script: external-nfs-mount.sh
+  env:
+    required:
+      - name: NFS_SERVER
+        desc: NFS server hostname (e.g., nas.example.com)
+      - name: NFS_ROOT
+        desc: NFS root path (e.g., /volume1/nfs)
+    optional: []
+  script: external-nfs-mount.sh
