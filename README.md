@@ -315,11 +315,19 @@ src/main/ruby/
             ├── registry.rb         # Builtin provision registry (radp:)
             ├── user_registry.rb    # User provision registry (user:)
             ├── definitions/        # Provision definitions (YAML)
-            │   └── nfs/
-            │       └── external-nfs-mount.yaml
+            │   ├── nfs/
+            │   │   └── external-nfs-mount.yaml
+            │   ├── ssh/
+            │   │   └── host-trust.yaml
+            │   └── time/
+            │       └── chrony-sync.yaml
             └── scripts/            # Provision scripts
-                └── nfs/
-                    └── external-nfs-mount.sh
+                ├── nfs/
+                │   └── external-nfs-mount.sh
+                ├── ssh/
+                │   └── host-trust.sh
+                └── time/
+                    └── chrony-sync.sh
 ```
 
 ## Configuration Structure
@@ -926,19 +934,42 @@ The framework provides builtin provisions for common tasks. Builtin provisions a
 
 **Available builtin provisions:**
 
-| Name                          | Description                                                | Defaults                        |
-|-------------------------------|------------------------------------------------------------|---------------------------------|
+| Name                          | Description                                                    | Defaults                        |
+|-------------------------------|----------------------------------------------------------------|---------------------------------|
 | `radp:nfs/external-nfs-mount` | Mount external NFS shares with auto-directory and verification | `privileged: true, run: always` |
+| `radp:ssh/host-trust`         | Add host SSH public key to guest for passwordless SSH access   | `privileged: false, run: once`  |
+| `radp:time/chrony-sync`       | Configure chrony for time synchronization with NTP servers     | `privileged: true, run: once`   |
 
 **Usage:**
 
 ```yaml
 provisions:
+  # NFS mount
   - name: radp:nfs/external-nfs-mount
     enabled: true
     env:
       NFS_SERVER: "nas.example.com"
       NFS_ROOT: "/volume1/nfs"
+
+  # SSH host trust - Option 1: key content
+  - name: radp:ssh/host-trust
+    enabled: true
+    env:
+      HOST_SSH_PUBLIC_KEY: "ssh-rsa AAAA... user@host"
+      SSH_USERS: "vagrant,root"  # Optional, default: vagrant
+
+  # SSH host trust - Option 2: key file path
+  - name: radp:ssh/host-trust
+    enabled: true
+    env:
+      HOST_SSH_PUBLIC_KEY_FILE: "/vagrant/host_ssh_key.pub"
+
+  # Time synchronization with chrony
+  - name: radp:time/chrony-sync
+    enabled: true
+    env:
+      NTP_SERVERS: "ntp.aliyun.com,ntp1.aliyun.com"  # Optional
+      TIMEZONE: "Asia/Shanghai"                       # Optional
 ```
 
 **Override defaults:**
@@ -956,13 +987,35 @@ provisions:
       NFS_ROOT: "/volume1/nfs"
 ```
 
-**Required environment variables:**
+**Environment variables:**
 
-Each builtin provision may require specific environment variables:
+Builtin provisions define required and optional environment variables in their YAML definitions. Optional variables have defaults that are automatically applied.
 
-| Provision                     | Required Variables       |
-|-------------------------------|--------------------------|
-| `radp:nfs/external-nfs-mount` | `NFS_SERVER`, `NFS_ROOT` |
+| Provision                     | Required Variables       | Optional Variables (defaults)                                      |
+|-------------------------------|--------------------------|-------------------------------------------------------------------|
+| `radp:nfs/external-nfs-mount` | `NFS_SERVER`, `NFS_ROOT` | None                                                              |
+| `radp:ssh/host-trust`         | None (one of below)      | `HOST_SSH_PUBLIC_KEY`, `HOST_SSH_PUBLIC_KEY_FILE`, `SSH_USERS`(vagrant) |
+| `radp:time/chrony-sync`       | None                     | `NTP_SERVERS`, `NTP_POOL`(pool.ntp.org), `TIMEZONE`, `SYNC_NOW`(true) |
+
+**Provision definition format:**
+
+Builtin and user provisions are defined in YAML with the following structure:
+
+```yaml
+desc: Human-readable description
+defaults:
+  privileged: true
+  run: once
+  env:
+    required:
+      - name: REQ_VAR
+        desc: Description of required variable
+    optional:
+      - name: OPT_VAR
+        value: "default_value"
+        desc: Description of optional variable
+  script: script-name.sh
+```
 
 #### User Provisions
 

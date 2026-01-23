@@ -87,9 +87,26 @@ To add a new plugin:
 ### Builtin Provisions System
 Builtin provisions are framework-provided provisions under `lib/radp_vagrant/provisions/`:
 - `registry.rb` - Central registry with auto-discovery from YAML definitions
-- `definitions/*.yaml` - Provision metadata (description, defaults, required_env, script)
-- `scripts/*.sh` - Implementation scripts
+- `definitions/**/*.yaml` - Provision metadata (desc, defaults with env and script)
+- `scripts/**/*.sh` - Implementation scripts
 - Supports subdirectories with path naming: `definitions/nfs/mount.yaml` → `radp:nfs/mount`
+
+Provision definition format:
+```yaml
+desc: Human-readable description
+defaults:
+  privileged: true
+  run: once
+  env:
+    required:
+      - name: REQ_VAR
+        desc: Required variable description
+    optional:
+      - name: OPT_VAR
+        value: "default_value"
+        desc: Optional variable description
+  script: script-name.sh
+```
 
 Builtin provisions use `radp:` prefix (e.g., `radp:nfs/external-nfs-mount`). User config merges with definition defaults (user values take precedence).
 

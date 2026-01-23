@@ -311,11 +311,19 @@ src/main/ruby/
             ├── registry.rb         # 内置 provision 注册表 (radp:)
             ├── user_registry.rb    # 用户 provision 注册表 (user:)
             ├── definitions/        # Provision 定义文件 (YAML)
-            │   └── nfs/
-            │       └── external-nfs-mount.yaml
+            │   ├── nfs/
+            │   │   └── external-nfs-mount.yaml
+            │   ├── ssh/
+            │   │   └── host-trust.yaml
+            │   └── time/
+            │       └── chrony-sync.yaml
             └── scripts/            # Provision 脚本
-                └── nfs/
-                    └── external-nfs-mount.sh
+                ├── nfs/
+                │   └── external-nfs-mount.sh
+                ├── ssh/
+                │   └── host-trust.sh
+                └── time/
+                    └── chrony-sync.sh
 ```
 
 ## 配置结构
@@ -918,19 +926,42 @@ clusters:
 
 **可用的内置 provisions：**
 
-| 名称                          | 描述                                  | 默认值                           |
-|-------------------------------|--------------------------------------|---------------------------------|
-| `radp:nfs/external-nfs-mount` | 挂载外部 NFS 共享并自动创建目录和验证    | `privileged: true, run: always` |
+| 名称                          | 描述                                      | 默认值                           |
+|-------------------------------|------------------------------------------|---------------------------------|
+| `radp:nfs/external-nfs-mount` | 挂载外部 NFS 共享并自动创建目录和验证        | `privileged: true, run: always` |
+| `radp:ssh/host-trust`         | 添加宿主机 SSH 公钥到虚拟机实现免密登录      | `privileged: false, run: once`  |
+| `radp:time/chrony-sync`       | 使用 chrony 配置 NTP 时间同步              | `privileged: true, run: once`   |
 
 **使用方法：**
 
 ```yaml
 provisions:
+  # NFS 挂载
   - name: radp:nfs/external-nfs-mount
     enabled: true
     env:
       NFS_SERVER: "nas.example.com"
       NFS_ROOT: "/volume1/nfs"
+
+  # SSH 宿主机信任 - 方式 1：直接指定公钥内容
+  - name: radp:ssh/host-trust
+    enabled: true
+    env:
+      HOST_SSH_PUBLIC_KEY: "ssh-rsa AAAA... user@host"
+      SSH_USERS: "vagrant,root"  # 可选，默认: vagrant
+
+  # SSH 宿主机信任 - 方式 2：指定公钥文件路径
+  - name: radp:ssh/host-trust
+    enabled: true
+    env:
+      HOST_SSH_PUBLIC_KEY_FILE: "/vagrant/host_ssh_key.pub"
+
+  # 使用 chrony 进行时间同步
+  - name: radp:time/chrony-sync
+    enabled: true
+    env:
+      NTP_SERVERS: "ntp.aliyun.com,ntp1.aliyun.com"  # 可选
+      TIMEZONE: "Asia/Shanghai"                       # 可选
 ```
 
 **覆盖默认值：**
@@ -948,13 +979,35 @@ provisions:
       NFS_ROOT: "/volume1/nfs"
 ```
 
-**必需的环境变量：**
+**环境变量：**
 
-每个内置 provision 可能需要特定的环境变量：
+内置 provisions 在其 YAML 定义中声明必需和可选的环境变量。可选变量会自动应用默认值。
 
-| Provision                     | 必需变量                    |
-|-------------------------------|--------------------------|
-| `radp:nfs/external-nfs-mount` | `NFS_SERVER`, `NFS_ROOT` |
+| Provision                     | 必需变量                    | 可选变量（默认值）                                                |
+|-------------------------------|--------------------------|------------------------------------------------------------------|
+| `radp:nfs/external-nfs-mount` | `NFS_SERVER`, `NFS_ROOT` | 无                                                                |
+| `radp:ssh/host-trust`         | 无（需提供以下之一）          | `HOST_SSH_PUBLIC_KEY`, `HOST_SSH_PUBLIC_KEY_FILE`, `SSH_USERS`(vagrant) |
+| `radp:time/chrony-sync`       | 无                        | `NTP_SERVERS`, `NTP_POOL`(pool.ntp.org), `TIMEZONE`, `SYNC_NOW`(true) |
+
+**Provision 定义格式：**
+
+内置和用户自定义 provisions 使用以下 YAML 结构定义：
+
+```yaml
+desc: 人类可读的描述
+defaults:
+  privileged: true
+  run: once
+  env:
+    required:
+      - name: REQ_VAR
+        desc: 必需变量的描述
+    optional:
+      - name: OPT_VAR
+        value: "default_value"
+        desc: 可选变量的描述
+  script: script-name.sh
+```
 
 #### 用户自定义 Provisions
 
