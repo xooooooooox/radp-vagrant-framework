@@ -1,3 +1,7 @@
+## v0.0.25 - 2026-01-23
+
+- 1c37753 fix(radp-vf): resolve relative output path to absolute before directory change
+- 8ff4fb4 chore(path_resolver): add missing `pathname` require for path operations
 ## v0.0.24 - 2026-01-23
 
 - 17ae299 docs: update README to document new SSH cluster trust provision
