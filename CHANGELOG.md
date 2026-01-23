@@ -1,3 +1,9 @@
+## v0.0.27 - 2026-01-23
+
+- 90ef974 docs(triggers): document builtin triggers system and usage details
+- 6ca7564 feat(triggers): add builtin trigger to disable firewalld, SELinux, and swap
+- c4ac685 feat(triggers): add support for builtin trigger registry and resolution
+- b74c056 refactor(generator): remove unused `name` variable from provision generation method
 ## v0.0.26 - 2026-01-23
 
 - 26ddf2c fix(provision): ensure provisioner names support `--provision-with` compatibility for shell and file types
