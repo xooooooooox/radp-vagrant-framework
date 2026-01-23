@@ -356,6 +356,11 @@ cmd_generate() {
   local output="${1:-}"
   local config_dir="${RADP_VAGRANT_CONFIG_DIR:-config}"
 
+  # Convert relative output path to absolute before changing directory
+  if [[ -n "${output}" && "${output}" != /* ]]; then
+    output="$(pwd)/${output}"
+  fi
+
   echo "Framework:  ${RADP_VF_HOME}" >&2
   echo "Config Dir: ${config_dir}" >&2
   if [[ -n "${output}" ]]; then
