@@ -338,7 +338,7 @@ radp:
               run: once
               inline: echo "Hello"
 
-# vagrant-sample.yaml - Dev environment
+# vagrant-dev.yaml - Dev environment
 radp:
   extend:
     vagrant:
