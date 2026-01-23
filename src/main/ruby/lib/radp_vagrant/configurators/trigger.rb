@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require_relative '../triggers/registry'
+
 module RadpVagrant
   module Configurators
     # Configures VM triggers (before/after actions)
@@ -16,11 +18,65 @@ module RadpVagrant
           triggers.each do |trigger|
             next unless trigger['enabled']
 
-            configure_trigger(vagrant_config, trigger, machine_name, all_machine_names)
+            # Resolve builtin triggers
+            resolved_trigger = resolve_trigger(trigger)
+            configure_trigger(vagrant_config, resolved_trigger, machine_name, all_machine_names)
           end
         end
 
         private
+
+        # Resolve trigger by checking builtin (radp:) prefix
+        # @param trigger [Hash] The trigger configuration
+        # @return [Hash] The resolved trigger with defaults merged
+        def resolve_trigger(trigger)
+          name = trigger['name']
+
+          # Check for builtin trigger (radp:)
+          if Triggers::Registry.builtin?(name)
+            return resolve_builtin(trigger)
+          end
+
+          # Regular trigger, no resolution needed
+          trigger
+        end
+
+        # Resolve builtin trigger by merging definition defaults with user config
+        # User config takes precedence over definition defaults
+        def resolve_builtin(trigger)
+          name = trigger['name']
+          definition = Triggers::Registry.get(name)
+          return trigger unless definition
+
+          resolved = merge_with_defaults(trigger, definition)
+          resolved['_builtin'] = true
+          resolved['_script_path'] = Triggers::Registry.script_path(name)
+          resolved
+        end
+
+        # Merge user config with definition defaults
+        # @param trigger [Hash] User trigger configuration
+        # @param definition [Hash] Definition with defaults
+        # @return [Hash] Merged configuration
+        def merge_with_defaults(trigger, definition)
+          defaults = definition['defaults'] || {}
+          resolved = {}
+
+          # Apply defaults first
+          defaults.each do |key, value|
+            resolved[key] = value
+          end
+
+          # Apply description from definition
+          resolved['desc'] = definition['desc'] if definition['desc']
+
+          # Override with user config (user values take precedence)
+          trigger.each do |key, value|
+            resolved[key] = value
+          end
+
+          resolved
+        end
 
         def configure_trigger(vagrant_config, trigger, machine_name, all_machine_names)
           # on: before or after (renamed from cycle)
@@ -115,16 +171,29 @@ module RadpVagrant
           run_config = config['run']
           run_remote_config = config['run-remote'] || config['run_remote']
 
+          # For builtin triggers, use resolved script path
+          script_path = config['_script_path']
+
           if run_config.is_a?(Hash)
             opts = {}
             opts[:inline] = run_config['inline'] if run_config['inline']
-            opts[:path] = run_config['path'] if run_config['path']
+            # Use script_path for builtin triggers with script reference
+            if run_config['script'] && script_path
+              opts[:path] = script_path
+            elsif run_config['path']
+              opts[:path] = run_config['path']
+            end
             opts[:args] = run_config['args'] if run_config['args']
             trigger.run = opts unless opts.empty?
           elsif run_remote_config.is_a?(Hash)
             opts = {}
             opts[:inline] = run_remote_config['inline'] if run_remote_config['inline']
-            opts[:path] = run_remote_config['path'] if run_remote_config['path']
+            # Use script_path for builtin triggers with script reference
+            if run_remote_config['script'] && script_path
+              opts[:path] = script_path
+            elsif run_remote_config['path']
+              opts[:path] = run_remote_config['path']
+            end
             opts[:args] = run_remote_config['args'] if run_remote_config['args']
             trigger.run_remote = opts unless opts.empty?
           elsif config['ruby']
