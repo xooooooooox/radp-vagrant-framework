@@ -11,22 +11,23 @@ radp:
           required: true
           options:
             # vagrant up/destroy 时更新 hosts
-            enabled: false
+            enabled: true
             # 作为 provisioner 运行（与 enabled 互斥）
-            provisioner: enabled
+            # provisioner: enabled
             # 在宿主机上的 hosts 文件中添加虚拟机的主机名解析信息
             manage_host: true
             # 在各自虚拟机中添加各虚拟机的主机名解析信息
             manage_guest: true
             # 是否包含已经 offline 的 guest
-            include_offline: true
+            include_offline: false
             # 忽略私有网络的地址
-            ignore_private_ip: true
+            ignore_private_ip: false
             # 如果 guest 有多张网卡，可借助这个特性获取你需要的网卡 ip
             ip_resolver:
               enabled: true
-              # 这里借助 hostmanager ip_resolve 特性，获取 guest 第2张网卡也就是 private_network ip
-              execute: "hostname -I | awk '{print $2}'"
+              # 这里借助 hostmanager ip_resolve 特性，
+              # 获取 guest 第2张网卡也就是 public_network ip
+              execute: "hostname -I | awk '{print $3}'"
               regex: "^(\\S+)"
         # see: https://github.com/dotless-de/vagrant-vbguest
         - name: vagrant-vbguest
@@ -34,21 +35,14 @@ radp:
           options:
             # 启动时检查/更新 Guest Additions (默认: true)
             auto_update: false
-            # 禁止从远程下载 ISO (默认: false)
-            no_remote: false
+            # 仅检查不安装
+            no_install: true
             # 安装后需要时自动重启 (默认: true)
             auto_reboot: true
             # 允许安装旧版本 (默认: true)
             allow_downgrade: true
-        # see: https://github.com/tmatilai/vagrant-proxyconf
-        - name: vagrant-proxyconf
-          required: true
-          options:
-            # https://github.com/tmatilai/vagrant-proxyconf?tab=readme-ov-file#disabling-the-plugin
-            enabled:
-            http: "http://192.168.31.8:6152"
-            https: "http://192.168.31.8:6152"
-            no_proxy: "localhost,127.0.0.1"
+            installer_options:
+              allow_kernel_upgrade: false
         # see: https://github.com/gael-ian/vagrant-bindfs
         - name: vagrant-bindfs
           required: true
@@ -60,7 +54,7 @@ radp:
             # see: https://developer.hashicorp.com/vagrant/docs/synced-folders/basic_usage
             # support basic, nfs, rsync, smb
             basic:
-              - enabled: true
+              - enabled: false
                 # 使用绝对路径 或者 相对路径
                 host: /path/to/host/folder
                 guest: /path/to/guest/folder
@@ -69,7 +63,7 @@ radp:
           triggers:
             - name: global-trigger-1
               desc: 'print trigger description'
-              enabled: true
+              enabled: false
               only-on:
                 - '/k8s-.*/'
               "on": before
@@ -88,7 +82,7 @@ radp:
           provisions:
             - name: global-provision-1
               desc: 'print provision description'
-              enabled: true
+              enabled: false
               # support shell, file
               type: shell
               # optional: support before or after

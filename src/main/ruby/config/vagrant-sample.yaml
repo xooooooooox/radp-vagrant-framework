@@ -1,8 +1,19 @@
 radp:
   extend:
     vagrant:
+      plugins:
+        # see: https://github.com/tmatilai/vagrant-proxyconf
+        - name: vagrant-proxyconf
+          required: true
+          options:
+            # https://github.com/tmatilai/vagrant-proxyconf?tab=readme-ov-file#disabling-the-plugin
+            enabled: false
+            http: "http://192.168.10.8:7890"
+            https: "http://192.168.10.8:7890"
+            no_proxy: "localhost,127.0.0.1"
       config:
         clusters:
+          #----------------------------------------------- cluster-1 --------------------------------------------------#
           - name: cluster-1
             # optional: cluster-1 集群的公共配置
             common:
@@ -16,9 +27,9 @@ radp:
               triggers:
                 - name: cluster-1-trigger-1
                   desc: 'print trigger description'
-                  enabled: true
+                  enabled: false
                   only-on:
-                    - '/k8s-.*/'
+                    - '/cluster-1-.*/'
                   "on": before
                   # support action, hook, command
                   type: action
@@ -31,10 +42,17 @@ radp:
                     # support inline, path
                     inline: |
                       inline script
+                # framework builtin triggers
+                - name: radp:system/disable-swap
+                  enabled: true
+                - name: radp:system/disable-selinux
+                  enabled: true
+                - name: radp:system/disable-firewalld
+                  enabled: true
               provisions:
                 - name: cluster-1-provision-1
                   desc: 'print provision description'
-                  enabled: true
+                  enabled: false
                   # support shell, file
                   type: shell
                   # optional: support before or after
@@ -53,8 +71,7 @@ radp:
                 # optional: 如果 plugin vagrant-hostmanager enabled, 则可以配置 hostmanager 的别名
                 hostmanager:
                   aliases:
-                    - alias-1-hostname
-                    - alias-2-hostname
+                    - guest-1.cluster-1.sample.com
                 box:
                   name: generic/centos9s
                   version: 4.3.12
@@ -72,11 +89,12 @@ radp:
                   private-network:
                     enabled: true
                     # support static, dhcp
-                    type: dhcp
+                    type: static
+                    ip: 172.16.10.100
                   public-network:
                     enabled: true
                     type: static
-                    ip: 192.168.20.100
+                    ip: 192.168.10.100
                     bridge:
                       - "en0: Wi-Fi (AirPort)"
                       - "en0: Wi-Fi"
@@ -97,3 +115,29 @@ radp:
                     inline: |
                       inline script
           - name: cluster-2
+            guests:
+              - id: guest-1
+                enabled: true
+                hostmanager:
+                  aliases:
+                    - guest-1.cluster-2.sample.com
+                box:
+                  name: net9/ubuntu-24.04-arm64
+                  version: "1.1"
+                provider:
+                  type: virtualbox
+                  mem: 1024
+                  cpus: 1
+                network:
+                  private-network:
+                    enabled: true
+                    type: static
+                    ip: 172.16.10.101
+                  public-network:
+                    enabled: true
+                    type: static
+                    ip:
+                      - 192.168.10.101
+                    bridge:
+                      - "en0: Wi-Fi"
+                      - "en0: Wi-Fi (AirPort)"
