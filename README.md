@@ -731,14 +731,14 @@ network:
   private-network:
     enabled: true
     type: dhcp                    # dhcp or static
-    ip: 192.168.56.10             # For static type (single IP)
+    ip: 172.16.10.100             # For static type (single IP)
     netmask: 255.255.255.0
   public-network:
     enabled: true
     type: static
     ip: # Multiple IPs supported (creates multiple interfaces)
-      - 192.168.1.100
-      - 192.168.1.101
+      - 192.168.10.100
+      - 192.168.10.101
     bridge:
       - "en0: Wi-Fi"
       - "en0: Ethernet"
@@ -826,7 +826,7 @@ synced-folders:
     - enabled: true
       host: ./smb-data
       guest: /smb-data
-      smb-host: 192.168.1.1
+      smb-host: 192.168.10.3
       smb-username: user
       smb-password: pass
 ```

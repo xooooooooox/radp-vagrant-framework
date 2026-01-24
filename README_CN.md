@@ -723,14 +723,14 @@ network:
   private-network:
     enabled: true
     type: dhcp                    # dhcp 或 static
-    ip: 192.168.56.10             # static 类型时使用（单个 IP）
+    ip: 172.16.10.100             # static 类型时使用（单个 IP）
     netmask: 255.255.255.0
   public-network:
     enabled: true
     type: static
     ip: # 支持多个 IP（创建多个网络接口）
-      - 192.168.1.100
-      - 192.168.1.101
+      - 192.168.10.100
+      - 192.168.10.101
     bridge:
       - "en0: Wi-Fi"
       - "en0: Ethernet"
@@ -818,7 +818,7 @@ synced-folders:
     - enabled: true
       host: ./smb-data
       guest: /smb-data
-      smb-host: 192.168.1.1
+      smb-host: 192.168.10.3
       smb-username: user
       smb-password: pass
 ```
