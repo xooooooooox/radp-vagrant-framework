@@ -1,3 +1,9 @@
+## v0.1.3 - 2026-01-25
+
+- 12bf1fa docs: update CLAUDE.md with verbose mode and filtering examples for list command
+- bcecba9 docs: update README and README_CN with verbose mode and type filtering examples for list command
+- 018f2de feat: extend list command completions with detailed filtering options
+- 80925fd feat: enhance list command with detailed options and filtering support
 ## v0.1.2 - 2026-01-25
 
 - 33a109d docs: update CLAUDE.md to include new CLI commands, global options, and enhanced usage examples
