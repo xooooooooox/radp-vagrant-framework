@@ -104,13 +104,19 @@ Usage:
 Commands:
   init [dir]              Initialize a new project with sample configuration
   vg <vagrant-cmd>        Run vagrant command with framework
-  list                    List clusters and guests from configuration
+  list [options] [filter] List clusters and guests from configuration
   dump-config [options]   Dump merged configuration (use -o for file output)
   generate [output]       Generate standalone Vagrantfile
   validate                Validate YAML configuration files
   info                    Show environment and configuration info
   version                 Show version
   help                    Show this help
+
+List Options:
+  -v, --verbose           Show detailed info (box, network, provisions, etc.)
+  --provisions            Show provisions only
+  --synced-folders        Show synced folders only
+  --triggers              Show triggers only
 
 Global Options:
   -c, --config <dir>      Configuration directory (default: ./config)
@@ -130,6 +136,10 @@ Examples:
   radp-vf init myproject
   radp-vf info
   radp-vf list
+  radp-vf list -v
+  radp-vf list -v node-1
+  radp-vf list --provisions
+  radp-vf list --synced-folders node-1
   radp-vf validate
   radp-vf dump-config
   radp-vf dump-config -f yaml
@@ -365,14 +375,45 @@ PROVISION_SCRIPT
 }
 
 cmd_list() {
+  local verbose=false
+  local show_provisions=false
+  local show_synced_folders=false
+  local show_triggers=false
+  local filter=""
+
+  # Parse list-specific options
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      -v|--verbose)
+        verbose=true
+        shift
+        ;;
+      --provisions)
+        show_provisions=true
+        shift
+        ;;
+      --synced-folders)
+        show_synced_folders=true
+        shift
+        ;;
+      --triggers)
+        show_triggers=true
+        shift
+        ;;
+      -*)
+        echo "Unknown option: $1" >&2
+        echo "Usage: radp-vf list [-v] [--provisions] [--synced-folders] [--triggers] [filter]" >&2
+        return 1
+        ;;
+      *)
+        filter="$1"
+        shift
+        ;;
+    esac
+  done
+
   local config_dir
   config_dir="$(resolve_config_dir)" || return 1
-
-  # Set environment override if specified
-  local env_override=""
-  if [[ -n "${OPT_ENV}" ]]; then
-    env_override=", env_override: '${OPT_ENV}'"
-  fi
 
   cd "${RUBY_LIB_DIR}"
   ruby -r ./lib/radp_vagrant -e "
@@ -380,6 +421,11 @@ cmd_list() {
 
     config_dir = '${config_dir}'
     env_override = '${OPT_ENV}'.empty? ? nil : '${OPT_ENV}'
+    verbose = ${verbose}
+    show_provisions = ${show_provisions}
+    show_synced_folders = ${show_synced_folders}
+    show_triggers = ${show_triggers}
+    filter = '${filter}'.empty? ? nil : '${filter}'
 
     # Override environment if specified
     ENV['RADP_VAGRANT_ENV'] = env_override if env_override
@@ -402,24 +448,194 @@ cmd_list() {
       exit 0
     end
 
-    total_guests = clusters.sum { |c| c['guests'].size }
-    puts \"Clusters: #{clusters.size} (#{total_guests} guests total)\"
-    puts ''
+    # Helper to format IP
+    def format_ip(network_config, type)
+      return '-' unless network_config && network_config[type]
+      cfg = network_config[type]
+      return '-' unless cfg['enabled']
+      ip = cfg['ip']
+      return 'dhcp' if cfg['type'] == 'dhcp' || ip.nil?
+      ip.is_a?(Array) ? ip.first.to_s : ip.to_s
+    end
 
-    clusters.each do |cluster|
-      guests = cluster['guests'] || []
-      puts \"  #{cluster['name']} (#{guests.size} guests)\"
-
-      guests.each_with_index do |guest, idx|
-        prefix = idx == guests.size - 1 ? '└──' : '├──'
-        machine_name = guest.dig('provider', 'name') || guest['id']
-        ip = guest.dig('network', 'private-network', 'ip') || 'dhcp'
-        mem = guest.dig('provider', 'mem') || '-'
-        cpus = guest.dig('provider', 'cpus') || '-'
-
-        puts \"    #{prefix} #{machine_name.ljust(25)} #{ip.to_s.ljust(16)} #{mem.to_s.rjust(5)}MB  #{cpus}CPU\"
+    # Helper to format provisions
+    def format_provisions(provisions)
+      return [] unless provisions && !provisions.empty?
+      provisions.select { |p| p['enabled'] != false }.map do |p|
+        phase = p['phase'] ? \"[#{p['phase'].to_s.ljust(4)}]\" : '[    ]'
+        name = p['name'] || 'unnamed'
+        type = p['type'] || 'shell'
+        run = p['run'] || 'once'
+        priv = p['privileged'] ? 'privileged' : ''
+        { phase: phase, name: name, type: type, run: run, privileged: priv }
       end
+    end
+
+    # Helper to format synced folders
+    def format_synced_folders(synced_folders)
+      return [] unless synced_folders
+      result = []
+      %w[basic nfs rsync smb].each do |folder_type|
+        folders = synced_folders[folder_type] || []
+        folders.each do |f|
+          next unless f['enabled'] != false
+          host = f['host'] || '-'
+          guest = f['guest'] || '-'
+          extras = []
+          extras << \"owner:#{f['owner']}\" if f['owner']
+          extras << \"nfs-version:#{f['nfs-version']}\" if f['nfs-version']
+          extras << 'bindfs' if f.dig('bindfs', 'enabled')
+          result << { type: folder_type, host: host, guest: guest, extras: extras.join(' ') }
+        end
+      end
+      result
+    end
+
+    # Helper to format triggers
+    def format_triggers(triggers)
+      return [] unless triggers && !triggers.empty?
+      triggers.select { |t| t['enabled'] != false }.map do |t|
+        name = t['name'] || 'unnamed'
+        timing = t['on'] || 'before'
+        actions = Array(t['action'] || [:up]).join(',')
+        run_type = t['run-remote'] ? 'run-remote' : (t['run'] ? 'run' : '-')
+        { name: name, timing: timing, actions: actions, run_type: run_type }
+      end
+    end
+
+    # Collect all guests with filter
+    all_guests = []
+    clusters.each do |cluster|
+      (cluster['guests'] || []).each do |guest|
+        machine_name = guest.dig('provider', 'name') || guest['id']
+        if filter.nil? || guest['id'] == filter || machine_name == filter || machine_name.include?(filter)
+          all_guests << { cluster: cluster['name'], guest: guest, machine_name: machine_name }
+        end
+      end
+    end
+
+    if filter && all_guests.empty?
+      puts \"No guests matching '#{filter}'\"
+      exit 0
+    end
+
+    # Determine display mode
+    detail_mode = verbose || show_provisions || show_synced_folders || show_triggers
+
+    unless detail_mode
+      # Default compact view with private + public network
+      total_guests = clusters.sum { |c| c['guests'].size }
+      puts \"Clusters: #{clusters.size} (#{total_guests} guests total)\"
       puts ''
+
+      clusters.each do |cluster|
+        guests = cluster['guests'] || []
+        # Filter if specified
+        if filter
+          guests = guests.select do |g|
+            mn = g.dig('provider', 'name') || g['id']
+            g['id'] == filter || mn == filter || mn.include?(filter)
+          end
+          next if guests.empty?
+        end
+
+        puts \"  #{cluster['name']} (#{guests.size} guests)\"
+
+        guests.each_with_index do |guest, idx|
+          prefix = idx == guests.size - 1 ? '└──' : '├──'
+          machine_name = guest.dig('provider', 'name') || guest['id']
+          priv_ip = format_ip(guest['network'], 'private-network')
+          pub_ip = format_ip(guest['network'], 'public-network')
+          mem = guest.dig('provider', 'mem') || '-'
+          cpus = guest.dig('provider', 'cpus') || '-'
+
+          # Format: name  priv:IP  pub:IP  mem  cpu
+          priv_str = \"priv:#{priv_ip}\".ljust(20)
+          pub_str = pub_ip != '-' ? \"pub:#{pub_ip}\".ljust(18) : ''
+          puts \"    #{prefix} #{machine_name.ljust(28)} #{priv_str} #{pub_str} #{mem.to_s.rjust(5)}MB  #{cpus}CPU\"
+        end
+        puts ''
+      end
+    else
+      # Detailed view
+      all_guests.each do |entry|
+        guest = entry[:guest]
+        machine_name = entry[:machine_name]
+
+        puts \"#{machine_name}:\"
+
+        if verbose
+          # Show all details
+          box = guest.dig('box', 'name') || '-'
+          mem = guest.dig('provider', 'mem') || '-'
+          cpus = guest.dig('provider', 'cpus') || '-'
+          hostname = guest['hostname'] || '-'
+
+          puts \"  Box:      #{box}\"
+          puts \"  Hostname: #{hostname}\"
+          puts \"  Memory:   #{mem}MB\"
+          puts \"  CPUs:     #{cpus}\"
+
+          # Network
+          puts '  Network:'
+          network = guest['network'] || {}
+          priv = network['private-network']
+          if priv && priv['enabled']
+            ip = priv['ip'] || 'dhcp'
+            netmask = priv['netmask'] ? \" (netmask: #{priv['netmask']})\" : ''
+            puts \"    - private: #{ip}#{netmask}\"
+          end
+          pub = network['public-network']
+          if pub && pub['enabled']
+            ip = pub['ip'] || 'dhcp'
+            bridge = pub['bridge'] ? \" (bridge: #{Array(pub['bridge']).first})\" : ''
+            puts \"    - public:  #{ip}#{bridge}\"
+          end
+          ports = network['forwarded-ports'] || []
+          enabled_ports = ports.select { |p| p['enabled'] != false }
+          unless enabled_ports.empty?
+            port_strs = enabled_ports.map { |p| \"#{p['guest']}->#{p['host']}\" }
+            puts \"    - ports:   #{port_strs.join(', ')}\"
+          end
+        end
+
+        if verbose || show_synced_folders
+          folders = format_synced_folders(guest['synced-folders'])
+          unless folders.empty?
+            puts \"  Synced Folders (#{folders.size}):\"
+            folders.each_with_index do |f, idx|
+              prefix = idx == folders.size - 1 ? '└──' : '├──'
+              extras = f[:extras].empty? ? '' : \" (#{f[:extras]})\"
+              puts \"    #{prefix} [#{f[:type].ljust(5)}] #{f[:host]} -> #{f[:guest]}#{extras}\"
+            end
+          end
+        end
+
+        if verbose || show_provisions
+          provs = format_provisions(guest['provisions'])
+          unless provs.empty?
+            puts \"  Provisions (#{provs.size}):\"
+            provs.each_with_index do |p, idx|
+              prefix = idx == provs.size - 1 ? '└──' : '├──'
+              priv = p[:privileged].empty? ? '' : \" #{p[:privileged]}\"
+              puts \"    #{prefix} #{p[:phase]} #{p[:name].ljust(30)} #{p[:type].ljust(6)} #{p[:run].ljust(6)}#{priv}\"
+            end
+          end
+        end
+
+        if verbose || show_triggers
+          trigs = format_triggers(guest['triggers'])
+          unless trigs.empty?
+            puts \"  Triggers (#{trigs.size}):\"
+            trigs.each_with_index do |t, idx|
+              prefix = idx == trigs.size - 1 ? '└──' : '├──'
+              puts \"    #{prefix} #{t[:name].ljust(35)} #{t[:timing].ljust(6)} #{t[:actions].ljust(12)} #{t[:run_type]}\"
+            end
+          end
+        end
+
+        puts ''
+      end
     end
   "
 }
