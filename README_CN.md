@@ -21,6 +21,7 @@
 - **配置继承**: Global → Cluster → Guest 三级继承，自动合并
 - **数组连接**: provisions、triggers、synced-folders 在继承时累加而非覆盖
 - **模块化插件系统**: 每个插件配置器独立文件，便于维护
+- **模板系统**: 通过预定义模板和变量替换初始化项目
 - **约定优于配置**: 自动生成 hostname、provider name 和 group-id
 - **Dry-Run 预览**: 生成独立 Vagrantfile 以检查最终配置
 - **配置校验**: 检测重复的集群名称和 guest ID
@@ -150,7 +151,7 @@ homelabctl vg status
 homelabctl vg up
 ```
 
-## 如何使用
+## 基本使用
 
 ### 初始化新项目
 
@@ -184,24 +185,6 @@ myproject/
 ```
 
 框架的 Vagrantfile 会通过 `radp-vf vg` 自动使用 - 项目目录中无需创建 Vagrantfile。
-
-### 可用模板
-
-框架提供了常用场景的内置模板：
-
-| 模板            | 描述                                      |
-|---------------|-----------------------------------------|
-| `base`        | 入门级最小模板（默认）                             |
-| `single-node` | 增强型单节点虚拟机，预配置常用 provisions              |
-| `k8s-cluster` | 多节点 Kubernetes 集群，包含 master 和 worker 节点 |
-
-```shell
-# 列出可用模板
-radp-vf template list
-
-# 查看模板详情和变量
-radp-vf template show k8s-cluster
-```
 
 ### 配置文件
 
@@ -243,36 +226,6 @@ radp:
                   mem: 2048
                   cpus: 2
 ```
-
-### 环境变量
-
-| 变量                        | 说明                | 默认值                          |
-|---------------------------|-------------------|------------------------------|
-| `RADP_VF_HOME`            | 框架安装目录            | 从脚本位置自动检测                    |
-| `RADP_VAGRANT_CONFIG_DIR` | 配置目录路径（`vg` 命令必需） | 当前目录下的 `./config`（如存在）       |
-| `RADP_VAGRANT_ENV`        | 覆盖环境名称            | `vagrant.yaml` 中的 `radp.env` |
-
-**RADP_VF_HOME 默认值：**
-
-- 脚本安装：`~/.local/lib/radp-vagrant-framework`
-- Homebrew 安装：`/opt/homebrew/Cellar/radp-vagrant-framework/<version>/libexec`
-- Git clone：`<repo>`（项目根目录，自动检测）
-
-**优先级（从高到低）：**
-
-```
--c 参数 > RADP_VAGRANT_CONFIG_DIR > ./config
--e 参数 > RADP_VAGRANT_ENV > vagrant.yaml 中的 radp.env
-```
-
-### 全局选项
-
-| 选项                   | 说明                  |
-|----------------------|---------------------|
-| `-c, --config <dir>` | 配置目录（默认：`./config`） |
-| `-e, --env <name>`   | 覆盖环境名称              |
-| `-h, --help`         | 显示帮助                |
-| `-v, --version`      | 显示版本                |
 
 ### 运行 Vagrant 命令
 
@@ -323,14 +276,54 @@ export VAGRANT_DOTFILE_PATH="$HOME/.config/radp-vagrant/.vagrant"
 
 这可以确保 Vagrant 始终使用同一个 `.vagrant` 目录，无论你从哪里运行命令。
 
-### CLI 命令
+### 全局选项与环境变量
+
+#### 全局选项
+
+| 选项                   | 说明                  |
+|----------------------|---------------------|
+| `-c, --config <dir>` | 配置目录（默认：`./config`） |
+| `-e, --env <name>`   | 覆盖环境名称              |
+| `-h, --help`         | 显示帮助                |
+| `-v, --version`      | 显示版本                |
+
+#### 环境变量
+
+| 变量                        | 说明                | 默认值                          |
+|---------------------------|-------------------|------------------------------|
+| `RADP_VF_HOME`            | 框架安装目录            | 从脚本位置自动检测                    |
+| `RADP_VAGRANT_CONFIG_DIR` | 配置目录路径（`vg` 命令必需） | 当前目录下的 `./config`（如存在）       |
+| `RADP_VAGRANT_ENV`        | 覆盖环境名称            | `vagrant.yaml` 中的 `radp.env` |
+
+**RADP_VF_HOME 默认值：**
+
+- 脚本安装：`~/.local/lib/radp-vagrant-framework`
+- Homebrew 安装：`/opt/homebrew/Cellar/radp-vagrant-framework/<version>/libexec`
+- Git clone：`<repo>`（项目根目录，自动检测）
+
+#### 优先级（从高到低）
+
+```
+-c 参数 > RADP_VAGRANT_CONFIG_DIR > ./config
+-e 参数 > RADP_VAGRANT_ENV > vagrant.yaml 中的 radp.env
+```
+
+## CLI 命令
+
+### 模板命令
 
 ```shell
-# 模板管理
+# 列出可用模板
 radp-vf template list
-radp-vf template show k8s-cluster
 
-# 显示环境信息
+# 查看模板详情和变量
+radp-vf template show k8s-cluster
+```
+
+### 信息命令
+
+```shell
+# 显示环境信息（版本、路径、插件）
 radp-vf info
 
 # 列出集群和虚拟机
@@ -345,7 +338,11 @@ radp-vf list -v node-1
 radp-vf list --provisions
 radp-vf list --synced-folders
 radp-vf list --triggers node-1
+```
 
+### 配置命令
+
+```shell
 # 验证 YAML 配置
 radp-vf validate
 
@@ -355,15 +352,12 @@ radp-vf dump-config
 # 导出为 YAML 格式
 radp-vf dump-config -f yaml
 
-# 按 guest ID 或 machine name 过滤
-radp-vf dump-config node-1
-
 # 导出到文件（使用 -o 选项）
 radp-vf dump-config -o config.json
 radp-vf dump-config -f yaml -o config.yaml
 
-# 或使用重定向
-radp-vf dump-config -f yaml >config.yaml
+# 按 guest ID 或 machine name 过滤
+radp-vf dump-config node-1
 
 # 生成独立 Vagrantfile（dry-run 预览）
 radp-vf generate
@@ -372,105 +366,89 @@ radp-vf generate
 radp-vf generate Vagrantfile.preview
 ```
 
-### 从 Git Clone 使用（开发模式）
+### Vagrant 命令
 
-用于框架开发或直接从源码使用：
+```shell
+# 运行任意 vagrant 命令
+radp-vf vg status
+radp-vf vg up
+radp-vf vg ssh <machine-name>
+radp-vf vg halt
+radp-vf vg destroy
 
-```bash
-cd radp-vagrant-framework/src/main/ruby
-
-# 验证配置
-vagrant validate
-
-# 查看虚拟机状态
-vagrant status
-
-# 调试：导出合并后的配置
-ruby -r ./lib/radp_vagrant -e "RadpVagrant.dump_config('config')"
-
-# 输出为 YAML 格式
-ruby -r ./lib/radp_vagrant -e "RadpVagrant.dump_config('config', nil, format: :yaml)"
-
-# 生成独立 Vagrantfile
-ruby -r ./lib/radp_vagrant -e "puts RadpVagrant.generate_vagrantfile('config')"
+# 配合全局选项使用
+radp-vf -c /path/to/config -e prod vg up
 ```
 
-## 目录结构
+## 模板系统
 
+模板允许你使用预定义配置和变量替换来初始化项目。
+
+### 可用模板
+
+框架提供了常用场景的内置模板：
+
+| 模板            | 描述                                      |
+|---------------|-----------------------------------------|
+| `base`        | 入门级最小模板（默认）                             |
+| `single-node` | 增强型单节点虚拟机，预配置常用 provisions              |
+| `k8s-cluster` | 多节点 Kubernetes 集群，包含 master 和 worker 节点 |
+
+### 模板位置
+
+- **内置模板**: `$RADP_VF_HOME/templates/`
+- **用户模板**: `~/.config/radp-vagrant/templates/`
+
+同名的用户模板会覆盖内置模板。
+
+### 使用模板
+
+```shell
+# 使用默认模板（base）初始化
+radp-vf init myproject
+
+# 使用指定模板初始化
+radp-vf init myproject --template k8s-cluster
+
+# 使用模板变量初始化
+radp-vf init myproject --template k8s-cluster \
+  --set cluster_name=homelab \
+  --set worker_count=3
+
+# 列出可用模板
+radp-vf template list
+
+# 查看模板详情和变量
+radp-vf template show k8s-cluster
 ```
-bin/
-└── radp-vf                         # CLI 入口
-completions/
-├── radp-vf.bash                    # Bash 补全
-└── radp-vf.zsh                     # Zsh 补全
-install.sh                          # 安装脚本
-templates/                          # 内置项目模板
-├── base/                           # 入门级最小模板
-│   ├── template.yaml               # 模板元数据
-│   └── files/                      # 模板文件
-├── single-node/                    # 增强型单节点模板
-└── k8s-cluster/                    # Kubernetes 集群模板
-src/main/ruby/
-├── Vagrantfile                     # Vagrant 入口文件
-├── config/
-│   ├── vagrant.yaml                # 基础配置（设置 env）
-│   ├── vagrant-sample.yaml         # Sample 环境集群
-│   └── vagrant-local.yaml          # Local 环境集群
-└── lib/
-    ├── radp_vagrant.rb             # 主协调器
-    └── radp_vagrant/
-        ├── config_loader.rb        # 多文件 YAML 加载
-        ├── config_merger.rb        # 深度合并（数组连接）
-        ├── generator.rb            # Vagrantfile 生成器（dry-run）
-        ├── path_resolver.rb        # 统一的两级路径解析
-        ├── configurators/
-        │   ├── box.rb              # Box 配置
-        │   ├── provider.rb         # Provider 配置（VirtualBox 等）
-        │   ├── network.rb          # 网络和主机名
-        │   ├── hostmanager.rb      # Guest 级别 hostmanager
-        │   ├── synced_folder.rb    # 同步文件夹
-        │   ├── provision.rb        # 配置脚本
-        │   ├── trigger.rb          # 触发器
-        │   ├── plugin.rb           # 插件协调器
-        │   └── plugins/            # 模块化插件配置器
-        │       ├── base.rb         # 基类
-        │       ├── registry.rb     # 插件注册表
-        │       ├── hostmanager.rb  # vagrant-hostmanager
-        │       ├── vbguest.rb      # vagrant-vbguest
-        │       ├── proxyconf.rb    # vagrant-proxyconf
-        │       └── bindfs.rb       # vagrant-bindfs
-        ├── provisions/             # 内置 & 用户 provisions
-        │   ├── registry.rb         # 内置 provision 注册表 (radp:)
-        │   ├── user_registry.rb    # 用户 provision 注册表 (user:)
-        │   ├── definitions/        # Provision 定义文件 (YAML)
-        │   │   ├── nfs/
-        │   │   │   └── external-nfs-mount.yaml
-        │   │   ├── ssh/
-        │   │   │   ├── host-trust.yaml
-        │   │   │   └── cluster-trust.yaml
-        │   │   └── time/
-        │   │       └── chrony-sync.yaml
-        │   └── scripts/            # Provision 脚本
-        │       ├── nfs/
-        │       │   └── external-nfs-mount.sh
-        │       ├── ssh/
-        │       │   ├── host-trust.sh
-        │       │   └── cluster-trust.sh
-        │       └── time/
-        │           └── chrony-sync.sh
-        └── triggers/               # 内置触发器
-            ├── registry.rb         # 内置触发器注册表 (radp:)
-            ├── definitions/        # 触发器定义文件 (YAML)
-            │   └── system/
-            │       ├── disable-swap.yaml
-            │       ├── disable-selinux.yaml
-            │       └── disable-firewalld.yaml
-            └── scripts/            # 触发器脚本
-                └── system/
-                    ├── disable-swap.sh
-                    ├── disable-selinux.sh
-                    └── disable-firewalld.sh
+
+### 创建自定义模板
+
+1. 在 `~/.config/radp-vagrant/templates/my-template/` 下创建目录
+2. 创建 `template.yaml` 元数据文件：
+
+```yaml
+name: my-template
+desc: 我的自定义模板
+version: 1.0.0
+variables:
+  - name: env
+    desc: 环境名称
+    default: dev
+    required: true
+  - name: cluster_name
+    desc: 集群名称
+    default: example
+  - name: mem
+    desc: 内存（MB）
+    default: 2048
+    type: integer
 ```
+
+3. 创建 `files/` 目录存放模板文件
+4. 在文件内容和文件名中使用 `{{variable}}` 占位符
+
+示例：当 `env=dev` 时，`files/config/vagrant-{{env}}.yaml` 会变成 `files/config/vagrant-dev.yaml`。
 
 ## 配置结构
 
@@ -516,296 +494,99 @@ radp:
                   name: generic/centos9s
 ```
 
-## 配置参考
+### 配置继承
 
-### 插件 (plugins)
+框架支持两个层级的配置合并：
 
-插件在 `plugins` 数组中配置。每个插件可以指定：
+#### 文件级合并
 
-- `name`：插件名称（必填）
-- `required`：缺失时自动安装（默认：false）
-- `options`：插件特定配置选项
+`vagrant.yaml`（基础）+ `vagrant-{env}.yaml`（环境）进行深度合并：
 
-支持的插件：
+| 类型     | 合并行为                          |
+|--------|-------------------------------|
+| 标量     | 覆盖（env 优先）                    |
+| 哈希     | 深度合并                          |
+| 数组     | 拼接                            |
+| **插件** | **按 name 合并**（env 扩展/覆盖 base） |
 
-- `vagrant-hostmanager` - 主机文件管理
-- `vagrant-vbguest` - VirtualBox Guest Additions
-- `vagrant-proxyconf` - 代理配置
-- `vagrant-bindfs` - 绑定挂载（按 synced-folder 配置）
-
-#### vagrant-hostmanager
-
-管理宿主机和虚拟机上的 `/etc/hosts` 文件，用于主机名解析。
-
-**基本配置（自动模式）：**
+**插件合并示例：**
 
 ```yaml
+# vagrant.yaml
 plugins:
   - name: vagrant-hostmanager
     required: true
     options:
-      enabled: true               # vagrant up/destroy 时更新 hosts
-      manage_host: true           # 更新宿主机的 /etc/hosts
-      manage_guest: true          # 更新虚拟机的 /etc/hosts
-      include_offline: false      # 将离线 VM 包含在 hosts 文件中
-```
-
-**Provisioner 模式：**
-
-使用 `provisioner: enabled` 将 hostmanager 作为 provisioner 运行，而不是自动运行。这可以控制 hosts 文件的更新时机：
-
-```yaml
-plugins:
-  - name: vagrant-hostmanager
-    options:
-      provisioner: enabled        # 作为 provisioner 运行（与 enabled 互斥）
       manage_host: true
       manage_guest: true
-```
 
-> 注意：`provisioner` 和 `enabled` 是互斥的。如果两者都设置，框架会自动禁用 `enabled` 并输出警告日志。
-
-**自定义 IP 解析器：**
-
-默认情况下，hostmanager 使用 `vm.ssh_info[:host]`，对于 NAT 网络可能返回 `127.0.0.1`。使用 `ip_resolver` 从虚拟机提取正确的
-IP：
-
-```yaml
+# vagrant-dev.yaml
 plugins:
   - name: vagrant-hostmanager
     options:
       provisioner: enabled
-      manage_host: true
       ip_resolver:
         enabled: true
-        execute: "hostname -I"    # 在 guest 上执行的命令
-        regex: "^(\\S+)"          # 提取 IP 的正则表达式（使用第一个捕获组）
-```
+        execute: "hostname -I | awk '{print $2}'"
+        regex: "^(\\S+)"
 
-**执行时机：**
-
-当 `provisioner: enabled` 时，hostmanager 在**所有其他 provisions 之后**运行：
-
-```
-global-pre → cluster-pre → guest → cluster-post → global-post → hostmanager
-```
-
-**在运行中的 VM 上触发：**
-
-```bash
-# 仅触发 hostmanager（跳过其他 provisions）
-radp-vf vg provision --provision-with hostmanager
-
-# 运行所有 provisioners（包括 hostmanager）
-radp-vf vg provision
-```
-
-#### vagrant-vbguest
-
-自动在虚拟机上安装和更新 VirtualBox Guest Additions。
-
-##### 推荐配置
-
-```yaml
+# 合并结果（按 name 合并）
 plugins:
-  - name: vagrant-vbguest
+  - name: vagrant-hostmanager
+    required: true                # 继承自 base
     options:
-      auto_update: true           # 启动时检查/更新（默认: true）
-      auto_reboot: true           # 安装后需要时自动重启
+      manage_host: true           # 继承自 base
+      manage_guest: true          # 继承自 base
+      provisioner: enabled        # 从 env 新增
+      ip_resolver: { ... }        # 从 env 新增
 ```
 
-##### 不同发行版配置
+#### Guest 级继承
 
-<details>
-<summary><b>Ubuntu / Debian</b></summary>
+在配置文件内，guest 设置继承自：**global common → cluster common → guest**
 
-```yaml
-plugins:
-  - name: vagrant-vbguest
-    options:
-      installer: ubuntu           # 或 debian
-      auto_update: true
-      auto_reboot: true
+| 配置项                              | 合并行为                                                                       |
+|----------------------------------|----------------------------------------------------------------------------|
+| box, provider, network, hostname | 深度合并（guest 覆盖）                                                             |
+| hostmanager                      | 深度合并（guest 覆盖）                                                             |
+| provisions                       | 按 phase 拼接：`global-pre → cluster-pre → guest → cluster-post → global-post` |
+| triggers                         | 拼接                                                                         |
+| synced-folders                   | 拼接                                                                         |
+
+**示例：**
+
+```
+Global common:
+  - provisions: [A(pre), D(post)]
+  - synced-folders: [X]
+
+Cluster common:
+  - provisions: [B(pre), E(post)]
+  - synced-folders: [Y]
+
+Guest:
+  - provisions: [C]
+
+Guest 最终结果:
+  - provisions: [A, B, C, E, D]   # global-pre, cluster-pre, guest, cluster-post, global-post
+  - synced-folders: [X, Y]        # 拼接
 ```
 
-</details>
+#### 汇总表
 
-<details>
-<summary><b>CentOS / RHEL / Rocky Linux</b></summary>
+| 配置项            | 文件合并 (base + env) | Guest 继承 (common → guest) |
+|----------------|-------------------|---------------------------|
+| plugins        | 按 name 合并         | 不适用（仅全局）                  |
+| box            | 深度合并              | 深度合并                      |
+| provider       | 深度合并              | 深度合并                      |
+| network        | 深度合并              | 深度合并                      |
+| hostname       | 覆盖                | 覆盖                        |
+| hostmanager    | 深度合并              | 深度合并                      |
+| provisions     | 拼接                | 按 phase 拼接                |
+| triggers       | 拼接                | 拼接                        |
+| synced-folders | 拼接                | 拼接                        |
 
-```yaml
-plugins:
-  - name: vagrant-vbguest
-    options:
-      installer: centos
-      auto_update: true
-      auto_reboot: true
-      installer_options:
-        allow_kernel_upgrade: true    # 需要时允许内核升级
-        reboot_timeout: 300           # 内核升级后等待时间（秒）
-```
-
-> 注意：CentOS 在 Guest Additions 版本不匹配时可能需要内核升级。设置 `allow_kernel_upgrade: true` 允许此操作。
-
-</details>
-
-<details>
-<summary><b>Fedora</b></summary>
-
-```yaml
-plugins:
-  - name: vagrant-vbguest
-    options:
-      installer: fedora
-      auto_update: true
-      auto_reboot: true
-```
-
-</details>
-
-##### 常用场景
-
-| 场景     | 配置                                             |
-|--------|------------------------------------------------|
-| 禁用自动更新 | `auto_update: false`                           |
-| 仅检查不安装 | `no_install: true`                             |
-| 离线环境   | `no_remote: true` + `iso_path: "/path/to/iso"` |
-| 允许降级   | `allow_downgrade: true`（默认）                    |
-
-**离线 / 内网环境：**
-
-```yaml
-plugins:
-  - name: vagrant-vbguest
-    options:
-      no_remote: true
-      iso_path: "/shared/VBoxGuestAdditions.iso"
-      iso_upload_path: "/tmp"
-      iso_mount_point: "/mnt"
-```
-
-**完全禁用（使用 box 内置的 Guest Additions）：**
-
-```yaml
-plugins:
-  - name: vagrant-vbguest
-    options:
-      auto_update: false
-      no_install: true
-```
-
-<details>
-<summary><b>所有可用选项</b></summary>
-
-| 选项                    | 类型      | 默认值           | 说明                                                  |
-|-----------------------|---------|---------------|-----------------------------------------------------|
-| `auto_update`         | boolean | `true`        | 启动时检查/更新 Guest Additions                            |
-| `no_remote`           | boolean | `false`       | 禁止从远程下载 ISO                                         |
-| `no_install`          | boolean | `false`       | 仅检查版本，不安装                                           |
-| `auto_reboot`         | boolean | `true`        | 安装后需要时自动重启                                          |
-| `allow_downgrade`     | boolean | `true`        | 允许安装旧版本                                             |
-| `iso_path`            | string  | -             | 自定义 ISO 路径（本地或带 `%{version}` 的 URL）                 |
-| `iso_upload_path`     | string  | `/tmp`        | 虚拟机中存放 ISO 的目录                                      |
-| `iso_mount_point`     | string  | `/mnt`        | 虚拟机中的挂载点                                            |
-| `installer`           | string  | auto          | 安装器类型：`linux`、`ubuntu`、`debian`、`centos`、`fedora` 等 |
-| `installer_arguments` | array   | `["--nox11"]` | 传递给安装器的参数                                           |
-| `yes`                 | boolean | `true`        | 自动回答 yes                                            |
-| `installer_options`   | hash    | -             | 发行版特定选项                                             |
-| `installer_hooks`     | hash    | -             | 钩子：`before_install`、`after_install` 等               |
-
-</details>
-
-#### vagrant-bindfs
-
-通过 bindfs 挂载重新映射用户/组所有权，解决 NFS 权限问题。
-
-##### 为什么使用 bindfs？
-
-NFS 共享会继承宿主机的数字用户/组 ID（例如 macOS 用户在虚拟机内显示为 `501:20`）。这会导致虚拟机用户（通常是
-`vagrant:vagrant`）无法访问挂载的文件。vagrant-bindfs 通过重新挂载 NFS 共享并修正所有权来解决此问题。
-
-##### 推荐配置
-
-在 `synced-folders` 中为 NFS 文件夹配置 bindfs：
-
-```yaml
-synced-folders:
-  nfs:
-    - host: ./data
-      guest: /data
-      bindfs:
-        enabled: true
-        force_user: vagrant
-        force_group: vagrant
-```
-
-这将：
-
-1. 将 NFS 挂载到 `/mnt-bindfs/data`（临时路径）
-2. 使用 bindfs 重新挂载到 `/data`，所有权为 `vagrant:vagrant`
-
-##### 带权限映射
-
-```yaml
-synced-folders:
-  nfs:
-    - host: ./app
-      guest: /var/www/app
-      bindfs:
-        enabled: true
-        force_user: www-data
-        force_group: www-data
-        perms: "u=rwX:g=rX:o=rX"         # 用户 rwx，组/其他 rx
-        create_with_perms: "u=rwX:g=rX:o=rX"
-```
-
-##### 全局插件选项
-
-```yaml
-plugins:
-  - name: vagrant-bindfs
-    options:
-      debug: false                       # 启用调试输出
-      force_empty_mountpoints: true      # 挂载前清理挂载点
-      skip_validations: # 跳过用户/组存在性检查
-        - user
-        - group
-      default_options: # 所有 bind_folder 调用的默认选项
-        force_user: vagrant
-        force_group: vagrant
-```
-
-<details>
-<summary><b>所有 bindfs 选项（按文件夹）</b></summary>
-
-| 选项                  | 类型      | 说明                                     |
-|---------------------|---------|----------------------------------------|
-| `enabled`           | boolean | 为此文件夹启用 bindfs                         |
-| `force_user`        | string  | 强制所有文件归此用户所有                           |
-| `force_group`       | string  | 强制所有文件归此组所有                            |
-| `perms`             | string  | 权限映射（如 `u=rwX:g=rD:o=rD`）              |
-| `create_with_perms` | string  | 新建文件的权限                                |
-| `create_as_user`    | boolean | 以访问用户身份创建文件                            |
-| `chown_ignore`      | boolean | 忽略 chown 操作                            |
-| `chgrp_ignore`      | boolean | 忽略 chgrp 操作                            |
-| `o`                 | string  | 附加挂载选项                                 |
-| `after`             | string  | 何时绑定：`synced_folders`（默认）或 `provision` |
-
-</details>
-
-<details>
-<summary><b>所有全局插件选项</b></summary>
-
-| 选项                           | 类型      | 默认值     | 说明                     |
-|------------------------------|---------|---------|------------------------|
-| `debug`                      | boolean | `false` | 启用详细输出                 |
-| `force_empty_mountpoints`    | boolean | `false` | 绑定前清理挂载目标              |
-| `skip_validations`           | array   | `[]`    | 跳过验证：`user`、`group`    |
-| `bindfs_version`             | string  | -       | 指定安装的 bindfs 版本        |
-| `install_bindfs_from_source` | boolean | `false` | 从源码构建 bindfs           |
-| `default_options`            | hash    | -       | 所有 bind_folder 调用的默认选项 |
-
-</details>
+## 配置参考
 
 ### Box
 
@@ -845,7 +626,7 @@ provider:
 
 </details>
 
-### 网络 (network)
+### 网络 (Network)
 
 ```yaml
 # 主机名在 guest 级别（默认: {guest-id}.{cluster}.{env}）
@@ -917,20 +698,7 @@ network:
 
 </details>
 
-### Hostmanager（Guest 级别）
-
-```yaml
-hostmanager:
-  aliases:
-    - myhost.local
-    - myhost
-  ip-resolver:
-    enabled: true
-    execute: "hostname -I | cut -d ' ' -f 2"
-    regex: "^(\\S+)"
-```
-
-### 同步文件夹 (synced-folders)
+### 同步文件夹 (Synced Folders)
 
 ```yaml
 synced-folders:
@@ -955,7 +723,7 @@ synced-folders:
       smb-password: pass
 ```
 
-### 配置脚本 (provisions)
+### 配置脚本 (Provisions)
 
 ```yaml
 provisions:
@@ -1000,33 +768,10 @@ provisions:
 2. 如果不存在，检查路径是否存在于 **项目根目录**（config 目录的父目录）
 3. 如果都不存在，使用 config 相对路径（Vagrant 会报告错误）
 
-这同时支持标准项目结构和自定义 `RADP_VAGRANT_CONFIG_DIR` 设置。
-
 | 路径类型 | 示例                      | 解析顺序                                                                       |
 |------|-------------------------|----------------------------------------------------------------------------|
 | 绝对路径 | `/opt/scripts/setup.sh` | 直接使用                                                                       |
 | 相对路径 | `scripts/setup.sh`      | 1. `{config_dir}/scripts/setup.sh`<br>2. `{project_root}/scripts/setup.sh` |
-
-**支持的目录结构：**
-
-```
-# 结构 A：标准项目 (radp-vf init)
-myproject/                          # 项目根目录
-├── config/                         # RADP_VAGRANT_CONFIG_DIR
-│   ├── vagrant.yaml
-│   └── vagrant-{env}.yaml
-└── scripts/                        # path: scripts/setup.sh ✓
-    └── setup.sh
-
-# 结构 B：自定义配置目录
-~/.config/radp-vagrant/             # RADP_VAGRANT_CONFIG_DIR
-├── vagrant.yaml
-├── vagrant-{env}.yaml
-└── scripts/                        # path: scripts/setup.sh ✓
-    └── setup.sh
-```
-
-两种结构都可以使用 `path: scripts/setup.sh`。
 
 **phase 字段（仅用于 common provisions）：**
 
@@ -1066,6 +811,39 @@ clusters:
 
 执行顺序：`global-pre → cluster-pre → guest → cluster-post → global-post`
 
+<details>
+<summary><b>所有 provision 选项</b></summary>
+
+| 选项            | 类型           | 默认值                  | 说明                                       |
+|---------------|--------------|----------------------|------------------------------------------|
+| `name`        | string       | -                    | provision 名称                             |
+| `enabled`     | boolean      | `true`               | 是否启用                                     |
+| `type`        | string       | `shell`              | 类型：`shell` 或 `file`                      |
+| `privileged`  | boolean      | `false`              | 以 root 运行                                |
+| `run`         | string       | `once`               | 运行时机：`once`、`always`、`never`             |
+| `phase`       | string       | `pre`                | 执行阶段：`pre` 或 `post`（仅 common provisions） |
+| `inline`      | string       | -                    | 内联脚本内容                                   |
+| `path`        | string       | -                    | 外部脚本路径                                   |
+| `args`        | string/array | -                    | 脚本参数                                     |
+| `env`         | hash         | -                    | 环境变量                                     |
+| `before`      | string       | -                    | 在指定 provision 之前运行                       |
+| `after`       | string       | -                    | 在指定 provision 之后运行                       |
+| `keep-color`  | boolean      | `false`              | 保持颜色输出                                   |
+| `upload-path` | string       | `/tmp/vagrant-shell` | 脚本在虚拟机中的上传路径                             |
+| `reboot`      | boolean      | `false`              | 执行后重启                                    |
+| `reset`       | boolean      | `false`              | 执行后重置 SSH 连接                             |
+| `sensitive`   | boolean      | `false`              | 隐藏输出（敏感数据）                               |
+| `binary`      | boolean      | `false`              | 以二进制传输脚本（不转换行尾）                          |
+
+**File provisioner 选项：**
+
+| 选项            | 类型     | 说明         |
+|---------------|--------|------------|
+| `source`      | string | 宿主机上的源文件路径 |
+| `destination` | string | 虚拟机上的目标路径  |
+
+</details>
+
 #### 内置 Provisions
 
 框架提供了用于常见任务的内置 provisions。内置 provisions 以 `radp:` 前缀标识，并带有合理的默认配置。
@@ -1097,8 +875,6 @@ provisions:
       HOST_SSH_PUBLIC_KEY_FILE: "/vagrant/host_ssh_key.pub"
 
   # SSH 集群互信（虚拟机 <-> 虚拟机，仅同用户互信，通常在 cluster.common 级别配置）
-  # 密钥文件: {dir}/id_{env}_{cluster}_{user} 和 {dir}/id_{env}_{cluster}_{user}.pub
-  # 示例（env 为 "dev"，cluster 为 "hadoop"）: /vagrant/keys/id_dev_hadoop_vagrant[.pub]
   - name: radp:ssh/cluster-trust
     enabled: true
     env:
@@ -1128,9 +904,8 @@ provisions:
       NFS_ROOT: "/volume1/nfs"
 ```
 
-**环境变量：**
-
-内置 provisions 在其 YAML 定义中声明必需和可选的环境变量。可选变量会自动应用默认值。
+<details>
+<summary><b>内置 provisions 环境变量</b></summary>
 
 | Provision                     | 必需变量                     | 可选变量（默认值）                                                               |
 |-------------------------------|--------------------------|-------------------------------------------------------------------------|
@@ -1139,25 +914,7 @@ provisions:
 | `radp:ssh/cluster-trust`      | `CLUSTER_SSH_KEY_DIR`    | `SSH_USERS`(vagrant), `TRUSTED_HOST_PATTERN`(自动)                        |
 | `radp:time/chrony-sync`       | 无                        | `NTP_SERVERS`, `NTP_POOL`(pool.ntp.org), `TIMEZONE`, `SYNC_NOW`(true)   |
 
-**Provision 定义格式：**
-
-内置和用户自定义 provisions 使用以下 YAML 结构定义：
-
-```yaml
-desc: 人类可读的描述
-defaults:
-  privileged: true
-  run: once
-  env:
-    required:
-      - name: REQ_VAR
-        desc: 必需变量的描述
-    optional:
-      - name: OPT_VAR
-        value: "default_value"
-        desc: 可选变量的描述
-  script: script-name.sh
-```
+</details>
 
 #### 用户自定义 Provisions
 
@@ -1235,52 +992,7 @@ provisions:
       DOCKER_VERSION: "24.0"
 ```
 
-**路径解析：**
-
-用户 provisions 使用与普通 provisions 相同的两级路径解析：
-
-```
-查找顺序：
-1. {config_dir}/provisions/definitions/xxx.yaml
-2. {project_root}/provisions/definitions/xxx.yaml
-```
-
-如果同一 provision 在两个位置都存在，`config_dir` 优先，并显示警告。
-
-<details>
-<summary><b>所有 provision 选项</b></summary>
-
-| 选项            | 类型           | 默认值                  | 说明                                       |
-|---------------|--------------|----------------------|------------------------------------------|
-| `name`        | string       | -                    | provision 名称                             |
-| `enabled`     | boolean      | `true`               | 是否启用                                     |
-| `type`        | string       | `shell`              | 类型：`shell` 或 `file`                      |
-| `privileged`  | boolean      | `false`              | 以 root 运行                                |
-| `run`         | string       | `once`               | 运行时机：`once`、`always`、`never`             |
-| `phase`       | string       | `pre`                | 执行阶段：`pre` 或 `post`（仅 common provisions） |
-| `inline`      | string       | -                    | 内联脚本内容                                   |
-| `path`        | string       | -                    | 外部脚本路径                                   |
-| `args`        | string/array | -                    | 脚本参数                                     |
-| `env`         | hash         | -                    | 环境变量                                     |
-| `before`      | string       | -                    | 在指定 provision 之前运行                       |
-| `after`       | string       | -                    | 在指定 provision 之后运行                       |
-| `keep-color`  | boolean      | `false`              | 保持颜色输出                                   |
-| `upload-path` | string       | `/tmp/vagrant-shell` | 脚本在虚拟机中的上传路径                             |
-| `reboot`      | boolean      | `false`              | 执行后重启                                    |
-| `reset`       | boolean      | `false`              | 执行后重置 SSH 连接                             |
-| `sensitive`   | boolean      | `false`              | 隐藏输出（敏感数据）                               |
-| `binary`      | boolean      | `false`              | 以二进制传输脚本（不转换行尾）                          |
-
-**File provisioner 选项：**
-
-| 选项            | 类型     | 说明         |
-|---------------|--------|------------|
-| `source`      | string | 宿主机上的源文件路径 |
-| `destination` | string | 虚拟机上的目标路径  |
-
-</details>
-
-### 触发器 (triggers)
+### 触发器 (Triggers)
 
 注意：`on` 键在 YAML 中必须加引号，否则会被解析为布尔值。
 
@@ -1369,8 +1081,6 @@ triggers:
 
 **覆盖默认值：**
 
-用户配置优先于内置默认值：
-
 ```yaml
 triggers:
   - name: radp:system/disable-swap
@@ -1380,116 +1090,300 @@ triggers:
     on-error: halt             # 覆盖错误处理（默认: continue）
 ```
 
-**内置触发器定义格式：**
+### 插件 (Plugins)
 
-内置触发器使用以下 YAML 结构定义：
+插件在 `plugins` 数组中配置。每个插件可以指定：
 
-```yaml
-desc: 人类可读的描述
-defaults:
-  "on": after
-  action:
-    - up
-    - reload
-  type: action
-  on-error: continue
-  run-remote:
-    script: script-name.sh
-```
+- `name`：插件名称（必填）
+- `required`：缺失时自动安装（默认：false）
+- `options`：插件特定配置选项
 
-## 配置继承
+支持的插件：
 
-框架支持两个层级的配置合并：
+- `vagrant-hostmanager` - 主机文件管理
+- `vagrant-vbguest` - VirtualBox Guest Additions
+- `vagrant-proxyconf` - 代理配置
+- `vagrant-bindfs` - 绑定挂载（按 synced-folder 配置）
 
-### 文件级合并
+#### vagrant-hostmanager
 
-`vagrant.yaml`（基础）+ `vagrant-{env}.yaml`（环境）进行深度合并：
+管理宿主机和虚拟机上的 `/etc/hosts` 文件，用于主机名解析。
 
-| 类型     | 合并行为                          |
-|--------|-------------------------------|
-| 标量     | 覆盖（env 优先）                    |
-| 哈希     | 深度合并                          |
-| 数组     | 拼接                            |
-| **插件** | **按 name 合并**（env 扩展/覆盖 base） |
-
-**插件合并示例：**
+**基本配置（自动模式）：**
 
 ```yaml
-# vagrant.yaml
 plugins:
   - name: vagrant-hostmanager
     required: true
     options:
+      enabled: true               # vagrant up/destroy 时更新 hosts
+      manage_host: true           # 更新宿主机的 /etc/hosts
+      manage_guest: true          # 更新虚拟机的 /etc/hosts
+      include_offline: false      # 将离线 VM 包含在 hosts 文件中
+```
+
+**Provisioner 模式：**
+
+使用 `provisioner: enabled` 将 hostmanager 作为 provisioner 运行，而不是自动运行。这可以控制 hosts 文件的更新时机：
+
+```yaml
+plugins:
+  - name: vagrant-hostmanager
+    options:
+      provisioner: enabled        # 作为 provisioner 运行（与 enabled 互斥）
       manage_host: true
       manage_guest: true
+```
 
-# vagrant-dev.yaml
+> 注意：`provisioner` 和 `enabled` 是互斥的。如果两者都设置，框架会自动禁用 `enabled` 并输出警告日志。
+
+**自定义 IP 解析器：**
+
+默认情况下，hostmanager 使用 `vm.ssh_info[:host]`，对于 NAT 网络可能返回 `127.0.0.1`。使用 `ip_resolver` 从虚拟机提取正确的
+IP：
+
+```yaml
 plugins:
   - name: vagrant-hostmanager
     options:
       provisioner: enabled
+      manage_host: true
       ip_resolver:
         enabled: true
-        execute: "hostname -I | awk '{print $2}'"
-        regex: "^(\\S+)"
+        execute: "hostname -I"    # 在 guest 上执行的命令
+        regex: "^(\\S+)"          # 提取 IP 的正则表达式（使用第一个捕获组）
+```
 
-# 合并结果（按 name 合并）
+**执行时机：**
+
+当 `provisioner: enabled` 时，hostmanager 在**所有其他 provisions 之后**运行：
+
+```
+global-pre → cluster-pre → guest → cluster-post → global-post → hostmanager
+```
+
+**在运行中的 VM 上触发：**
+
+```bash
+# 仅触发 hostmanager（跳过其他 provisions）
+radp-vf vg provision --provision-with hostmanager
+
+# 运行所有 provisioners（包括 hostmanager）
+radp-vf vg provision
+```
+
+**Guest 级别 hostmanager 设置：**
+
+```yaml
+hostmanager:
+  aliases:
+    - myhost.local
+    - myhost
+  ip-resolver:
+    enabled: true
+    execute: "hostname -I | cut -d ' ' -f 2"
+    regex: "^(\\S+)"
+```
+
+#### vagrant-vbguest
+
+自动在虚拟机上安装和更新 VirtualBox Guest Additions。
+
+**推荐配置：**
+
+```yaml
 plugins:
-  - name: vagrant-hostmanager
-    required: true                # 继承自 base
+  - name: vagrant-vbguest
     options:
-      manage_host: true           # 继承自 base
-      manage_guest: true          # 继承自 base
-      provisioner: enabled        # 从 env 新增
-      ip_resolver: { ... }        # 从 env 新增
+      auto_update: true           # 启动时检查/更新（默认: true）
+      auto_reboot: true           # 安装后需要时自动重启
 ```
 
-### Guest 级继承
+<details>
+<summary><b>不同发行版配置</b></summary>
 
-在配置文件内，guest 设置继承自：**global common → cluster common → guest**
+**Ubuntu / Debian：**
 
-| 配置项                              | 合并行为                                                                       |
-|----------------------------------|----------------------------------------------------------------------------|
-| box, provider, network, hostname | 深度合并（guest 覆盖）                                                             |
-| hostmanager                      | 深度合并（guest 覆盖）                                                             |
-| provisions                       | 按 phase 拼接：`global-pre → cluster-pre → guest → cluster-post → global-post` |
-| triggers                         | 拼接                                                                         |
-| synced-folders                   | 拼接                                                                         |
-
-**示例：**
-
-```
-Global common:
-  - provisions: [A(pre), D(post)]
-  - synced-folders: [X]
-
-Cluster common:
-  - provisions: [B(pre), E(post)]
-  - synced-folders: [Y]
-
-Guest:
-  - provisions: [C]
-
-Guest 最终结果:
-  - provisions: [A, B, C, E, D]   # global-pre, cluster-pre, guest, cluster-post, global-post
-  - synced-folders: [X, Y]        # 拼接
+```yaml
+plugins:
+  - name: vagrant-vbguest
+    options:
+      installer: ubuntu           # 或 debian
+      auto_update: true
+      auto_reboot: true
 ```
 
-### 汇总表
+**CentOS / RHEL / Rocky Linux：**
 
-| 配置项            | 文件合并 (base + env) | Guest 继承 (common → guest) |
-|----------------|-------------------|---------------------------|
-| plugins        | 按 name 合并         | 不适用（仅全局）                  |
-| box            | 深度合并              | 深度合并                      |
-| provider       | 深度合并              | 深度合并                      |
-| network        | 深度合并              | 深度合并                      |
-| hostname       | 覆盖                | 覆盖                        |
-| hostmanager    | 深度合并              | 深度合并                      |
-| provisions     | 拼接                | 按 phase 拼接                |
-| triggers       | 拼接                | 拼接                        |
-| synced-folders | 拼接                | 拼接                        |
+```yaml
+plugins:
+  - name: vagrant-vbguest
+    options:
+      installer: centos
+      auto_update: true
+      auto_reboot: true
+      installer_options:
+        allow_kernel_upgrade: true    # 需要时允许内核升级
+        reboot_timeout: 300           # 内核升级后等待时间（秒）
+```
 
-## 约定优于配置
+> 注意：CentOS 在 Guest Additions 版本不匹配时可能需要内核升级。设置 `allow_kernel_upgrade: true` 允许此操作。
+
+**Fedora：**
+
+```yaml
+plugins:
+  - name: vagrant-vbguest
+    options:
+      installer: fedora
+      auto_update: true
+      auto_reboot: true
+```
+
+</details>
+
+<details>
+<summary><b>常用场景</b></summary>
+
+| 场景     | 配置                                             |
+|--------|------------------------------------------------|
+| 禁用自动更新 | `auto_update: false`                           |
+| 仅检查不安装 | `no_install: true`                             |
+| 离线环境   | `no_remote: true` + `iso_path: "/path/to/iso"` |
+| 允许降级   | `allow_downgrade: true`（默认）                    |
+
+**离线 / 内网环境：**
+
+```yaml
+plugins:
+  - name: vagrant-vbguest
+    options:
+      no_remote: true
+      iso_path: "/shared/VBoxGuestAdditions.iso"
+      iso_upload_path: "/tmp"
+      iso_mount_point: "/mnt"
+```
+
+**完全禁用（使用 box 内置的 Guest Additions）：**
+
+```yaml
+plugins:
+  - name: vagrant-vbguest
+    options:
+      auto_update: false
+      no_install: true
+```
+
+</details>
+
+<details>
+<summary><b>所有可用选项</b></summary>
+
+| 选项                    | 类型      | 默认值           | 说明                                                  |
+|-----------------------|---------|---------------|-----------------------------------------------------|
+| `auto_update`         | boolean | `true`        | 启动时检查/更新 Guest Additions                            |
+| `no_remote`           | boolean | `false`       | 禁止从远程下载 ISO                                         |
+| `no_install`          | boolean | `false`       | 仅检查版本，不安装                                           |
+| `auto_reboot`         | boolean | `true`        | 安装后需要时自动重启                                          |
+| `allow_downgrade`     | boolean | `true`        | 允许安装旧版本                                             |
+| `iso_path`            | string  | -             | 自定义 ISO 路径（本地或带 `%{version}` 的 URL）                 |
+| `iso_upload_path`     | string  | `/tmp`        | 虚拟机中存放 ISO 的目录                                      |
+| `iso_mount_point`     | string  | `/mnt`        | 虚拟机中的挂载点                                            |
+| `installer`           | string  | auto          | 安装器类型：`linux`、`ubuntu`、`debian`、`centos`、`fedora` 等 |
+| `installer_arguments` | array   | `["--nox11"]` | 传递给安装器的参数                                           |
+| `yes`                 | boolean | `true`        | 自动回答 yes                                            |
+| `installer_options`   | hash    | -             | 发行版特定选项                                             |
+| `installer_hooks`     | hash    | -             | 钩子：`before_install`、`after_install` 等               |
+
+</details>
+
+#### vagrant-bindfs
+
+通过 bindfs 挂载重新映射用户/组所有权，解决 NFS 权限问题。
+
+**为什么使用 bindfs？**
+
+NFS 共享会继承宿主机的数字用户/组 ID（例如 macOS 用户在虚拟机内显示为 `501:20`）。这会导致虚拟机用户（通常是
+`vagrant:vagrant`）无法访问挂载的文件。vagrant-bindfs 通过重新挂载 NFS 共享并修正所有权来解决此问题。
+
+**推荐配置：**
+
+在 `synced-folders` 中为 NFS 文件夹配置 bindfs：
+
+```yaml
+synced-folders:
+  nfs:
+    - host: ./data
+      guest: /data
+      bindfs:
+        enabled: true
+        force_user: vagrant
+        force_group: vagrant
+```
+
+这将：
+
+1. 将 NFS 挂载到 `/mnt-bindfs/data`（临时路径）
+2. 使用 bindfs 重新挂载到 `/data`，所有权为 `vagrant:vagrant`
+
+<details>
+<summary><b>带权限映射</b></summary>
+
+```yaml
+synced-folders:
+  nfs:
+    - host: ./app
+      guest: /var/www/app
+      bindfs:
+        enabled: true
+        force_user: www-data
+        force_group: www-data
+        perms: "u=rwX:g=rX:o=rX"         # 用户 rwx，组/其他 rx
+        create_with_perms: "u=rwX:g=rX:o=rX"
+```
+
+</details>
+
+<details>
+<summary><b>全局插件选项</b></summary>
+
+```yaml
+plugins:
+  - name: vagrant-bindfs
+    options:
+      debug: false                       # 启用调试输出
+      force_empty_mountpoints: true      # 挂载前清理挂载点
+      skip_validations: # 跳过用户/组存在性检查
+        - user
+        - group
+      default_options: # 所有 bind_folder 调用的默认选项
+        force_user: vagrant
+        force_group: vagrant
+```
+
+</details>
+
+<details>
+<summary><b>所有 bindfs 选项（按文件夹）</b></summary>
+
+| 选项                  | 类型      | 说明                                     |
+|---------------------|---------|----------------------------------------|
+| `enabled`           | boolean | 为此文件夹启用 bindfs                         |
+| `force_user`        | string  | 强制所有文件归此用户所有                           |
+| `force_group`       | string  | 强制所有文件归此组所有                            |
+| `perms`             | string  | 权限映射（如 `u=rwX:g=rD:o=rD`）              |
+| `create_with_perms` | string  | 新建文件的权限                                |
+| `create_as_user`    | boolean | 以访问用户身份创建文件                            |
+| `chown_ignore`      | boolean | 忽略 chown 操作                            |
+| `chgrp_ignore`      | boolean | 忽略 chgrp 操作                            |
+| `o`                 | string  | 附加挂载选项                                 |
+| `after`             | string  | 何时绑定：`synced_folders`（默认）或 `provision` |
+
+</details>
+
+## 高级主题
+
+### 约定优于配置
 
 框架根据上下文自动应用合理的默认值：
 
@@ -1499,7 +1393,7 @@ Guest 最终结果:
 | `provider.name`     | `{env}-{cluster}-{guest-id}` | `dev-my-cluster-node-1` |
 | `provider.group-id` | `{env}/{cluster}`            | `dev/my-cluster`        |
 
-## 配置校验规则
+### 配置校验规则
 
 框架会验证配置并在以下情况抛出错误：
 
@@ -1507,61 +1401,14 @@ Guest 最终结果:
 - **重复的 guest ID**: 同一集群内不允许存在相同的 guest ID
 - **基础配置中定义集群**: 集群必须在 `vagrant-{env}.yaml` 中定义，不能在基础 `vagrant.yaml` 中定义
 
-## 机器命名
+### 机器命名
 
 Vagrant 机器名称使用 `provider.name`（默认: `{env}-{cluster}-{guest-id}`）以确保在 `$VAGRANT_DOTFILE_PATH/machines/<name>`
 中的唯一性。这可以防止多个集群中存在相同 guest ID 时产生冲突。
 
-## 模板系统
+### 扩展框架
 
-模板允许你使用预定义配置和变量替换来初始化项目。
-
-### 模板位置
-
-- **内置模板**: `$RADP_VF_HOME/templates/`
-- **用户模板**: `~/.config/radp-vagrant/templates/`
-
-同名的用户模板会覆盖内置模板。
-
-### 创建自定义模板
-
-1. 在 `~/.config/radp-vagrant/templates/my-template/` 下创建目录
-2. 创建 `template.yaml` 元数据文件：
-
-```yaml
-name: my-template
-desc: 我的自定义模板
-version: 1.0.0
-variables:
-  - name: env
-    desc: 环境名称
-    default: dev
-    required: true
-  - name: cluster_name
-    desc: 集群名称
-    default: example
-  - name: mem
-    desc: 内存（MB）
-    default: 2048
-    type: integer
-```
-
-3. 创建 `files/` 目录存放模板文件
-4. 在文件内容和文件名中使用 `{{variable}}` 占位符
-
-示例：当 `env=dev` 时，`files/config/vagrant-{{env}}.yaml` 会变成 `files/config/vagrant-dev.yaml`。
-
-## 环境变量
-
-| 变量                        | 说明           |
-|---------------------------|--------------|
-| `RADP_VF_HOME`            | 框架安装目录（自动检测） |
-| `RADP_VAGRANT_CONFIG_DIR` | 配置目录路径       |
-| `RADP_VAGRANT_ENV`        | 覆盖环境名称       |
-
-## 扩展
-
-### 添加新插件配置器
+#### 添加新插件配置器
 
 1. 创建文件 `lib/radp_vagrant/configurators/plugins/my_plugin.rb`:
 
@@ -1609,7 +1456,7 @@ def plugin_classes
 end
 ```
 
-### 添加 Provider
+#### 添加 Provider
 
 ```ruby
 # 在 provider.rb 中
@@ -1619,7 +1466,88 @@ RadpVagrant::Configurators::Provider::CONFIGURATORS['vmware_desktop'] = lambda {
 }
 ```
 
-## CI
+## 目录结构
+
+```
+bin/
+└── radp-vf                         # CLI 入口
+completions/
+├── radp-vf.bash                    # Bash 补全
+└── radp-vf.zsh                     # Zsh 补全
+install.sh                          # 安装脚本
+templates/                          # 内置项目模板
+├── base/                           # 入门级最小模板
+│   ├── template.yaml               # 模板元数据
+│   └── files/                      # 模板文件
+├── single-node/                    # 增强型单节点模板
+└── k8s-cluster/                    # Kubernetes 集群模板
+src/main/ruby/
+├── Vagrantfile                     # Vagrant 入口文件
+├── config/
+│   ├── vagrant.yaml                # 基础配置（设置 env）
+│   ├── vagrant-sample.yaml         # Sample 环境集群
+│   └── vagrant-local.yaml          # Local 环境集群
+└── lib/
+    ├── radp_vagrant.rb             # 主协调器
+    └── radp_vagrant/
+        ├── config_loader.rb        # 多文件 YAML 加载
+        ├── config_merger.rb        # 深度合并（数组连接）
+        ├── generator.rb            # Vagrantfile 生成器（dry-run）
+        ├── path_resolver.rb        # 统一的两级路径解析
+        ├── configurators/
+        │   ├── box.rb              # Box 配置
+        │   ├── provider.rb         # Provider 配置（VirtualBox 等）
+        │   ├── network.rb          # 网络和主机名
+        │   ├── hostmanager.rb      # Guest 级别 hostmanager
+        │   ├── synced_folder.rb    # 同步文件夹
+        │   ├── provision.rb        # 配置脚本
+        │   ├── trigger.rb          # 触发器
+        │   ├── plugin.rb           # 插件协调器
+        │   └── plugins/            # 模块化插件配置器
+        │       ├── base.rb         # 基类
+        │       ├── registry.rb     # 插件注册表
+        │       ├── hostmanager.rb  # vagrant-hostmanager
+        │       ├── vbguest.rb      # vagrant-vbguest
+        │       ├── proxyconf.rb    # vagrant-proxyconf
+        │       └── bindfs.rb       # vagrant-bindfs
+        ├── provisions/             # 内置 & 用户 provisions
+        │   ├── registry.rb         # 内置 provision 注册表 (radp:)
+        │   ├── user_registry.rb    # 用户 provision 注册表 (user:)
+        │   ├── definitions/        # Provision 定义文件 (YAML)
+        │   └── scripts/            # Provision 脚本
+        ├── triggers/               # 内置触发器
+        │   ├── registry.rb         # 内置触发器注册表 (radp:)
+        │   ├── definitions/        # 触发器定义文件 (YAML)
+        │   └── scripts/            # 触发器脚本
+        └── templates/              # 模板系统
+            ├── registry.rb         # 模板发现
+            └── renderer.rb         # 变量替换
+```
+
+## 开发与 CI
+
+### 从 Git Clone 使用
+
+用于框架开发或直接从源码使用：
+
+```bash
+cd radp-vagrant-framework/src/main/ruby
+
+# 验证配置
+vagrant validate
+
+# 查看虚拟机状态
+vagrant status
+
+# 调试：导出合并后的配置
+ruby -r ./lib/radp_vagrant -e "RadpVagrant.dump_config('config')"
+
+# 输出为 YAML 格式
+ruby -r ./lib/radp_vagrant -e "RadpVagrant.dump_config('config', nil, format: :yaml)"
+
+# 生成独立 Vagrantfile
+ruby -r ./lib/radp_vagrant -e "puts RadpVagrant.generate_vagrantfile('config')"
+```
 
 ### 如何发布
 
@@ -1647,31 +1575,13 @@ create-version-tag
 
 ### GitHub Actions
 
-#### CI (`ci.yml`)
-
-- **触发**: 推送/PR 到 `main`。
-- **目的**: 在 Ubuntu 和 macOS 上跨多个 Ruby 版本（3.0-3.3）验证 Ruby 语法、测试框架加载、配置加载和 Vagrantfile 生成。
-
-#### Release prep (`release-prep.yml`)
-
-- **触发**: 在 `main` 上手动触发（`workflow_dispatch`）。
-- **目的**: 从解析的版本（patch/minor/major 升级或手动指定 `vX.Y.Z`）创建发布分支（`workflow/vX.Y.Z`），更新 `version.rb`，插入
-  changelog 条目，并创建 PR 供审核。
-
-#### Create version tag (`create-version-tag.yml`)
-
-- **触发**: 在 `main` 上手动触发（`workflow_dispatch`），或合并 `workflow/vX.Y.Z` PR 时。
-- **目的**: 从 `version.rb` 读取版本，验证 changelog 条目，然后创建/推送 Git 标签（如不存在）。
-
-#### Release (`release.yml`)
-
-- **触发**: `create-version-tag` 成功完成后、推送版本标签（`v*`）或手动触发（`workflow_dispatch`）。
-- **目的**: 创建包含 tar.gz 和 zip 归档的 GitHub Release，从 changelog 提取发布说明。
-
-#### Update Homebrew tap (`update-homebrew-tap.yml`)
-
-- **触发**: `create-version-tag` 成功完成后、推送版本标签（`v*`）或手动触发（`workflow_dispatch`）。
-- **目的**: 使用 `packaging/homebrew/radp-vagrant-framework.rb` 模板更新 Homebrew tap formula，替换版本和 SHA256。
+| 工作流                   | 触发条件                            | 目的                                         |
+|-----------------------|---------------------------------|--------------------------------------------|
+| `ci.yml`              | 推送/PR 到 `main`                  | 在 Ubuntu 和 macOS 上跨 Ruby 3.1-3.3 验证语法和测试框架 |
+| `release-prep.yml`    | 在 `main` 上手动触发                  | 创建发布分支，更新 version.rb，插入 changelog 条目，创建 PR |
+| `create-version-tag`  | 手动触发或合并 `workflow/vX.Y.Z` PR    | 读取版本，验证 changelog，创建/推送 Git 标签             |
+| `release.yml`         | `create-version-tag` 完成后或推送版本标签 | 创建包含 tar.gz 和 zip 归档的 GitHub Release       |
+| `update-homebrew-tap` | `create-version-tag` 完成后或推送版本标签 | 使用新版本和 SHA256 更新 Homebrew tap formula      |
 
 ## 许可证
 

@@ -22,6 +22,7 @@ provisioning.
 - **Configuration Inheritance**: Global → Cluster → Guest with automatic merging
 - **Array Concatenation**: Provisions, triggers, and synced-folders accumulate across inheritance levels
 - **Modular Plugin System**: Each plugin configurator in its own file for easy maintenance
+- **Template System**: Initialize projects from predefined templates with variable substitution
 - **Convention-Based Defaults**: Automatic hostname, provider name, and group-id generation
 - **Dry-Run Preview**: Generate standalone Vagrantfile to inspect final configuration
 - **Configuration Validation**: Detect duplicate cluster names and guest IDs
@@ -152,7 +153,7 @@ homelabctl vg status
 homelabctl vg up
 ```
 
-## How to Use
+## Basic Usage
 
 ### Initialize a New Project
 
@@ -187,24 +188,6 @@ myproject/
 
 The framework's Vagrantfile is used automatically via `radp-vf vg` - no Vagrantfile is created in your project
 directory.
-
-### Available Templates
-
-The framework provides builtin templates for common use cases:
-
-| Template      | Description                                              |
-|---------------|----------------------------------------------------------|
-| `base`        | Minimal template for getting started (default)           |
-| `single-node` | Enhanced single VM with common provisions pre-configured |
-| `k8s-cluster` | Multi-node Kubernetes cluster with master and workers    |
-
-```shell
-# List available templates
-radp-vf template list
-
-# Show template details and variables
-radp-vf template show k8s-cluster
-```
 
 ### Configuration Files
 
@@ -245,26 +228,6 @@ radp:
                 provider:
                   mem: 2048
                   cpus: 2
-```
-
-### Environment Variables
-
-| Variable                  | Description                                      | Default                            |
-|---------------------------|--------------------------------------------------|------------------------------------|
-| `RADP_VF_HOME`            | Framework installation directory                 | Auto-detected from script location |
-| `RADP_VAGRANT_CONFIG_DIR` | Configuration directory path (required for `vg`) | `./config` if exists               |
-| `RADP_VAGRANT_ENV`        | Override environment name                        | `radp.env` in vagrant.yaml         |
-
-**RADP_VF_HOME defaults:**
-
-- Script install: `~/.local/lib/radp-vagrant-framework`
-- Homebrew install: `/opt/homebrew/Cellar/radp-vagrant-framework/<version>/libexec`
-- Git clone: `<repo>` (project root, auto-detected)
-
-**Environment priority (highest to lowest):**
-
-```
--e flag > RADP_VAGRANT_ENV > radp.env in vagrant.yaml
 ```
 
 ### Running Vagrant Commands
@@ -318,14 +281,54 @@ export VAGRANT_DOTFILE_PATH="$HOME/.config/radp-vagrant/.vagrant"
 
 This ensures Vagrant always uses the same `.vagrant` directory regardless of where you run commands.
 
-### CLI Commands
+### Global Options and Environment Variables
+
+#### Global Options
+
+| Option               | Description                                   |
+|----------------------|-----------------------------------------------|
+| `-c, --config <dir>` | Configuration directory (default: `./config`) |
+| `-e, --env <name>`   | Override environment name                     |
+| `-h, --help`         | Show help                                     |
+| `-v, --version`      | Show version                                  |
+
+#### Environment Variables
+
+| Variable                  | Description                                      | Default                            |
+|---------------------------|--------------------------------------------------|------------------------------------|
+| `RADP_VF_HOME`            | Framework installation directory                 | Auto-detected from script location |
+| `RADP_VAGRANT_CONFIG_DIR` | Configuration directory path (required for `vg`) | `./config` if exists               |
+| `RADP_VAGRANT_ENV`        | Override environment name                        | `radp.env` in vagrant.yaml         |
+
+**RADP_VF_HOME defaults:**
+
+- Script install: `~/.local/lib/radp-vagrant-framework`
+- Homebrew install: `/opt/homebrew/Cellar/radp-vagrant-framework/<version>/libexec`
+- Git clone: `<repo>` (project root, auto-detected)
+
+#### Priority (highest to lowest)
+
+```
+-c flag > RADP_VAGRANT_CONFIG_DIR > ./config
+-e flag > RADP_VAGRANT_ENV > radp.env in vagrant.yaml
+```
+
+## CLI Commands
+
+### Template Commands
 
 ```shell
-# Template management
+# List available templates
 radp-vf template list
-radp-vf template show k8s-cluster
 
-# Show environment info
+# Show template details and variables
+radp-vf template show k8s-cluster
+```
+
+### Information Commands
+
+```shell
+# Show environment info (versions, paths, plugins)
 radp-vf info
 
 # List clusters and guests
@@ -340,7 +343,11 @@ radp-vf list -v node-1
 radp-vf list --provisions
 radp-vf list --synced-folders
 radp-vf list --triggers node-1
+```
 
+### Configuration Commands
+
+```shell
 # Validate YAML configuration
 radp-vf validate
 
@@ -364,119 +371,89 @@ radp-vf generate
 radp-vf generate Vagrantfile.preview
 ```
 
-### Global Options
+### Vagrant Commands
 
-| Option               | Description                                   |
-|----------------------|-----------------------------------------------|
-| `-c, --config <dir>` | Configuration directory (default: `./config`) |
-| `-e, --env <name>`   | Override environment name                     |
-| `-h, --help`         | Show help                                     |
-| `-v, --version`      | Show version                                  |
+```shell
+# Run any vagrant command
+radp-vf vg status
+radp-vf vg up
+radp-vf vg ssh <machine-name>
+radp-vf vg halt
+radp-vf vg destroy
 
-Priority (highest to lowest):
-
-- `-c` flag > `RADP_VAGRANT_CONFIG_DIR` > `./config`
-- `-e` flag > `RADP_VAGRANT_ENV` > `radp.env` in vagrant.yaml
-
-### Use from Git Clone (Development)
-
-For framework development or direct use from source:
-
-```bash
-cd radp-vagrant-framework/src/main/ruby
-
-# Validate configuration
-vagrant validate
-
-# Show VM status
-vagrant status
-
-# Debug: dump merged configuration
-ruby -r ./lib/radp_vagrant -e "RadpVagrant.dump_config('config')"
-
-# Output as YAML
-ruby -r ./lib/radp_vagrant -e "RadpVagrant.dump_config('config', nil, format: :yaml)"
-
-# Generate standalone Vagrantfile
-ruby -r ./lib/radp_vagrant -e "puts RadpVagrant.generate_vagrantfile('config')"
+# With global options
+radp-vf -c /path/to/config -e prod vg up
 ```
 
-## Directory Structure
+## Template System
 
+Templates allow you to initialize projects from predefined configurations with variable substitution.
+
+### Available Templates
+
+The framework provides builtin templates for common use cases:
+
+| Template      | Description                                              |
+|---------------|----------------------------------------------------------|
+| `base`        | Minimal template for getting started (default)           |
+| `single-node` | Enhanced single VM with common provisions pre-configured |
+| `k8s-cluster` | Multi-node Kubernetes cluster with master and workers    |
+
+### Template Locations
+
+- **Builtin templates**: `$RADP_VF_HOME/templates/`
+- **User templates**: `~/.config/radp-vagrant/templates/`
+
+User templates with the same name override builtin templates.
+
+### Using Templates
+
+```shell
+# Initialize with default template (base)
+radp-vf init myproject
+
+# Initialize with a specific template
+radp-vf init myproject --template k8s-cluster
+
+# Initialize with template variables
+radp-vf init myproject --template k8s-cluster \
+  --set cluster_name=homelab \
+  --set worker_count=3
+
+# List available templates
+radp-vf template list
+
+# Show template details and variables
+radp-vf template show k8s-cluster
 ```
-bin/
-└── radp-vf                         # CLI entry point
-completions/
-├── radp-vf.bash                    # Bash completion
-└── radp-vf.zsh                     # Zsh completion
-install.sh                          # Installation script
-templates/                          # Builtin project templates
-├── base/                           # Minimal getting-started template
-│   ├── template.yaml               # Template metadata
-│   └── files/                      # Template files
-├── single-node/                    # Enhanced single VM template
-└── k8s-cluster/                    # Kubernetes cluster template
-src/main/ruby/
-├── Vagrantfile                     # Vagrant entry point
-├── config/
-│   ├── vagrant.yaml                # Base configuration (sets env)
-│   ├── vagrant-sample.yaml         # Sample environment clusters
-│   └── vagrant-local.yaml          # Local environment clusters
-└── lib/
-    ├── radp_vagrant.rb             # Main coordinator
-    └── radp_vagrant/
-        ├── config_loader.rb        # Multi-file YAML loading
-        ├── config_merger.rb        # Deep merge with array concatenation
-        ├── generator.rb            # Vagrantfile generator (dry-run)
-        ├── path_resolver.rb        # Unified two-level path resolution
-        ├── configurators/
-        │   ├── box.rb              # Box configuration
-        │   ├── provider.rb         # Provider (VirtualBox, etc.)
-        │   ├── network.rb          # Network & hostname
-        │   ├── hostmanager.rb      # Per-guest hostmanager
-        │   ├── synced_folder.rb    # Synced folders
-        │   ├── provision.rb        # Provisioners
-        │   ├── trigger.rb          # Triggers
-        │   ├── plugin.rb           # Plugin orchestrator
-        │   └── plugins/            # Modular plugin configurators
-        │       ├── base.rb         # Base class
-        │       ├── registry.rb     # Plugin registry
-        │       ├── hostmanager.rb  # vagrant-hostmanager
-        │       ├── vbguest.rb      # vagrant-vbguest
-        │       ├── proxyconf.rb    # vagrant-proxyconf
-        │       └── bindfs.rb       # vagrant-bindfs
-        ├── provisions/             # Builtin & user provisions
-        │   ├── registry.rb         # Builtin provision registry (radp:)
-        │   ├── user_registry.rb    # User provision registry (user:)
-        │   ├── definitions/        # Provision definitions (YAML)
-        │   │   ├── nfs/
-        │   │   │   └── external-nfs-mount.yaml
-        │   │   ├── ssh/
-        │   │   │   ├── host-trust.yaml
-        │   │   │   └── cluster-trust.yaml
-        │   │   └── time/
-        │   │       └── chrony-sync.yaml
-        │   └── scripts/            # Provision scripts
-        │       ├── nfs/
-        │       │   └── external-nfs-mount.sh
-        │       ├── ssh/
-        │       │   ├── host-trust.sh
-        │       │   └── cluster-trust.sh
-        │       └── time/
-        │           └── chrony-sync.sh
-        └── triggers/               # Builtin triggers
-            ├── registry.rb         # Builtin trigger registry (radp:)
-            ├── definitions/        # Trigger definitions (YAML)
-            │   └── system/
-            │       ├── disable-swap.yaml
-            │       ├── disable-selinux.yaml
-            │       └── disable-firewalld.yaml
-            └── scripts/            # Trigger scripts
-                └── system/
-                    ├── disable-swap.sh
-                    ├── disable-selinux.sh
-                    └── disable-firewalld.sh
+
+### Creating Custom Templates
+
+1. Create a directory under `~/.config/radp-vagrant/templates/my-template/`
+2. Create `template.yaml` with metadata:
+
+```yaml
+name: my-template
+desc: My custom template
+version: 1.0.0
+variables:
+  - name: env
+    desc: Environment name
+    default: dev
+    required: true
+  - name: cluster_name
+    desc: Cluster name
+    default: example
+  - name: mem
+    desc: Memory in MB
+    default: 2048
+    type: integer
 ```
+
+3. Create `files/` directory with template files
+4. Use `{{variable}}` placeholders in files and filenames
+
+Example: `files/config/vagrant-{{env}}.yaml` becomes `files/config/vagrant-dev.yaml` when `env=dev`.
 
 ## Configuration Structure
 
@@ -522,300 +499,99 @@ radp:
                   name: generic/centos9s
 ```
 
-## Configuration Reference
+### Configuration Inheritance
 
-### Plugins
+The framework supports two levels of configuration merging:
 
-Plugins are configured in the `plugins` array. Each plugin can specify:
+#### File-Level Merging
 
-- `name`: Plugin name (required)
-- `required`: Auto-install if missing (default: false)
-- `options`: Plugin-specific configuration options
+`vagrant.yaml` (base) + `vagrant-{env}.yaml` (environment) are deep merged:
 
-Supported plugins:
+| Type        | Merge Behavior                                 |
+|-------------|------------------------------------------------|
+| Scalars     | Override (env wins)                            |
+| Hashes      | Deep merge                                     |
+| Arrays      | Concatenate                                    |
+| **Plugins** | **Merge by name** (env extends/overrides base) |
 
-- `vagrant-hostmanager` - Host file management
-- `vagrant-vbguest` - VirtualBox Guest Additions
-- `vagrant-proxyconf` - Proxy configuration
-- `vagrant-bindfs` - Bind mounts (per synced-folder)
-
-#### vagrant-hostmanager
-
-Manages `/etc/hosts` on host and guest machines for hostname resolution.
-
-**Basic configuration (automatic mode):**
+**Plugin merge example:**
 
 ```yaml
+# vagrant.yaml
 plugins:
   - name: vagrant-hostmanager
     required: true
     options:
-      enabled: true               # Update hosts on vagrant up/destroy
-      manage_host: true           # Update host machine's /etc/hosts
-      manage_guest: true          # Update guest machines' /etc/hosts
-      include_offline: false      # Include offline VMs in hosts file
-```
-
-**Provisioner mode:**
-
-Use `provisioner: enabled` to run hostmanager as a provisioner instead of automatically. This gives you control over
-when hosts file is updated:
-
-```yaml
-plugins:
-  - name: vagrant-hostmanager
-    options:
-      provisioner: enabled        # Run as provisioner (mutually exclusive with enabled)
       manage_host: true
       manage_guest: true
-```
 
-> Note: `provisioner` and `enabled` are mutually exclusive. If both are set, the framework automatically disables
-`enabled` and logs a warning.
-
-**Custom IP resolver:**
-
-By default, hostmanager uses `vm.ssh_info[:host]` which may return `127.0.0.1` for NAT networking. Use `ip_resolver` to
-extract the correct IP from guest:
-
-```yaml
+# vagrant-dev.yaml
 plugins:
   - name: vagrant-hostmanager
     options:
       provisioner: enabled
-      manage_host: true
       ip_resolver:
         enabled: true
-        execute: "hostname -I"    # Command to run on guest
-        regex: "^(\\S+)"          # Regex to extract IP (first capture group)
-```
+        execute: "hostname -I | awk '{print $2}'"
+        regex: "^(\\S+)"
 
-**Execution timing:**
-
-When `provisioner: enabled`, hostmanager runs **after all other provisions**:
-
-```
-global-pre → cluster-pre → guest → cluster-post → global-post → hostmanager
-```
-
-**Triggering on running VMs:**
-
-```bash
-# Trigger only hostmanager (skip other provisions)
-radp-vf vg provision --provision-with hostmanager
-
-# Run all provisioners including hostmanager
-radp-vf vg provision
-```
-
-#### vagrant-vbguest
-
-Automatically installs and updates VirtualBox Guest Additions on guest machines.
-
-##### Recommended configuration
-
-```yaml
+# Result (merged by name)
 plugins:
-  - name: vagrant-vbguest
+  - name: vagrant-hostmanager
+    required: true                # inherited from base
     options:
-      auto_update: true           # Check/update on VM start (default: true)
-      auto_reboot: true           # Reboot after installation if needed
+      manage_host: true           # inherited from base
+      manage_guest: true          # inherited from base
+      provisioner: enabled        # added from env
+      ip_resolver: { ... }        # added from env
 ```
 
-##### Distribution-specific configurations
+#### Guest-Level Inheritance
 
-<details>
-<summary><b>Ubuntu / Debian</b></summary>
+Within a config file, guest settings inherit from: **global common → cluster common → guest**
 
-```yaml
-plugins:
-  - name: vagrant-vbguest
-    options:
-      installer: ubuntu           # or debian
-      auto_update: true
-      auto_reboot: true
+| Config                           | Merge Behavior                                                                      |
+|----------------------------------|-------------------------------------------------------------------------------------|
+| box, provider, network, hostname | Deep merge (guest overrides)                                                        |
+| hostmanager                      | Deep merge (guest overrides)                                                        |
+| provisions                       | Phase-aware concat: `global-pre → cluster-pre → guest → cluster-post → global-post` |
+| triggers                         | Concatenate                                                                         |
+| synced-folders                   | Concatenate                                                                         |
+
+**Example:**
+
+```
+Global common:
+  - provisions: [A(pre), D(post)]
+  - synced-folders: [X]
+
+Cluster common:
+  - provisions: [B(pre), E(post)]
+  - synced-folders: [Y]
+
+Guest:
+  - provisions: [C]
+
+Result for guest:
+  - provisions: [A, B, C, E, D]   # global-pre, cluster-pre, guest, cluster-post, global-post
+  - synced-folders: [X, Y]        # concatenated
 ```
 
-</details>
+#### Summary Table
 
-<details>
-<summary><b>CentOS / RHEL / Rocky Linux</b></summary>
+| Config Item    | File Merge (base + env) | Guest Inheritance (common → guest) |
+|----------------|-------------------------|------------------------------------|
+| plugins        | Merge by name           | N/A (global only)                  |
+| box            | Deep merge              | Deep merge                         |
+| provider       | Deep merge              | Deep merge                         |
+| network        | Deep merge              | Deep merge                         |
+| hostname       | Override                | Override                           |
+| hostmanager    | Deep merge              | Deep merge                         |
+| provisions     | Concatenate             | Phase-aware concatenate            |
+| triggers       | Concatenate             | Concatenate                        |
+| synced-folders | Concatenate             | Concatenate                        |
 
-```yaml
-plugins:
-  - name: vagrant-vbguest
-    options:
-      installer: centos
-      auto_update: true
-      auto_reboot: true
-      installer_options:
-        allow_kernel_upgrade: true    # Allow kernel upgrade if needed
-        reboot_timeout: 300           # Wait time after kernel upgrade (seconds)
-```
-
-> Note: CentOS may require kernel upgrade when Guest Additions version mismatches. Set `allow_kernel_upgrade: true` to
-> allow this.
-
-</details>
-
-<details>
-<summary><b>Fedora</b></summary>
-
-```yaml
-plugins:
-  - name: vagrant-vbguest
-    options:
-      installer: fedora
-      auto_update: true
-      auto_reboot: true
-```
-
-</details>
-
-##### Common use cases
-
-| Scenario               | Configuration                                  |
-|------------------------|------------------------------------------------|
-| Disable auto-update    | `auto_update: false`                           |
-| Check only, no install | `no_install: true`                             |
-| Offline environment    | `no_remote: true` + `iso_path: "/path/to/iso"` |
-| Allow downgrade        | `allow_downgrade: true` (default)              |
-
-**Offline / Air-gapped environment:**
-
-```yaml
-plugins:
-  - name: vagrant-vbguest
-    options:
-      no_remote: true
-      iso_path: "/shared/VBoxGuestAdditions.iso"
-      iso_upload_path: "/tmp"
-      iso_mount_point: "/mnt"
-```
-
-**Disable completely (use box's built-in Guest Additions):**
-
-```yaml
-plugins:
-  - name: vagrant-vbguest
-    options:
-      auto_update: false
-      no_install: true
-```
-
-<details>
-<summary><b>All available options</b></summary>
-
-| Option                | Type    | Default       | Description                                                           |
-|-----------------------|---------|---------------|-----------------------------------------------------------------------|
-| `auto_update`         | boolean | `true`        | Check/update Guest Additions on VM start                              |
-| `no_remote`           | boolean | `false`       | Prevent downloading ISO from remote                                   |
-| `no_install`          | boolean | `false`       | Only check version, don't install                                     |
-| `auto_reboot`         | boolean | `true`        | Reboot after installation if needed                                   |
-| `allow_downgrade`     | boolean | `true`        | Allow installing older versions                                       |
-| `iso_path`            | string  | -             | Custom ISO path (local or URL with `%{version}`)                      |
-| `iso_upload_path`     | string  | `/tmp`        | Guest directory for ISO upload                                        |
-| `iso_mount_point`     | string  | `/mnt`        | Guest mount point for ISO                                             |
-| `installer`           | string  | auto          | Installer type: `linux`, `ubuntu`, `debian`, `centos`, `fedora`, etc. |
-| `installer_arguments` | array   | `["--nox11"]` | Arguments passed to installer                                         |
-| `yes`                 | boolean | `true`        | Auto-respond yes to prompts                                           |
-| `installer_options`   | hash    | -             | Distro-specific options                                               |
-| `installer_hooks`     | hash    | -             | Hooks: `before_install`, `after_install`, etc.                        |
-
-</details>
-
-#### vagrant-bindfs
-
-Fixes NFS permission issues by remapping user/group ownership via bindfs mounts.
-
-##### Why use bindfs?
-
-NFS shares inherit host numeric user/group IDs (e.g., macOS users appear as `501:20` inside guest). This causes
-permission issues when guest user (typically `vagrant:vagrant`) cannot access the mounted files. vagrant-bindfs solves
-this by remounting NFS shares with corrected ownership.
-
-##### Recommended configuration
-
-Configure bindfs per NFS folder in `synced-folders`:
-
-```yaml
-synced-folders:
-  nfs:
-    - host: ./data
-      guest: /data
-      bindfs:
-        enabled: true
-        force_user: vagrant
-        force_group: vagrant
-```
-
-This will:
-
-1. Mount NFS to `/mnt-bindfs/data` (temp path)
-2. Use bindfs to remount to `/data` with `vagrant:vagrant` ownership
-
-##### With permission mapping
-
-```yaml
-synced-folders:
-  nfs:
-    - host: ./app
-      guest: /var/www/app
-      bindfs:
-        enabled: true
-        force_user: www-data
-        force_group: www-data
-        perms: "u=rwX:g=rX:o=rX"         # rwx for user, rx for group/other
-        create_with_perms: "u=rwX:g=rX:o=rX"
-```
-
-##### Global plugin options
-
-```yaml
-plugins:
-  - name: vagrant-bindfs
-    options:
-      debug: false                       # Enable debug output
-      force_empty_mountpoints: true      # Clean mount point before mounting
-      skip_validations: # Skip user/group existence checks
-        - user
-        - group
-      default_options: # Default options for all bind_folder calls
-        force_user: vagrant
-        force_group: vagrant
-```
-
-<details>
-<summary><b>All bindfs options (per folder)</b></summary>
-
-| Option              | Type    | Description                                             |
-|---------------------|---------|---------------------------------------------------------|
-| `enabled`           | boolean | Enable bindfs for this folder                           |
-| `force_user`        | string  | Force all files to be owned by this user                |
-| `force_group`       | string  | Force all files to be owned by this group               |
-| `perms`             | string  | Permission mapping (e.g., `u=rwX:g=rD:o=rD`)            |
-| `create_with_perms` | string  | Permissions for newly created files                     |
-| `create_as_user`    | boolean | Create files as the accessing user                      |
-| `chown_ignore`      | boolean | Ignore chown operations                                 |
-| `chgrp_ignore`      | boolean | Ignore chgrp operations                                 |
-| `o`                 | string  | Additional mount options                                |
-| `after`             | string  | When to bind: `synced_folders` (default) or `provision` |
-
-</details>
-
-<details>
-<summary><b>All global plugin options</b></summary>
-
-| Option                       | Type    | Default | Description                               |
-|------------------------------|---------|---------|-------------------------------------------|
-| `debug`                      | boolean | `false` | Enable verbose output                     |
-| `force_empty_mountpoints`    | boolean | `false` | Clean mount destination before binding    |
-| `skip_validations`           | array   | `[]`    | Skip validations: `user`, `group`         |
-| `bindfs_version`             | string  | -       | Specific bindfs version to install        |
-| `install_bindfs_from_source` | boolean | `false` | Build bindfs from source                  |
-| `default_options`            | hash    | -       | Default options for all bind_folder calls |
-
-</details>
+## Configuration Reference
 
 ### Box
 
@@ -927,19 +703,6 @@ network:
 
 </details>
 
-### Hostmanager (Per-Guest)
-
-```yaml
-hostmanager:
-  aliases:
-    - myhost.local
-    - myhost
-  ip-resolver:
-    enabled: true
-    execute: "hostname -I | cut -d ' ' -f 2"
-    regex: "^(\\S+)"
-```
-
 ### Synced Folders
 
 ```yaml
@@ -1010,33 +773,10 @@ The `path` option supports both absolute and relative paths. Relative paths are 
 2. If not found, check if the path exists **relative to project root** (config directory's parent)
 3. If neither exists, use config-relative path (Vagrant will report the error)
 
-This supports both standard project structures and custom `RADP_VAGRANT_CONFIG_DIR` setups.
-
 | Path Type | Example                 | Resolution Order                                                           |
 |-----------|-------------------------|----------------------------------------------------------------------------|
 | Absolute  | `/opt/scripts/setup.sh` | Used as-is                                                                 |
 | Relative  | `scripts/setup.sh`      | 1. `{config_dir}/scripts/setup.sh`<br>2. `{project_root}/scripts/setup.sh` |
-
-**Supported directory structures:**
-
-```
-# Structure A: Standard project (radp-vf init)
-myproject/                          # project root
-├── config/                         # RADP_VAGRANT_CONFIG_DIR
-│   ├── vagrant.yaml
-│   └── vagrant-{env}.yaml
-└── scripts/                        # path: scripts/setup.sh ✓
-    └── setup.sh
-
-# Structure B: Custom config directory
-~/.config/radp-vagrant/             # RADP_VAGRANT_CONFIG_DIR
-├── vagrant.yaml
-├── vagrant-{env}.yaml
-└── scripts/                        # path: scripts/setup.sh ✓
-    └── setup.sh
-```
-
-Both structures work with `path: scripts/setup.sh`.
 
 **Phase field (common provisions only):**
 
@@ -1076,6 +816,39 @@ clusters:
 
 Execution order: `global-pre → cluster-pre → guest → cluster-post → global-post`
 
+<details>
+<summary><b>All provision options</b></summary>
+
+| Option        | Type         | Default              | Description                                               |
+|---------------|--------------|----------------------|-----------------------------------------------------------|
+| `name`        | string       | -                    | Provision name                                            |
+| `enabled`     | boolean      | `true`               | Enable this provision                                     |
+| `type`        | string       | `shell`              | Provision type: `shell` or `file`                         |
+| `privileged`  | boolean      | `false`              | Run as root                                               |
+| `run`         | string       | `once`               | When to run: `once`, `always`, `never`                    |
+| `phase`       | string       | `pre`                | Execution phase: `pre` or `post` (common provisions only) |
+| `inline`      | string       | -                    | Inline script content                                     |
+| `path`        | string       | -                    | External script path                                      |
+| `args`        | string/array | -                    | Script arguments                                          |
+| `env`         | hash         | -                    | Environment variables                                     |
+| `before`      | string       | -                    | Run before specified provision                            |
+| `after`       | string       | -                    | Run after specified provision                             |
+| `keep-color`  | boolean      | `false`              | Preserve color output                                     |
+| `upload-path` | string       | `/tmp/vagrant-shell` | Script upload path on guest                               |
+| `reboot`      | boolean      | `false`              | Reboot after execution                                    |
+| `reset`       | boolean      | `false`              | Reset SSH connection after execution                      |
+| `sensitive`   | boolean      | `false`              | Hide output (for sensitive data)                          |
+| `binary`      | boolean      | `false`              | Transfer script as binary (no line ending conversion)     |
+
+**File provisioner options:**
+
+| Option        | Type   | Description               |
+|---------------|--------|---------------------------|
+| `source`      | string | Source file path on host  |
+| `destination` | string | Destination path on guest |
+
+</details>
+
 #### Builtin Provisions
 
 The framework provides builtin provisions for common tasks. Builtin provisions are identified by the `radp:` prefix and
@@ -1108,8 +881,6 @@ provisions:
       HOST_SSH_PUBLIC_KEY_FILE: "/vagrant/host_ssh_key.pub"
 
   # SSH cluster trust (guest <-> guest, same user only, typically at cluster.common level)
-  # Key files: {dir}/id_{env}_{cluster}_{user} and {dir}/id_{env}_{cluster}_{user}.pub
-  # Example for env "dev", cluster "hadoop": /vagrant/keys/id_dev_hadoop_vagrant[.pub]
   - name: radp:ssh/cluster-trust
     enabled: true
     env:
@@ -1139,10 +910,8 @@ provisions:
       NFS_ROOT: "/volume1/nfs"
 ```
 
-**Environment variables:**
-
-Builtin provisions define required and optional environment variables in their YAML definitions. Optional variables have
-defaults that are automatically applied.
+<details>
+<summary><b>Environment variables for builtin provisions</b></summary>
 
 | Provision                     | Required Variables       | Optional Variables (defaults)                                           |
 |-------------------------------|--------------------------|-------------------------------------------------------------------------|
@@ -1151,25 +920,7 @@ defaults that are automatically applied.
 | `radp:ssh/cluster-trust`      | `CLUSTER_SSH_KEY_DIR`    | `SSH_USERS`(vagrant), `TRUSTED_HOST_PATTERN`(auto)                      |
 | `radp:time/chrony-sync`       | None                     | `NTP_SERVERS`, `NTP_POOL`(pool.ntp.org), `TIMEZONE`, `SYNC_NOW`(true)   |
 
-**Provision definition format:**
-
-Builtin and user provisions are defined in YAML with the following structure:
-
-```yaml
-desc: Human-readable description
-defaults:
-  privileged: true
-  run: once
-  env:
-    required:
-      - name: REQ_VAR
-        desc: Description of required variable
-    optional:
-      - name: OPT_VAR
-        value: "default_value"
-        desc: Description of optional variable
-  script: script-name.sh
-```
+</details>
 
 #### User Provisions
 
@@ -1247,51 +998,6 @@ provisions:
     env:
       DOCKER_VERSION: "24.0"
 ```
-
-**Path resolution:**
-
-User provisions use the same two-level path resolution as regular provisions:
-
-```
-Search order:
-1. {config_dir}/provisions/definitions/xxx.yaml
-2. {project_root}/provisions/definitions/xxx.yaml
-```
-
-If the same provision exists in both locations, `config_dir` takes precedence and a warning is displayed.
-
-<details>
-<summary><b>All provision options</b></summary>
-
-| Option        | Type         | Default              | Description                                               |
-|---------------|--------------|----------------------|-----------------------------------------------------------|
-| `name`        | string       | -                    | Provision name                                            |
-| `enabled`     | boolean      | `true`               | Enable this provision                                     |
-| `type`        | string       | `shell`              | Provision type: `shell` or `file`                         |
-| `privileged`  | boolean      | `false`              | Run as root                                               |
-| `run`         | string       | `once`               | When to run: `once`, `always`, `never`                    |
-| `phase`       | string       | `pre`                | Execution phase: `pre` or `post` (common provisions only) |
-| `inline`      | string       | -                    | Inline script content                                     |
-| `path`        | string       | -                    | External script path                                      |
-| `args`        | string/array | -                    | Script arguments                                          |
-| `env`         | hash         | -                    | Environment variables                                     |
-| `before`      | string       | -                    | Run before specified provision                            |
-| `after`       | string       | -                    | Run after specified provision                             |
-| `keep-color`  | boolean      | `false`              | Preserve color output                                     |
-| `upload-path` | string       | `/tmp/vagrant-shell` | Script upload path on guest                               |
-| `reboot`      | boolean      | `false`              | Reboot after execution                                    |
-| `reset`       | boolean      | `false`              | Reset SSH connection after execution                      |
-| `sensitive`   | boolean      | `false`              | Hide output (for sensitive data)                          |
-| `binary`      | boolean      | `false`              | Transfer script as binary (no line ending conversion)     |
-
-**File provisioner options:**
-
-| Option        | Type   | Description               |
-|---------------|--------|---------------------------|
-| `source`      | string | Source file path on host  |
-| `destination` | string | Destination path on guest |
-
-</details>
 
 ### Triggers
 
@@ -1383,8 +1089,6 @@ triggers:
 
 **Override defaults:**
 
-User configuration takes precedence over builtin defaults:
-
 ```yaml
 triggers:
   - name: radp:system/disable-swap
@@ -1394,116 +1098,304 @@ triggers:
     on-error: halt             # Override error behavior (default: continue)
 ```
 
-**Builtin trigger definition format:**
+### Plugins
 
-Builtin triggers are defined in YAML with the following structure:
+Plugins are configured in the `plugins` array. Each plugin can specify:
 
-```yaml
-desc: Human-readable description
-defaults:
-  "on": after
-  action:
-    - up
-    - reload
-  type: action
-  on-error: continue
-  run-remote:
-    script: script-name.sh
-```
+- `name`: Plugin name (required)
+- `required`: Auto-install if missing (default: false)
+- `options`: Plugin-specific configuration options
 
-## Configuration Inheritance
+Supported plugins:
 
-The framework supports two levels of configuration merging:
+- `vagrant-hostmanager` - Host file management
+- `vagrant-vbguest` - VirtualBox Guest Additions
+- `vagrant-proxyconf` - Proxy configuration
+- `vagrant-bindfs` - Bind mounts (per synced-folder)
 
-### File-Level Merging
+#### vagrant-hostmanager
 
-`vagrant.yaml` (base) + `vagrant-{env}.yaml` (environment) are deep merged:
+Manages `/etc/hosts` on host and guest machines for hostname resolution.
 
-| Type        | Merge Behavior                                 |
-|-------------|------------------------------------------------|
-| Scalars     | Override (env wins)                            |
-| Hashes      | Deep merge                                     |
-| Arrays      | Concatenate                                    |
-| **Plugins** | **Merge by name** (env extends/overrides base) |
-
-**Plugin merge example:**
+**Basic configuration (automatic mode):**
 
 ```yaml
-# vagrant.yaml
 plugins:
   - name: vagrant-hostmanager
     required: true
     options:
+      enabled: true               # Update hosts on vagrant up/destroy
+      manage_host: true           # Update host machine's /etc/hosts
+      manage_guest: true          # Update guest machines' /etc/hosts
+      include_offline: false      # Include offline VMs in hosts file
+```
+
+**Provisioner mode:**
+
+Use `provisioner: enabled` to run hostmanager as a provisioner instead of automatically. This gives you control over
+when hosts file is updated:
+
+```yaml
+plugins:
+  - name: vagrant-hostmanager
+    options:
+      provisioner: enabled        # Run as provisioner (mutually exclusive with enabled)
       manage_host: true
       manage_guest: true
+```
 
-# vagrant-dev.yaml
+> Note: `provisioner` and `enabled` are mutually exclusive. If both are set, the framework automatically disables
+`enabled` and logs a warning.
+
+**Custom IP resolver:**
+
+By default, hostmanager uses `vm.ssh_info[:host]` which may return `127.0.0.1` for NAT networking. Use `ip_resolver` to
+extract the correct IP from guest:
+
+```yaml
 plugins:
   - name: vagrant-hostmanager
     options:
       provisioner: enabled
+      manage_host: true
       ip_resolver:
         enabled: true
-        execute: "hostname -I | awk '{print $2}'"
-        regex: "^(\\S+)"
+        execute: "hostname -I"    # Command to run on guest
+        regex: "^(\\S+)"          # Regex to extract IP (first capture group)
+```
 
-# Result (merged by name)
+**Execution timing:**
+
+When `provisioner: enabled`, hostmanager runs **after all other provisions**:
+
+```
+global-pre → cluster-pre → guest → cluster-post → global-post → hostmanager
+```
+
+**Triggering on running VMs:**
+
+```bash
+# Trigger only hostmanager (skip other provisions)
+radp-vf vg provision --provision-with hostmanager
+
+# Run all provisioners including hostmanager
+radp-vf vg provision
+```
+
+**Per-guest hostmanager settings:**
+
+```yaml
+hostmanager:
+  aliases:
+    - myhost.local
+    - myhost
+  ip-resolver:
+    enabled: true
+    execute: "hostname -I | cut -d ' ' -f 2"
+    regex: "^(\\S+)"
+```
+
+#### vagrant-vbguest
+
+Automatically installs and updates VirtualBox Guest Additions on guest machines.
+
+**Recommended configuration:**
+
+```yaml
 plugins:
-  - name: vagrant-hostmanager
-    required: true                # inherited from base
+  - name: vagrant-vbguest
     options:
-      manage_host: true           # inherited from base
-      manage_guest: true          # inherited from base
-      provisioner: enabled        # added from env
-      ip_resolver: { ... }        # added from env
+      auto_update: true           # Check/update on VM start (default: true)
+      auto_reboot: true           # Reboot after installation if needed
 ```
 
-### Guest-Level Inheritance
+<details>
+<summary><b>Distribution-specific configurations</b></summary>
 
-Within a config file, guest settings inherit from: **global common → cluster common → guest**
+**Ubuntu / Debian:**
 
-| Config                           | Merge Behavior                                                                      |
-|----------------------------------|-------------------------------------------------------------------------------------|
-| box, provider, network, hostname | Deep merge (guest overrides)                                                        |
-| hostmanager                      | Deep merge (guest overrides)                                                        |
-| provisions                       | Phase-aware concat: `global-pre → cluster-pre → guest → cluster-post → global-post` |
-| triggers                         | Concatenate                                                                         |
-| synced-folders                   | Concatenate                                                                         |
-
-**Example:**
-
-```
-Global common:
-  - provisions: [A(pre), D(post)]
-  - synced-folders: [X]
-
-Cluster common:
-  - provisions: [B(pre), E(post)]
-  - synced-folders: [Y]
-
-Guest:
-  - provisions: [C]
-
-Result for guest:
-  - provisions: [A, B, C, E, D]   # global-pre, cluster-pre, guest, cluster-post, global-post
-  - synced-folders: [X, Y]        # concatenated
+```yaml
+plugins:
+  - name: vagrant-vbguest
+    options:
+      installer: ubuntu           # or debian
+      auto_update: true
+      auto_reboot: true
 ```
 
-### Summary Table
+**CentOS / RHEL / Rocky Linux:**
 
-| Config Item    | File Merge (base + env) | Guest Inheritance (common → guest) |
-|----------------|-------------------------|------------------------------------|
-| plugins        | Merge by name           | N/A (global only)                  |
-| box            | Deep merge              | Deep merge                         |
-| provider       | Deep merge              | Deep merge                         |
-| network        | Deep merge              | Deep merge                         |
-| hostname       | Override                | Override                           |
-| hostmanager    | Deep merge              | Deep merge                         |
-| provisions     | Concatenate             | Phase-aware concatenate            |
-| triggers       | Concatenate             | Concatenate                        |
-| synced-folders | Concatenate             | Concatenate                        |
+```yaml
+plugins:
+  - name: vagrant-vbguest
+    options:
+      installer: centos
+      auto_update: true
+      auto_reboot: true
+      installer_options:
+        allow_kernel_upgrade: true    # Allow kernel upgrade if needed
+        reboot_timeout: 300           # Wait time after kernel upgrade (seconds)
+```
 
-## Convention-Based Defaults
+> Note: CentOS may require kernel upgrade when Guest Additions version mismatches. Set `allow_kernel_upgrade: true` to
+> allow this.
+
+**Fedora:**
+
+```yaml
+plugins:
+  - name: vagrant-vbguest
+    options:
+      installer: fedora
+      auto_update: true
+      auto_reboot: true
+```
+
+</details>
+
+<details>
+<summary><b>Common use cases</b></summary>
+
+| Scenario               | Configuration                                  |
+|------------------------|------------------------------------------------|
+| Disable auto-update    | `auto_update: false`                           |
+| Check only, no install | `no_install: true`                             |
+| Offline environment    | `no_remote: true` + `iso_path: "/path/to/iso"` |
+| Allow downgrade        | `allow_downgrade: true` (default)              |
+
+**Offline / Air-gapped environment:**
+
+```yaml
+plugins:
+  - name: vagrant-vbguest
+    options:
+      no_remote: true
+      iso_path: "/shared/VBoxGuestAdditions.iso"
+      iso_upload_path: "/tmp"
+      iso_mount_point: "/mnt"
+```
+
+**Disable completely (use box's built-in Guest Additions):**
+
+```yaml
+plugins:
+  - name: vagrant-vbguest
+    options:
+      auto_update: false
+      no_install: true
+```
+
+</details>
+
+<details>
+<summary><b>All available options</b></summary>
+
+| Option                | Type    | Default       | Description                                                           |
+|-----------------------|---------|---------------|-----------------------------------------------------------------------|
+| `auto_update`         | boolean | `true`        | Check/update Guest Additions on VM start                              |
+| `no_remote`           | boolean | `false`       | Prevent downloading ISO from remote                                   |
+| `no_install`          | boolean | `false`       | Only check version, don't install                                     |
+| `auto_reboot`         | boolean | `true`        | Reboot after installation if needed                                   |
+| `allow_downgrade`     | boolean | `true`        | Allow installing older versions                                       |
+| `iso_path`            | string  | -             | Custom ISO path (local or URL with `%{version}`)                      |
+| `iso_upload_path`     | string  | `/tmp`        | Guest directory for ISO upload                                        |
+| `iso_mount_point`     | string  | `/mnt`        | Guest mount point for ISO                                             |
+| `installer`           | string  | auto          | Installer type: `linux`, `ubuntu`, `debian`, `centos`, `fedora`, etc. |
+| `installer_arguments` | array   | `["--nox11"]` | Arguments passed to installer                                         |
+| `yes`                 | boolean | `true`        | Auto-respond yes to prompts                                           |
+| `installer_options`   | hash    | -             | Distro-specific options                                               |
+| `installer_hooks`     | hash    | -             | Hooks: `before_install`, `after_install`, etc.                        |
+
+</details>
+
+#### vagrant-bindfs
+
+Fixes NFS permission issues by remapping user/group ownership via bindfs mounts.
+
+**Why use bindfs?**
+
+NFS shares inherit host numeric user/group IDs (e.g., macOS users appear as `501:20` inside guest). This causes
+permission issues when guest user (typically `vagrant:vagrant`) cannot access the mounted files. vagrant-bindfs solves
+this by remounting NFS shares with corrected ownership.
+
+**Recommended configuration:**
+
+Configure bindfs per NFS folder in `synced-folders`:
+
+```yaml
+synced-folders:
+  nfs:
+    - host: ./data
+      guest: /data
+      bindfs:
+        enabled: true
+        force_user: vagrant
+        force_group: vagrant
+```
+
+This will:
+
+1. Mount NFS to `/mnt-bindfs/data` (temp path)
+2. Use bindfs to remount to `/data` with `vagrant:vagrant` ownership
+
+<details>
+<summary><b>With permission mapping</b></summary>
+
+```yaml
+synced-folders:
+  nfs:
+    - host: ./app
+      guest: /var/www/app
+      bindfs:
+        enabled: true
+        force_user: www-data
+        force_group: www-data
+        perms: "u=rwX:g=rX:o=rX"         # rwx for user, rx for group/other
+        create_with_perms: "u=rwX:g=rX:o=rX"
+```
+
+</details>
+
+<details>
+<summary><b>Global plugin options</b></summary>
+
+```yaml
+plugins:
+  - name: vagrant-bindfs
+    options:
+      debug: false                       # Enable debug output
+      force_empty_mountpoints: true      # Clean mount point before mounting
+      skip_validations: # Skip user/group existence checks
+        - user
+        - group
+      default_options: # Default options for all bind_folder calls
+        force_user: vagrant
+        force_group: vagrant
+```
+
+</details>
+
+<details>
+<summary><b>All bindfs options (per folder)</b></summary>
+
+| Option              | Type    | Description                                             |
+|---------------------|---------|---------------------------------------------------------|
+| `enabled`           | boolean | Enable bindfs for this folder                           |
+| `force_user`        | string  | Force all files to be owned by this user                |
+| `force_group`       | string  | Force all files to be owned by this group               |
+| `perms`             | string  | Permission mapping (e.g., `u=rwX:g=rD:o=rD`)            |
+| `create_with_perms` | string  | Permissions for newly created files                     |
+| `create_as_user`    | boolean | Create files as the accessing user                      |
+| `chown_ignore`      | boolean | Ignore chown operations                                 |
+| `chgrp_ignore`      | boolean | Ignore chgrp operations                                 |
+| `o`                 | string  | Additional mount options                                |
+| `after`             | string  | When to bind: `synced_folders` (default) or `provision` |
+
+</details>
+
+## Advanced Topics
+
+### Convention-Based Defaults
 
 The framework applies sensible defaults based on context:
 
@@ -1513,7 +1405,7 @@ The framework applies sensible defaults based on context:
 | `provider.name`     | `{env}-{cluster}-{guest-id}` | `dev-my-cluster-node-1` |
 | `provider.group-id` | `{env}/{cluster}`            | `dev/my-cluster`        |
 
-## Validation Rules
+### Validation Rules
 
 The framework validates configurations and will raise errors for:
 
@@ -1521,61 +1413,14 @@ The framework validates configurations and will raise errors for:
 - **Duplicate guest IDs**: No two guests within the same cluster can have the same ID
 - **Clusters in base config**: Clusters must be defined in `vagrant-{env}.yaml`, not in base `vagrant.yaml`
 
-## Machine Naming
+### Machine Naming
 
 Vagrant machine names use `provider.name` (default: `{env}-{cluster}-{guest-id}`) to ensure uniqueness in
 `$VAGRANT_DOTFILE_PATH/machines/<name>`. This prevents conflicts when multiple clusters have guests with the same ID.
 
-## Template System
+### Extending the Framework
 
-Templates allow you to initialize projects from predefined configurations with variable substitution.
-
-### Template Locations
-
-- **Builtin templates**: `$RADP_VF_HOME/templates/`
-- **User templates**: `~/.config/radp-vagrant/templates/`
-
-User templates with the same name override builtin templates.
-
-### Creating Custom Templates
-
-1. Create a directory under `~/.config/radp-vagrant/templates/my-template/`
-2. Create `template.yaml` with metadata:
-
-```yaml
-name: my-template
-desc: My custom template
-version: 1.0.0
-variables:
-  - name: env
-    desc: Environment name
-    default: dev
-    required: true
-  - name: cluster_name
-    desc: Cluster name
-    default: example
-  - name: mem
-    desc: Memory in MB
-    default: 2048
-    type: integer
-```
-
-3. Create `files/` directory with template files
-4. Use `{{variable}}` placeholders in files and filenames
-
-Example: `files/config/vagrant-{{env}}.yaml` becomes `files/config/vagrant-dev.yaml` when `env=dev`.
-
-## Environment Variables
-
-| Variable                  | Description                                      |
-|---------------------------|--------------------------------------------------|
-| `RADP_VF_HOME`            | Framework installation directory (auto-detected) |
-| `RADP_VAGRANT_CONFIG_DIR` | Configuration directory path                     |
-| `RADP_VAGRANT_ENV`        | Override environment name                        |
-
-## Extending
-
-### Add New Plugin Configurator
+#### Add New Plugin Configurator
 
 1. Create file `lib/radp_vagrant/configurators/plugins/my_plugin.rb`:
 
@@ -1623,7 +1468,7 @@ def plugin_classes
 end
 ```
 
-### Add Provider
+#### Add Provider
 
 ```ruby
 # In provider.rb
@@ -1633,9 +1478,90 @@ RadpVagrant::Configurators::Provider::CONFIGURATORS['vmware_desktop'] = lambda {
 }
 ```
 
-## CI
+## Directory Structure
 
-### How to release
+```
+bin/
+└── radp-vf                         # CLI entry point
+completions/
+├── radp-vf.bash                    # Bash completion
+└── radp-vf.zsh                     # Zsh completion
+install.sh                          # Installation script
+templates/                          # Builtin project templates
+├── base/                           # Minimal getting-started template
+│   ├── template.yaml               # Template metadata
+│   └── files/                      # Template files
+├── single-node/                    # Enhanced single VM template
+└── k8s-cluster/                    # Kubernetes cluster template
+src/main/ruby/
+├── Vagrantfile                     # Vagrant entry point
+├── config/
+│   ├── vagrant.yaml                # Base configuration (sets env)
+│   ├── vagrant-sample.yaml         # Sample environment clusters
+│   └── vagrant-local.yaml          # Local environment clusters
+└── lib/
+    ├── radp_vagrant.rb             # Main coordinator
+    └── radp_vagrant/
+        ├── config_loader.rb        # Multi-file YAML loading
+        ├── config_merger.rb        # Deep merge with array concatenation
+        ├── generator.rb            # Vagrantfile generator (dry-run)
+        ├── path_resolver.rb        # Unified two-level path resolution
+        ├── configurators/
+        │   ├── box.rb              # Box configuration
+        │   ├── provider.rb         # Provider (VirtualBox, etc.)
+        │   ├── network.rb          # Network & hostname
+        │   ├── hostmanager.rb      # Per-guest hostmanager
+        │   ├── synced_folder.rb    # Synced folders
+        │   ├── provision.rb        # Provisioners
+        │   ├── trigger.rb          # Triggers
+        │   ├── plugin.rb           # Plugin orchestrator
+        │   └── plugins/            # Modular plugin configurators
+        │       ├── base.rb         # Base class
+        │       ├── registry.rb     # Plugin registry
+        │       ├── hostmanager.rb  # vagrant-hostmanager
+        │       ├── vbguest.rb      # vagrant-vbguest
+        │       ├── proxyconf.rb    # vagrant-proxyconf
+        │       └── bindfs.rb       # vagrant-bindfs
+        ├── provisions/             # Builtin & user provisions
+        │   ├── registry.rb         # Builtin provision registry (radp:)
+        │   ├── user_registry.rb    # User provision registry (user:)
+        │   ├── definitions/        # Provision definitions (YAML)
+        │   └── scripts/            # Provision scripts
+        ├── triggers/               # Builtin triggers
+        │   ├── registry.rb         # Builtin trigger registry (radp:)
+        │   ├── definitions/        # Trigger definitions (YAML)
+        │   └── scripts/            # Trigger scripts
+        └── templates/              # Template system
+            ├── registry.rb         # Template discovery
+            └── renderer.rb         # Variable substitution
+```
+
+## Development & CI
+
+### Use from Git Clone
+
+For framework development or direct use from source:
+
+```bash
+cd radp-vagrant-framework/src/main/ruby
+
+# Validate configuration
+vagrant validate
+
+# Show VM status
+vagrant status
+
+# Debug: dump merged configuration
+ruby -r ./lib/radp_vagrant -e "RadpVagrant.dump_config('config')"
+
+# Output as YAML
+ruby -r ./lib/radp_vagrant -e "RadpVagrant.dump_config('config', nil, format: :yaml)"
+
+# Generate standalone Vagrantfile
+ruby -r ./lib/radp_vagrant -e "puts RadpVagrant.generate_vagrantfile('config')"
+```
+
+### How to Release
 
 1. Trigger `release-prep` with a `bump_type` (patch/minor/major/manual, default patch). For manual, provide `vX.Y.Z`.
    This updates `version.rb` and adds a changelog entry (branch `workflow/vX.Y.Z` + PR).
@@ -1661,36 +1587,13 @@ create-version-tag
 
 ### GitHub Actions
 
-#### CI (`ci.yml`)
-
-- **Trigger:** Push/PR to `main`.
-- **Purpose:** Validate Ruby syntax, test framework loading, config loading, and Vagrantfile generation across multiple
-  Ruby versions (3.1-3.3) on Ubuntu and macOS.
-
-#### Release prep (`release-prep.yml`)
-
-- **Trigger:** Manual (`workflow_dispatch`) on `main`.
-- **Purpose:** Create a release branch (`workflow/vX.Y.Z`) from the resolved version (patch/minor/major bump, or manual
-  `vX.Y.Z`), update `version.rb`, insert a changelog entry, and open a PR for review.
-
-#### Create version tag (`create-version-tag.yml`)
-
-- **Trigger:** Manual (`workflow_dispatch`) on `main`, or merge of a `workflow/vX.Y.Z` PR.
-- **Purpose:** Read version from `version.rb`, validate the changelog entry, then create/push the Git tag if it does not
-  already exist.
-
-#### Release (`release.yml`)
-
-- **Trigger:** Successful completion of `create-version-tag`, push of a version tag (`v*`), or manual (
-  `workflow_dispatch`).
-- **Purpose:** Create GitHub Release with tar.gz and zip archives, extracting changelog for release notes.
-
-#### Update Homebrew tap (`update-homebrew-tap.yml`)
-
-- **Trigger:** Successful completion of `create-version-tag`, push of a version tag (`v*`), or manual (
-  `workflow_dispatch`).
-- **Purpose:** Update the Homebrew tap formula using the template from `packaging/homebrew/radp-vagrant-framework.rb`
-  with the new version and SHA256.
+| Workflow               | Trigger                                    | Purpose                                                                        |
+|------------------------|--------------------------------------------|--------------------------------------------------------------------------------|
+| `ci.yml`               | Push/PR to `main`                          | Validate Ruby syntax, test framework across Ruby 3.1-3.3 on Ubuntu and macOS   |
+| `release-prep.yml`     | Manual on `main`                           | Create release branch, update version.rb, insert changelog entry, open PR      |
+| `create-version-tag`   | Manual or merge of `workflow/vX.Y.Z` PR    | Read version, validate changelog, create/push Git tag                          |
+| `release.yml`          | After `create-version-tag` or tag push     | Create GitHub Release with tar.gz and zip archives                             |
+| `update-homebrew-tap`  | After `create-version-tag` or tag push     | Update Homebrew tap formula with new version and SHA256                        |
 
 ## License
 
