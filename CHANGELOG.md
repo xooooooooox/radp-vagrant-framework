@@ -1,3 +1,7 @@
+## v0.1.1 - 2026-01-25
+
+- 371d914 docs: clarify RADP_VF_HOME defaults, update environment variables, and document CLI completions
+- dd257ba refactor: enhance RADP_VF_HOME and RUBY_LIB_DIR detection logic for development and installation modes
 ## v0.1.0 - 2026-01-25
 
 - 41c480e refactor: restructure shell scripts, remove install.sh, and simplify RADP CLI
