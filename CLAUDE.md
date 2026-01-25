@@ -112,6 +112,11 @@ ruby -r ./lib/radp_vagrant -e "puts RadpVagrant.generate_vagrantfile('config')"
    - `trigger.rb` - Before/after triggers with regex filtering
    - `plugin.rb` - Plugin orchestrator
 
+5. **CLI Module** (`lib/radp_vagrant/cli/`) provides command implementations:
+   - `base.rb` - Base class with common helpers (formatting, config loading)
+   - `list.rb` - List command with compact/verbose views
+   - `validate.rb` - Validate command for config verification
+
 ### Modular Plugin System
 Plugin configurators are modularized under `lib/radp_vagrant/configurators/plugins/`:
 - `base.rb` - Base class with helper methods
@@ -229,6 +234,10 @@ src/main/ruby/
         ├── config_loader.rb        # Multi-file YAML loading
         ├── config_merger.rb        # Deep merge with array concatenation
         ├── path_resolver.rb        # Unified two-level path resolution
+        ├── cli/                    # CLI command implementations
+        │   ├── base.rb             # Base class with common helpers
+        │   ├── list.rb             # List command
+        │   └── validate.rb         # Validate command
         ├── configurators/
         │   ├── box.rb
         │   ├── provider.rb
@@ -313,6 +322,7 @@ radp:
 6. **Modular Plugins**: Each plugin configurator in separate file for maintainability
 7. **Machine Naming**: Vagrant machine name uses `provider.name` (default: `{env}-{cluster}-{id}`) for uniqueness in `$VAGRANT_DOTFILE_PATH/machines/<name>`
 8. **Clusters Only in Env Files**: Clusters must be defined in `vagrant-{env}.yaml`, not in base `vagrant.yaml`
+9. **Hybrid Bash/Ruby Architecture**: CLI entry point (`bin/radp-vf`) is Bash for option parsing and environment setup; complex logic is in Ruby modules (`lib/radp_vagrant/cli/`)
 
 ## Validation Rules
 
