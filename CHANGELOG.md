@@ -1,3 +1,16 @@
+## v0.1.6 - 2026-01-25
+
+- ce97f66 Release prep v0.1.6
+- 542e0f5 docs: update CLAUDE.md with details on new CLI module and hybrid architecture
+- 8cc9ebd feat: add base, list, and validate CLI classes to modularize command handling and improve code maintainability
+- 0f55cf8 feat: add base, list, and validate CLI classes to modularize command handling and improve code maintainability
+- 51d38b2 refactor: simplify CLI `list` and `validate` commands by delegating logic to `RadpVagrant::CLI` classes
+## v0.1.6 - 2026-01-25
+
+- 542e0f5 docs: update CLAUDE.md with details on new CLI module and hybrid architecture
+- 8cc9ebd feat: add base, list, and validate CLI classes to modularize command handling and improve code maintainability
+- 0f55cf8 feat: add base, list, and validate CLI classes to modularize command handling and improve code maintainability
+- 51d38b2 refactor: simplify CLI `list` and `validate` commands by delegating logic to `RadpVagrant::CLI` classes
 ## v0.1.5 - 2026-01-25
 
 - 99eb1c3 refactor: add error handling for provisions, synced folders, and triggers parsing functions
