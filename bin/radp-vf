@@ -448,20 +448,25 @@ cmd_list() {
       exit 0
     end
 
-    # Helper to format IP
+    # Helper to format IP (for compact view)
     def format_ip(network_config, type)
       return '-' unless network_config && network_config[type]
       cfg = network_config[type]
       return '-' unless cfg['enabled']
       ip = cfg['ip']
       return 'dhcp' if cfg['type'] == 'dhcp' || ip.nil?
-      ip.is_a?(Array) ? ip.first.to_s : ip.to_s
+      if ip.is_a?(Array)
+        first_ip = ip.first.to_s
+        ip.size > 1 ? \"#{first_ip}(+#{ip.size - 1})\" : first_ip
+      else
+        ip.to_s
+      end
     end
 
     # Helper to format provisions
     def format_provisions(provisions)
-      return [] unless provisions && !provisions.empty?
-      provisions.select { |p| p['enabled'] != false }.map do |p|
+      return [] unless provisions && provisions.is_a?(Array) && !provisions.empty?
+      provisions.select { |p| p.is_a?(Hash) && p['enabled'] != false }.map do |p|
         phase = p['phase'] ? \"[#{p['phase'].to_s.ljust(4)}]\" : '[    ]'
         name = p['name'] || 'unnamed'
         type = p['type'] || 'shell'
@@ -476,8 +481,13 @@ cmd_list() {
       return [] unless synced_folders
       result = []
       %w[basic nfs rsync smb].each do |folder_type|
-        folders = synced_folders[folder_type] || []
+        folders = synced_folders[folder_type]
+        next unless folders
+        # Ensure folders is an array (handle single hash case)
+        folders = [folders] if folders.is_a?(Hash)
+        next unless folders.is_a?(Array)
         folders.each do |f|
+          next unless f.is_a?(Hash)
           next unless f['enabled'] != false
           host = f['host'] || '-'
           guest = f['guest'] || '-'
@@ -493,8 +503,8 @@ cmd_list() {
 
     # Helper to format triggers
     def format_triggers(triggers)
-      return [] unless triggers && !triggers.empty?
-      triggers.select { |t| t['enabled'] != false }.map do |t|
+      return [] unless triggers && triggers.is_a?(Array) && !triggers.empty?
+      triggers.select { |t| t.is_a?(Hash) && t['enabled'] != false }.map do |t|
         name = t['name'] || 'unnamed'
         timing = t['on'] || 'before'
         actions = Array(t['action'] || [:up]).join(',')
@@ -581,21 +591,25 @@ cmd_list() {
           network = guest['network'] || {}
           priv = network['private-network']
           if priv && priv['enabled']
-            ip = priv['ip'] || 'dhcp'
+            ip = priv['ip']
+            ip_str = ip.nil? ? 'dhcp' : (ip.is_a?(Array) ? ip.join(', ') : ip.to_s)
             netmask = priv['netmask'] ? \" (netmask: #{priv['netmask']})\" : ''
-            puts \"    - private: #{ip}#{netmask}\"
+            puts \"    - private: #{ip_str}#{netmask}\"
           end
           pub = network['public-network']
           if pub && pub['enabled']
-            ip = pub['ip'] || 'dhcp'
+            ip = pub['ip']
+            ip_str = ip.nil? ? 'dhcp' : (ip.is_a?(Array) ? ip.join(', ') : ip.to_s)
             bridge = pub['bridge'] ? \" (bridge: #{Array(pub['bridge']).first})\" : ''
-            puts \"    - public:  #{ip}#{bridge}\"
+            puts \"    - public:  #{ip_str}#{bridge}\"
           end
-          ports = network['forwarded-ports'] || []
-          enabled_ports = ports.select { |p| p['enabled'] != false }
-          unless enabled_ports.empty?
-            port_strs = enabled_ports.map { |p| \"#{p['guest']}->#{p['host']}\" }
-            puts \"    - ports:   #{port_strs.join(', ')}\"
+          ports = network['forwarded-ports']
+          if ports.is_a?(Array) && !ports.empty?
+            enabled_ports = ports.select { |p| p.is_a?(Hash) && p['enabled'] != false }
+            unless enabled_ports.empty?
+              port_strs = enabled_ports.map { |p| \"#{p['guest']}->#{p['host']}\" }
+              puts \"    - ports:   #{port_strs.join(', ')}\"
+            end
           end
         end
 
