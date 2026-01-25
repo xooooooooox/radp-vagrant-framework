@@ -298,6 +298,15 @@ radp-vf info
 radp-vf list
 radp-vf -e prod list
 
+# Verbose mode (show all details)
+radp-vf list -v
+radp-vf list -v node-1
+
+# Filter by type
+radp-vf list --provisions
+radp-vf list --synced-folders
+radp-vf list --triggers node-1
+
 # Validate YAML configuration
 radp-vf validate
 

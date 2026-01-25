@@ -306,6 +306,15 @@ radp-vf info
 radp-vf list
 radp-vf -e prod list
 
+# 详细模式（显示所有配置项）
+radp-vf list -v
+radp-vf list -v node-1
+
+# 按类型过滤
+radp-vf list --provisions
+radp-vf list --synced-folders
+radp-vf list --triggers node-1
+
 # 验证 YAML 配置
 radp-vf validate
 
