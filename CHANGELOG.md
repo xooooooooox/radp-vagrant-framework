@@ -1,3 +1,6 @@
+## v0.1.8 - 2026-01-25
+
+- 69e4ecf feat: add support for installing and copying project templates
 ## v0.1.7 - 2026-01-25
 
 - 873d6be docs: reorganize and update README with template and usage enhancements
