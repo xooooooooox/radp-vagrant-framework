@@ -6,18 +6,24 @@ _radp_vf() {
     local -a commands
     local -a global_opts
     local -a vagrant_cmds
+    local -a dump_config_opts
+    local -a format_values
 
     commands=(
         'init:Initialize a new project with sample configuration'
         'vg:Run vagrant command with framework'
-        'dump-config:Dump merged configuration (JSON)'
+        'list:List clusters and guests from configuration'
+        'dump-config:Dump merged configuration'
         'generate:Generate standalone Vagrantfile'
+        'validate:Validate YAML configuration files'
         'info:Show environment and configuration info'
         'version:Show version'
         'help:Show help'
     )
 
     global_opts=(
+        '-c[Configuration directory]:config dir:_files -/'
+        '--config[Configuration directory]:config dir:_files -/'
         '-e[Override environment]:environment name:'
         '--env[Override environment]:environment name:'
         '-h[Show help]'
@@ -38,6 +44,12 @@ _radp_vf() {
         'validate:Validate Vagrantfile'
         'box:Manage boxes'
         'snapshot:Manage snapshots'
+        'plugin:Manage plugins'
+    )
+
+    dump_config_opts=(
+        '-f[Output format]:format:(json yaml)'
+        '--format[Output format]:format:(json yaml)'
     )
 
     local curcontext="$curcontext" state line
@@ -62,8 +74,14 @@ _radp_vf() {
                 init)
                     _files -/
                     ;;
+                dump-config)
+                    _arguments $dump_config_opts '*:filter:'
+                    ;;
                 generate)
                     _files
+                    ;;
+                list|validate|info|version|help)
+                    # No additional arguments
                     ;;
             esac
             ;;
