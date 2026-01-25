@@ -18,21 +18,43 @@ resolve_script_dir() {
 
 SCRIPT_DIR="$(resolve_script_dir)"
 
-# Determine RADP_VF_HOME (project root directory)
+# Determine RADP_VF_HOME and RUBY_LIB_DIR
 # Priority: env var > auto-detect from script location
+#
+# Two installation modes:
+# 1. Development (git clone): bin/radp-vf in project root
+#    - RADP_VF_HOME = project_root
+#    - RUBY_LIB_DIR = project_root/src/main/ruby
+#
+# 2. Homebrew/installed: libexec/bin/radp-vf
+#    - RADP_VF_HOME = libexec (contains Vagrantfile, lib/ directly)
+#    - RUBY_LIB_DIR = libexec (same as RADP_VF_HOME)
+
 if [[ -z "${RADP_VF_HOME:-}" ]]; then
-  # bin/radp-vf -> parent is project root
+  # Case 1: Development mode - project_root/bin/radp-vf
   if [[ -d "${SCRIPT_DIR}/../src/main/ruby/lib/radp_vagrant" ]]; then
     RADP_VF_HOME="$(cd "${SCRIPT_DIR}/.." && pwd)"
+    RUBY_LIB_DIR="${RADP_VF_HOME}/src/main/ruby"
+  # Case 2: Homebrew/installed mode - libexec/bin/radp-vf
+  elif [[ -d "${SCRIPT_DIR}/../lib/radp_vagrant" ]]; then
+    RADP_VF_HOME="$(cd "${SCRIPT_DIR}/.." && pwd)"
+    RUBY_LIB_DIR="${RADP_VF_HOME}"
   else
     echo "Error: Cannot locate RADP Vagrant Framework. Set RADP_VF_HOME." >&2
     exit 1
   fi
+else
+  # RADP_VF_HOME is set via env var, detect RUBY_LIB_DIR
+  if [[ -d "${RADP_VF_HOME}/src/main/ruby/lib/radp_vagrant" ]]; then
+    RUBY_LIB_DIR="${RADP_VF_HOME}/src/main/ruby"
+  elif [[ -d "${RADP_VF_HOME}/lib/radp_vagrant" ]]; then
+    RUBY_LIB_DIR="${RADP_VF_HOME}"
+  else
+    echo "Error: Invalid RADP_VF_HOME: ${RADP_VF_HOME}" >&2
+    exit 1
+  fi
 fi
 export RADP_VF_HOME
-
-# Ruby lib directory
-RUBY_LIB_DIR="${RADP_VF_HOME}/src/main/ruby"
 
 # Global options
 OPT_ENV=""
