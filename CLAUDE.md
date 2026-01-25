@@ -116,6 +116,7 @@ ruby -r ./lib/radp_vagrant -e "puts RadpVagrant.generate_vagrantfile('config')"
    - `base.rb` - Base class with common helpers (formatting, config loading)
    - `list.rb` - List command with compact/verbose views
    - `validate.rb` - Validate command for config verification
+   - `dump_config.rb` - Dump-config command for exporting merged configuration (JSON/YAML)
 
 ### Modular Plugin System
 Plugin configurators are modularized under `lib/radp_vagrant/configurators/plugins/`:
