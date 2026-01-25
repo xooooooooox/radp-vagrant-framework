@@ -239,8 +239,8 @@ radp:
 
 ### Running Vagrant Commands
 
-Use `radp-vf vg` to run vagrant commands. This works from the project directory or anywhere if `RADP_VAGRANT_CONFIG_DIR`
-is set:
+Use `radp-vf vg` to run vagrant commands. This works from the project directory or anywhere with `-c` flag or
+`RADP_VAGRANT_CONFIG_DIR`:
 
 ```shell
 # From project directory (contains config/vagrant.yaml)
@@ -251,14 +251,20 @@ radp-vf vg ssh sample-example-node-1
 radp-vf vg halt
 radp-vf vg destroy
 
-# Or from any directory with RADP_VAGRANT_CONFIG_DIR set
+# Or use -c flag to specify config directory
+radp-vf -c /path/to/project/config vg status
+radp-vf -c ~/myproject/config vg up
+
+# Or set environment variable
 export RADP_VAGRANT_CONFIG_DIR="$HOME/myproject/config"
 radp-vf vg status
-radp-vf vg up
 
 # Override environment with -e flag
 radp-vf -e dev vg status # Uses vagrant-dev.yaml
 radp-vf -e prod vg up # Uses vagrant-prod.yaml
+
+# Combine -c and -e flags
+radp-vf -c ~/myproject/config -e prod vg up
 ```
 
 **Note:** Native `vagrant` commands are isolated from `radp-vf vg`. Running `vagrant up` in a directory with its own
@@ -282,14 +288,28 @@ export VAGRANT_DOTFILE_PATH="$HOME/.config/radp-vagrant/.vagrant"
 
 This ensures Vagrant always uses the same `.vagrant` directory regardless of where you run commands.
 
-### Debug Commands
+### CLI Commands
 
 ```shell
 # Show environment info
 radp-vf info
 
-# Dump merged configuration (JSON)
+# List clusters and guests
+radp-vf list
+radp-vf -e prod list
+
+# Validate YAML configuration
+radp-vf validate
+
+# Dump merged configuration (JSON by default)
 radp-vf dump-config
+
+# Dump as YAML
+radp-vf dump-config -f yaml
+
+# Output to file (using -o option)
+radp-vf dump-config -o config.json
+radp-vf dump-config -f yaml -o config.yaml
 
 # Filter by guest ID or machine name
 radp-vf dump-config node-1
@@ -300,6 +320,19 @@ radp-vf generate
 # Save generated Vagrantfile
 radp-vf generate Vagrantfile.preview
 ```
+
+### Global Options
+
+| Option | Description |
+|--------|-------------|
+| `-c, --config <dir>` | Configuration directory (default: `./config`) |
+| `-e, --env <name>` | Override environment name |
+| `-h, --help` | Show help |
+| `-v, --version` | Show version |
+
+Priority (highest to lowest):
+- `-c` flag > `RADP_VAGRANT_CONFIG_DIR` > `./config`
+- `-e` flag > `RADP_VAGRANT_ENV` > `radp.env` in vagrant.yaml
 
 ### Use from Git Clone (Development)
 

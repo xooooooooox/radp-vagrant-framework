@@ -39,13 +39,15 @@
 #### 脚本安装 (curl / wget / fetch)
 
 ```shell
-curl -fsSL https://raw.githubusercontent.com/xooooooooox/radp-vagrant-framework/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/xooooooooox/radp-vagrant-framework/main/install.sh
+  | bash
 ```
 
 或:
 
 ```shell
-wget -qO- https://raw.githubusercontent.com/xooooooooox/radp-vagrant-framework/main/install.sh | bash
+wget -qO- https://raw.githubusercontent.com/xooooooooox/radp-vagrant-framework/main/install.sh
+  | bash
 ```
 
 可选环境变量:
@@ -108,10 +110,10 @@ Bash:
 ```shell
 # 复制补全脚本
 curl -fsSL https://raw.githubusercontent.com/xooooooooox/radp-vagrant-framework/main/completions/radp-vf.bash \
-  > ~/.local/share/bash-completion/completions/radp-vf
+  >~/.local/share/bash-completion/completions/radp-vf
 
 # 或在 ~/.bashrc 中直接 source
-echo 'source ~/.local/share/bash-completion/completions/radp-vf' >> ~/.bashrc
+echo 'source ~/.local/share/bash-completion/completions/radp-vf' >>~/.bashrc
 ```
 
 Zsh:
@@ -122,10 +124,10 @@ mkdir -p ~/.zfunc
 
 # 复制补全脚本
 curl -fsSL https://raw.githubusercontent.com/xooooooooox/radp-vagrant-framework/main/completions/radp-vf.zsh \
-  > ~/.zfunc/_radp-vf
+  >~/.zfunc/_radp-vf
 
 # 添加到 ~/.zshrc（在 compinit 之前）
-echo 'fpath=(~/.zfunc $fpath)' >> ~/.zshrc
+echo 'fpath=(~/.zfunc $fpath)' >>~/.zshrc
 ```
 
 ### 推荐：使用 homelabctl
@@ -229,15 +231,25 @@ radp:
 - Homebrew 安装：`/opt/homebrew/Cellar/radp-vagrant-framework/<version>/libexec`
 - Git clone：`<repo>`（项目根目录，自动检测）
 
-**环境优先级（从高到低）：**
+**优先级（从高到低）：**
 
 ```
+-c 参数 > RADP_VAGRANT_CONFIG_DIR > ./config
 -e 参数 > RADP_VAGRANT_ENV > vagrant.yaml 中的 radp.env
 ```
 
+### 全局选项
+
+| 选项                   | 说明                  |
+|----------------------|---------------------|
+| `-c, --config <dir>` | 配置目录（默认：`./config`） |
+| `-e, --env <name>`   | 覆盖环境名称              |
+| `-h, --help`         | 显示帮助                |
+| `-v, --version`      | 显示版本                |
+
 ### 运行 Vagrant 命令
 
-使用 `radp-vf vg` 运行 vagrant 命令。可以在项目目录中运行，也可以在设置了 `RADP_VAGRANT_CONFIG_DIR` 后从任意目录运行：
+使用 `radp-vf vg` 运行 vagrant 命令。可以在项目目录中运行，也可以使用 `-c` 参数或 `RADP_VAGRANT_CONFIG_DIR` 从任意目录运行：
 
 ```shell
 # 从项目目录运行（包含 config/vagrant.yaml）
@@ -248,14 +260,20 @@ radp-vf vg ssh sample-example-node-1
 radp-vf vg halt
 radp-vf vg destroy
 
-# 或者设置 RADP_VAGRANT_CONFIG_DIR 后从任意目录运行
+# 使用 -c 参数指定配置目录
+radp-vf -c /path/to/project/config vg status
+radp-vf -c ~/myproject/config vg up
+
+# 或者设置环境变量
 export RADP_VAGRANT_CONFIG_DIR="$HOME/myproject/config"
 radp-vf vg status
-radp-vf vg up
 
 # 使用 -e 参数切换环境
 radp-vf -e dev vg status # 使用 vagrant-dev.yaml
 radp-vf -e prod vg up # 使用 vagrant-prod.yaml
+
+# 组合 -c 和 -e 参数
+radp-vf -c ~/myproject/config -e prod vg up
 ```
 
 **注意：** 原生 `vagrant` 命令与 `radp-vf vg` 相互隔离。在包含自己 Vagrantfile 的目录中运行 `vagrant up` 不会受 RADP
@@ -278,17 +296,34 @@ export VAGRANT_DOTFILE_PATH="$HOME/.config/radp-vagrant/.vagrant"
 
 这可以确保 Vagrant 始终使用同一个 `.vagrant` 目录，无论你从哪里运行命令。
 
-### 调试命令
+### CLI 命令
 
 ```shell
 # 显示环境信息
 radp-vf info
 
-# 导出合并后的配置（JSON）
+# 列出集群和虚拟机
+radp-vf list
+radp-vf -e prod list
+
+# 验证 YAML 配置
+radp-vf validate
+
+# 导出合并后的配置（默认 JSON）
 radp-vf dump-config
+
+# 导出为 YAML 格式
+radp-vf dump-config -f yaml
 
 # 按 guest ID 或 machine name 过滤
 radp-vf dump-config node-1
+
+# 导出到文件（使用 -o 选项）
+radp-vf dump-config -o config.json
+radp-vf dump-config -f yaml -o config.yaml
+
+# 或使用重定向
+radp-vf dump-config -f yaml >config.yaml
 
 # 生成独立 Vagrantfile（dry-run 预览）
 radp-vf generate
