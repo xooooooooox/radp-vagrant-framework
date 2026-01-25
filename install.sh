@@ -420,6 +420,11 @@ install_manual() {
   cp -R "${src_root}/src/main/ruby/lib" "${install_dir}/"
   cp -R "${src_root}/src/main/ruby/Vagrantfile" "${install_dir}/" 2>/dev/null || true
 
+  # Copy project templates
+  if [[ -d "${src_root}/templates" ]]; then
+    cp -R "${src_root}/templates" "${install_dir}/"
+  fi
+
   # Copy sample config if exists
   if [[ -d "${src_root}/src/main/ruby/config" ]]; then
     cp -R "${src_root}/src/main/ruby/config" "${install_dir}/"

@@ -25,6 +25,9 @@ class RadpVagrantFramework < Formula
     # Install Ruby framework files
     libexec.install Dir["src/main/ruby/*"]
 
+    # Install project templates
+    libexec.install "templates"
+
     # Install CLI script to libexec/bin and create symlink
     (libexec/"bin").install "bin/radp-vf"
     bin.install_symlink libexec/"bin/radp-vf"
