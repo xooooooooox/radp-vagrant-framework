@@ -1,0 +1,18 @@
+# Example user provision definition
+# Usage in vagrant.yaml or vagrant-{env}.yaml:
+#   provisions:
+#     - name: user:example
+#       enabled: true
+#       env:
+#         MESSAGE: "Hello from user provision"
+desc: Example user provision - demonstrates user-defined provisions
+defaults:
+  privileged: false
+  run: once
+  env:
+    required: []
+    optional:
+      - name: MESSAGE
+        value: "Hello World"
+        desc: Message to display during provisioning
+  script: example.sh

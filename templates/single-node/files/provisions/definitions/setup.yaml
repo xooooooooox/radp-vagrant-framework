@@ -1,0 +1,13 @@
+# Setup provision for single-node development VM
+# Customize this file for your development environment needs
+desc: Development environment setup
+defaults:
+  privileged: true
+  run: once
+  env:
+    required: []
+    optional:
+      - name: INSTALL_DOCKER
+        value: "false"
+        desc: Install Docker and Docker Compose
+  script: setup.sh

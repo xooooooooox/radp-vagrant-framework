@@ -1,0 +1,16 @@
+# Kubernetes prerequisites provision
+# Installs container runtime and Kubernetes packages on all nodes
+desc: Install Kubernetes prerequisites (containerd, kubeadm, kubelet, kubectl)
+defaults:
+  privileged: true
+  run: once
+  env:
+    required: []
+    optional:
+      - name: K8S_VERSION
+        value: "1.29"
+        desc: Kubernetes version to install (major.minor)
+      - name: CONTAINERD_VERSION
+        value: "1.7"
+        desc: Containerd version to install
+  script: k8s-prereq.sh

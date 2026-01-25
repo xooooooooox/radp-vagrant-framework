@@ -1,0 +1,37 @@
+name: k8s-cluster
+desc: Multi-node Kubernetes cluster with master and configurable workers
+version: 1.0.0
+variables:
+  - name: env
+    desc: Environment name (used for config file naming)
+    default: dev
+    required: true
+  - name: cluster_name
+    desc: Name of the Kubernetes cluster
+    default: k8s
+  - name: worker_count
+    desc: Number of worker nodes
+    default: 2
+    type: integer
+  - name: network_prefix
+    desc: Private network IP prefix (e.g., 172.16.20)
+    default: "172.16.20"
+  - name: box_name
+    desc: Vagrant box to use
+    default: generic/ubuntu2204
+  - name: master_mem
+    desc: Master node memory in MB
+    default: 4096
+    type: integer
+  - name: master_cpus
+    desc: Master node CPUs
+    default: 2
+    type: integer
+  - name: worker_mem
+    desc: Worker node memory in MB
+    default: 2048
+    type: integer
+  - name: worker_cpus
+    desc: Worker node CPUs
+    default: 2
+    type: integer

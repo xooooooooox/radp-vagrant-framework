@@ -1,0 +1,16 @@
+# Kubernetes master node initialization
+# Initializes the control plane with kubeadm
+desc: Initialize Kubernetes master node with kubeadm
+defaults:
+  privileged: true
+  run: once
+  env:
+    required: []
+    optional:
+      - name: POD_NETWORK_CIDR
+        value: "10.244.0.0/16"
+        desc: Pod network CIDR (default is for Flannel)
+      - name: CNI_PLUGIN
+        value: "flannel"
+        desc: CNI plugin to install (flannel, calico)
+  script: k8s-master.sh

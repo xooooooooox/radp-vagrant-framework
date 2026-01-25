@@ -1,0 +1,13 @@
+# Kubernetes worker node join
+# Joins the worker to the cluster using token from master
+desc: Join Kubernetes worker node to cluster
+defaults:
+  privileged: true
+  run: once
+  env:
+    required: []
+    optional:
+      - name: MASTER_IP
+        value: ""
+        desc: Master node IP (auto-detected if empty)
+  script: k8s-worker.sh

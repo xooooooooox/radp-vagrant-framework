@@ -1,0 +1,25 @@
+name: base
+desc: Minimal template for getting started with RADP Vagrant Framework
+version: 1.0.0
+variables:
+  - name: env
+    desc: Environment name (used for config file naming)
+    default: sample
+    required: true
+  - name: cluster_name
+    desc: Name of the cluster
+    default: example
+  - name: guest_id
+    desc: ID of the initial guest
+    default: node-1
+  - name: box_name
+    desc: Vagrant box to use
+    default: generic/ubuntu2204
+  - name: mem
+    desc: Memory allocation in MB
+    default: 2048
+    type: integer
+  - name: cpus
+    desc: Number of CPUs
+    default: 2
+    type: integer

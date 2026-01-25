@@ -1,0 +1,34 @@
+name: single-node
+desc: Enhanced single VM setup with common provisions pre-configured
+version: 1.0.0
+variables:
+  - name: env
+    desc: Environment name (used for config file naming)
+    default: dev
+    required: true
+  - name: cluster_name
+    desc: Name of the cluster
+    default: devbox
+  - name: guest_id
+    desc: ID of the guest VM
+    default: main
+  - name: hostname
+    desc: Hostname for the VM (defaults to convention if empty)
+    default: ""
+  - name: box_name
+    desc: Vagrant box to use
+    default: generic/ubuntu2204
+  - name: ip_address
+    desc: Private network IP address (leave empty for DHCP)
+    default: ""
+  - name: mem
+    desc: Memory allocation in MB
+    default: 4096
+    type: integer
+  - name: cpus
+    desc: Number of CPUs
+    default: 2
+    type: integer
+  - name: disk_size
+    desc: Primary disk size (requires vagrant-disksize plugin)
+    default: ""
