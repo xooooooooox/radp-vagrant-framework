@@ -1,3 +1,6 @@
+## v0.1.5 - 2026-01-25
+
+- 99eb1c3 refactor: add error handling for provisions, synced folders, and triggers parsing functions
 ## v0.1.4 - 2026-01-25
 
 - ea2a971 refactor: improve data validation and formatting for network, provisions, and triggers parsing
