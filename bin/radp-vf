@@ -153,56 +153,19 @@ USAGE
 }
 
 cmd_info() {
-  local version
-  version="$(get_version)"
-
-  echo "RADP Vagrant Framework"
-  echo ""
-  echo "Framework:"
-  echo "  Version:      ${version}"
-  echo "  RADP_VF_HOME: ${RADP_VF_HOME}"
-  echo "  Vagrantfile:  ${RUBY_LIB_DIR}/Vagrantfile"
-  echo ""
-  echo "Environment Variables:"
-  echo "  RADP_VAGRANT_CONFIG_DIR: ${RADP_VAGRANT_CONFIG_DIR:-(not set)}"
-  echo "  RADP_VAGRANT_ENV:        ${RADP_VAGRANT_ENV:-(not set)}"
-
-  # Try to resolve config directory
   local config_dir
-  config_dir="$(resolve_config_dir 2>/dev/null)" || true
+  config_dir="$(resolve_config_dir 2>/dev/null)" || config_dir=""
 
-  if [[ -n "${config_dir}" ]]; then
-    echo ""
-    echo "Resolved Configuration:"
-    echo "  Config Dir:   ${config_dir}"
-
-    if [[ -f "${config_dir}/vagrant.yaml" ]]; then
-      local env_name
-      env_name="$(grep -E '^\s*env:' "${config_dir}/vagrant.yaml" 2>/dev/null | head -1 | sed 's/.*env:\s*//' | tr -d ' ')"
-      local effective_env="${OPT_ENV:-${RADP_VAGRANT_ENV:-${env_name}}}"
-      echo "  Environment:  ${effective_env:-unknown}"
-      if [[ -n "${OPT_ENV}" ]]; then
-        echo "                (from -e flag)"
-      elif [[ -n "${RADP_VAGRANT_ENV:-}" ]]; then
-        echo "                (from RADP_VAGRANT_ENV)"
-      else
-        echo "                (from vagrant.yaml)"
-      fi
-      echo ""
-      echo "Config Files:"
-      echo "  Base: ${config_dir}/vagrant.yaml"
-      if [[ -n "${effective_env}" && -f "${config_dir}/vagrant-${effective_env}.yaml" ]]; then
-        echo "  Env:  ${config_dir}/vagrant-${effective_env}.yaml"
-      elif [[ -n "${effective_env}" ]]; then
-        echo "  Env:  ${config_dir}/vagrant-${effective_env}.yaml (not found)"
-      fi
-    fi
-  else
-    echo ""
-    echo "Configuration: (not resolved)"
-    echo "  Use -c <dir>, set RADP_VAGRANT_CONFIG_DIR, or run from a directory with config/vagrant.yaml"
-    echo "  Or run 'radp-vf init <dir>' to create a new project."
-  fi
+  cd "${RUBY_LIB_DIR}"
+  ruby -r ./lib/radp_vagrant -e "
+    cmd = RadpVagrant::CLI::Info.new(
+      '${config_dir}'.empty? ? nil : '${config_dir}',
+      env_override: '${OPT_ENV}'.empty? ? nil : '${OPT_ENV}',
+      radp_vf_home: '${RADP_VF_HOME}',
+      ruby_lib_dir: '${RUBY_LIB_DIR}'
+    )
+    exit cmd.execute
+  "
 }
 
 cmd_vg() {
@@ -503,24 +466,15 @@ cmd_generate() {
     output="$(pwd)/${output}"
   fi
 
-  # Set environment override if specified
-  if [[ -n "${OPT_ENV}" ]]; then
-    export RADP_VAGRANT_ENV="${OPT_ENV}"
-  fi
-
-  echo "Config Dir: ${config_dir}" >&2
-  if [[ -n "${output}" ]]; then
-    echo "Output:     ${output}" >&2
-  fi
-  echo "" >&2
-
   cd "${RUBY_LIB_DIR}"
-  if [[ -n "${output}" ]]; then
-    ruby -r ./lib/radp_vagrant -e "RadpVagrant.generate_vagrantfile('${config_dir}', '${output}')"
-    echo "Generated: ${output}" >&2
-  else
-    ruby -r ./lib/radp_vagrant -e "puts RadpVagrant.generate_vagrantfile('${config_dir}')"
-  fi
+  ruby -r ./lib/radp_vagrant -e "
+    cmd = RadpVagrant::CLI::Generate.new(
+      '${config_dir}',
+      env_override: '${OPT_ENV}'.empty? ? nil : '${OPT_ENV}',
+      output: '${output}'.empty? ? nil : '${output}'
+    )
+    exit cmd.execute
+  "
 }
 
 cmd_validate() {
