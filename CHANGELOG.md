@@ -1,3 +1,11 @@
+## v0.1.2 - 2026-01-25
+
+- 33a109d docs: update CLAUDE.md to include new CLI commands, global options, and enhanced usage examples
+- 0296f0f docs: update README to document new CLI options and commands, including -c and -e flags, global options, and extended usage examples
+- f95427b feat: add -o/--output option to CLI completions for dump-config command
+- db9816b feat: add output file support to dump-config command with -o option
+- f57637b feat: extend CLI completions with new commands and options, improve dump-config handling, and refine argument parsing
+- 0b7dd76 feat: add list and validate commands, improve config handling, and enhance validation options
 ## v0.1.1 - 2026-01-25
 
 - 371d914 docs: clarify RADP_VF_HOME defaults, update environment variables, and document CLI completions
