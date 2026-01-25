@@ -77,11 +77,13 @@ _radp_vf() {
             # dump-config options and filter argument
             case "$cur" in
                 -*)
-                    COMPREPLY=($(compgen -W "-f --format" -- "$cur"))
+                    COMPREPLY=($(compgen -W "-f --format -o --output" -- "$cur"))
                     ;;
             esac
             if [[ "$prev" == "-f" || "$prev" == "--format" ]]; then
                 COMPREPLY=($(compgen -W "json yaml" -- "$cur"))
+            elif [[ "$prev" == "-o" || "$prev" == "--output" ]]; then
+                COMPREPLY=($(compgen -f -- "$cur"))
             fi
             ;;
         generate)

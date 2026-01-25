@@ -50,6 +50,8 @@ _radp_vf() {
     dump_config_opts=(
         '-f[Output format]:format:(json yaml)'
         '--format[Output format]:format:(json yaml)'
+        '-o[Output file]:output file:_files'
+        '--output[Output file]:output file:_files'
     )
 
     local curcontext="$curcontext" state line
