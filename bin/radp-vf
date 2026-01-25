@@ -480,36 +480,17 @@ cmd_dump_config() {
     output="$(pwd)/${output}"
   fi
 
-  # Set environment override if specified
-  if [[ -n "${OPT_ENV}" ]]; then
-    export RADP_VAGRANT_ENV="${OPT_ENV}"
-  fi
-
-  echo "Config Dir: ${config_dir}" >&2
-  echo "Format:     ${format}" >&2
-  if [[ -n "${filter}" ]]; then
-    echo "Filter:     ${filter}" >&2
-  fi
-  if [[ -n "${output}" ]]; then
-    echo "Output:     ${output}" >&2
-  fi
-  echo "" >&2
-
   cd "${RUBY_LIB_DIR}"
-
-  local ruby_cmd
-  if [[ -n "${filter}" ]]; then
-    ruby_cmd="RadpVagrant.dump_config('${config_dir}', '${filter}', format: :${format})"
-  else
-    ruby_cmd="RadpVagrant.dump_config('${config_dir}', nil, format: :${format})"
-  fi
-
-  if [[ -n "${output}" ]]; then
-    ruby -r ./lib/radp_vagrant -e "${ruby_cmd}" > "${output}"
-    echo "Written to: ${output}" >&2
-  else
-    ruby -r ./lib/radp_vagrant -e "${ruby_cmd}"
-  fi
+  ruby -r ./lib/radp_vagrant -e "
+    cmd = RadpVagrant::CLI::DumpConfig.new(
+      '${config_dir}',
+      env_override: '${OPT_ENV}'.empty? ? nil : '${OPT_ENV}',
+      filter: '${filter}'.empty? ? nil : '${filter}',
+      format: :${format},
+      output: '${output}'.empty? ? nil : '${output}'
+    )
+    exit cmd.execute
+  "
 }
 
 cmd_generate() {
