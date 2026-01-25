@@ -12,7 +12,8 @@
 [![CI](https://img.shields.io/github/actions/workflow/status/xooooooooox/radp-vagrant-framework/ci.yml?label=CI)](https://github.com/xooooooooox/radp-vagrant-framework/actions/workflows/ci.yml)
 [![CI: Homebrew](https://img.shields.io/github/actions/workflow/status/xooooooooox/radp-vagrant-framework/update-homebrew-tap.yml?label=Homebrew%20tap)](https://github.com/xooooooooox/radp-vagrant-framework/actions/workflows/update-homebrew-tap.yml)
 
-A YAML-driven framework for managing multi-machine Vagrant environments with configuration inheritance and modular provisioning.
+A YAML-driven framework for managing multi-machine Vagrant environments with configuration inheritance and modular
+provisioning.
 
 ## Features
 
@@ -39,13 +40,15 @@ Prerequisites:
 #### Script (curl / wget / fetch)
 
 ```shell
-curl -fsSL https://raw.githubusercontent.com/xooooooooox/radp-vagrant-framework/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/xooooooooox/radp-vagrant-framework/main/install.sh
+  | bash
 ```
 
 Or:
 
 ```shell
-wget -qO- https://raw.githubusercontent.com/xooooooooox/radp-vagrant-framework/main/install.sh | bash
+wget -qO- https://raw.githubusercontent.com/xooooooooox/radp-vagrant-framework/main/install.sh
+  | bash
 ```
 
 Optional variables:
@@ -109,10 +112,10 @@ Bash:
 ```shell
 # Copy completion script
 curl -fsSL https://raw.githubusercontent.com/xooooooooox/radp-vagrant-framework/main/completions/radp-vf.bash \
-  > ~/.local/share/bash-completion/completions/radp-vf
+  >~/.local/share/bash-completion/completions/radp-vf
 
 # Or source it directly in ~/.bashrc
-echo 'source ~/.local/share/bash-completion/completions/radp-vf' >> ~/.bashrc
+echo 'source ~/.local/share/bash-completion/completions/radp-vf' >>~/.bashrc
 ```
 
 Zsh:
@@ -123,10 +126,10 @@ mkdir -p ~/.zfunc
 
 # Copy completion script
 curl -fsSL https://raw.githubusercontent.com/xooooooooox/radp-vagrant-framework/main/completions/radp-vf.zsh \
-  > ~/.zfunc/_radp-vf
+  >~/.zfunc/_radp-vf
 
 # Add to ~/.zshrc (before compinit)
-echo 'fpath=(~/.zfunc $fpath)' >> ~/.zshrc
+echo 'fpath=(~/.zfunc $fpath)' >>~/.zshrc
 ```
 
 ### Recommended: Use homelabctl
@@ -156,7 +159,16 @@ homelabctl vg up
 After installation, create a new project with sample configuration:
 
 ```shell
+# Initialize with default template (base)
 radp-vf init myproject
+
+# Initialize with a specific template
+radp-vf init myproject --template k8s-cluster
+
+# Initialize with template variables
+radp-vf init myproject --template k8s-cluster \
+  --set cluster_name=homelab \
+  --set worker_count=3
 ```
 
 This creates the following structure:
@@ -175,6 +187,24 @@ myproject/
 
 The framework's Vagrantfile is used automatically via `radp-vf vg` - no Vagrantfile is created in your project
 directory.
+
+### Available Templates
+
+The framework provides builtin templates for common use cases:
+
+| Template      | Description                                              |
+|---------------|----------------------------------------------------------|
+| `base`        | Minimal template for getting started (default)           |
+| `single-node` | Enhanced single VM with common provisions pre-configured |
+| `k8s-cluster` | Multi-node Kubernetes cluster with master and workers    |
+
+```shell
+# List available templates
+radp-vf template list
+
+# Show template details and variables
+radp-vf template show k8s-cluster
+```
 
 ### Configuration Files
 
@@ -291,6 +321,10 @@ This ensures Vagrant always uses the same `.vagrant` directory regardless of whe
 ### CLI Commands
 
 ```shell
+# Template management
+radp-vf template list
+radp-vf template show k8s-cluster
+
 # Show environment info
 radp-vf info
 
@@ -332,14 +366,15 @@ radp-vf generate Vagrantfile.preview
 
 ### Global Options
 
-| Option | Description |
-|--------|-------------|
+| Option               | Description                                   |
+|----------------------|-----------------------------------------------|
 | `-c, --config <dir>` | Configuration directory (default: `./config`) |
-| `-e, --env <name>` | Override environment name |
-| `-h, --help` | Show help |
-| `-v, --version` | Show version |
+| `-e, --env <name>`   | Override environment name                     |
+| `-h, --help`         | Show help                                     |
+| `-v, --version`      | Show version                                  |
 
 Priority (highest to lowest):
+
 - `-c` flag > `RADP_VAGRANT_CONFIG_DIR` > `./config`
 - `-e` flag > `RADP_VAGRANT_ENV` > `radp.env` in vagrant.yaml
 
@@ -375,6 +410,12 @@ completions/
 ├── radp-vf.bash                    # Bash completion
 └── radp-vf.zsh                     # Zsh completion
 install.sh                          # Installation script
+templates/                          # Builtin project templates
+├── base/                           # Minimal getting-started template
+│   ├── template.yaml               # Template metadata
+│   └── files/                      # Template files
+├── single-node/                    # Enhanced single VM template
+└── k8s-cluster/                    # Kubernetes cluster template
 src/main/ruby/
 ├── Vagrantfile                     # Vagrant entry point
 ├── config/
@@ -1484,6 +1525,45 @@ The framework validates configurations and will raise errors for:
 
 Vagrant machine names use `provider.name` (default: `{env}-{cluster}-{guest-id}`) to ensure uniqueness in
 `$VAGRANT_DOTFILE_PATH/machines/<name>`. This prevents conflicts when multiple clusters have guests with the same ID.
+
+## Template System
+
+Templates allow you to initialize projects from predefined configurations with variable substitution.
+
+### Template Locations
+
+- **Builtin templates**: `$RADP_VF_HOME/templates/`
+- **User templates**: `~/.config/radp-vagrant/templates/`
+
+User templates with the same name override builtin templates.
+
+### Creating Custom Templates
+
+1. Create a directory under `~/.config/radp-vagrant/templates/my-template/`
+2. Create `template.yaml` with metadata:
+
+```yaml
+name: my-template
+desc: My custom template
+version: 1.0.0
+variables:
+  - name: env
+    desc: Environment name
+    default: dev
+    required: true
+  - name: cluster_name
+    desc: Cluster name
+    default: example
+  - name: mem
+    desc: Memory in MB
+    default: 2048
+    type: integer
+```
+
+3. Create `files/` directory with template files
+4. Use `{{variable}}` placeholders in files and filenames
+
+Example: `files/config/vagrant-{{env}}.yaml` becomes `files/config/vagrant-dev.yaml` when `env=dev`.
 
 ## Environment Variables
 

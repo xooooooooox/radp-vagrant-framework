@@ -40,14 +40,14 @@
 
 ```shell
 curl -fsSL https://raw.githubusercontent.com/xooooooooox/radp-vagrant-framework/main/install.sh
-  | bash
+| bash
 ```
 
 或:
 
 ```shell
 wget -qO- https://raw.githubusercontent.com/xooooooooox/radp-vagrant-framework/main/install.sh
-  | bash
+| bash
 ```
 
 可选环境变量:
@@ -157,7 +157,16 @@ homelabctl vg up
 安装后，使用以下命令创建带有示例配置的新项目：
 
 ```shell
+# 使用默认模板（base）初始化
 radp-vf init myproject
+
+# 使用指定模板初始化
+radp-vf init myproject --template k8s-cluster
+
+# 使用模板变量初始化
+radp-vf init myproject --template k8s-cluster \
+  --set cluster_name=homelab \
+  --set worker_count=3
 ```
 
 这会创建以下目录结构：
@@ -175,6 +184,24 @@ myproject/
 ```
 
 框架的 Vagrantfile 会通过 `radp-vf vg` 自动使用 - 项目目录中无需创建 Vagrantfile。
+
+### 可用模板
+
+框架提供了常用场景的内置模板：
+
+| 模板            | 描述                                      |
+|---------------|-----------------------------------------|
+| `base`        | 入门级最小模板（默认）                             |
+| `single-node` | 增强型单节点虚拟机，预配置常用 provisions              |
+| `k8s-cluster` | 多节点 Kubernetes 集群，包含 master 和 worker 节点 |
+
+```shell
+# 列出可用模板
+radp-vf template list
+
+# 查看模板详情和变量
+radp-vf template show k8s-cluster
+```
 
 ### 配置文件
 
@@ -299,6 +326,10 @@ export VAGRANT_DOTFILE_PATH="$HOME/.config/radp-vagrant/.vagrant"
 ### CLI 命令
 
 ```shell
+# 模板管理
+radp-vf template list
+radp-vf template show k8s-cluster
+
 # 显示环境信息
 radp-vf info
 
@@ -373,6 +404,12 @@ completions/
 ├── radp-vf.bash                    # Bash 补全
 └── radp-vf.zsh                     # Zsh 补全
 install.sh                          # 安装脚本
+templates/                          # 内置项目模板
+├── base/                           # 入门级最小模板
+│   ├── template.yaml               # 模板元数据
+│   └── files/                      # 模板文件
+├── single-node/                    # 增强型单节点模板
+└── k8s-cluster/                    # Kubernetes 集群模板
 src/main/ruby/
 ├── Vagrantfile                     # Vagrant 入口文件
 ├── config/
@@ -1474,6 +1511,45 @@ Guest 最终结果:
 
 Vagrant 机器名称使用 `provider.name`（默认: `{env}-{cluster}-{guest-id}`）以确保在 `$VAGRANT_DOTFILE_PATH/machines/<name>`
 中的唯一性。这可以防止多个集群中存在相同 guest ID 时产生冲突。
+
+## 模板系统
+
+模板允许你使用预定义配置和变量替换来初始化项目。
+
+### 模板位置
+
+- **内置模板**: `$RADP_VF_HOME/templates/`
+- **用户模板**: `~/.config/radp-vagrant/templates/`
+
+同名的用户模板会覆盖内置模板。
+
+### 创建自定义模板
+
+1. 在 `~/.config/radp-vagrant/templates/my-template/` 下创建目录
+2. 创建 `template.yaml` 元数据文件：
+
+```yaml
+name: my-template
+desc: 我的自定义模板
+version: 1.0.0
+variables:
+  - name: env
+    desc: 环境名称
+    default: dev
+    required: true
+  - name: cluster_name
+    desc: 集群名称
+    default: example
+  - name: mem
+    desc: 内存（MB）
+    default: 2048
+    type: integer
+```
+
+3. 创建 `files/` 目录存放模板文件
+4. 在文件内容和文件名中使用 `{{variable}}` 占位符
+
+示例：当 `env=dev` 时，`files/config/vagrant-{{env}}.yaml` 会变成 `files/config/vagrant-dev.yaml`。
 
 ## 环境变量
 
