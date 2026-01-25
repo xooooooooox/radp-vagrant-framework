@@ -1,3 +1,6 @@
+## v0.1.4 - 2026-01-25
+
+- ea2a971 refactor: improve data validation and formatting for network, provisions, and triggers parsing
 ## v0.1.3 - 2026-01-25
 
 - 12bf1fa docs: update CLAUDE.md with verbose mode and filtering examples for list command
