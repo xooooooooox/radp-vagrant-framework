@@ -13,8 +13,22 @@ RADP Vagrant Framework is a YAML-driven framework for managing multi-machine Vag
 # Show help
 ./bin/radp-vf help
 
-# Initialize a project
+# Initialize a project (uses 'base' template by default)
 ./bin/radp-vf init myproject
+
+# Initialize with a specific template
+./bin/radp-vf init myproject --template k8s-cluster
+
+# Initialize with template variables
+./bin/radp-vf init myproject --template k8s-cluster \
+  --set cluster_name=homelab \
+  --set worker_count=3
+
+# List available templates
+./bin/radp-vf template list
+
+# Show template details
+./bin/radp-vf template show k8s-cluster
 
 # List clusters and guests
 ./bin/radp-vf list
@@ -119,6 +133,7 @@ ruby -r ./lib/radp_vagrant -e "puts RadpVagrant.generate_vagrantfile('config')"
    - `dump_config.rb` - Dump-config command for exporting merged configuration (JSON/YAML)
    - `generate.rb` - Generate command for standalone Vagrantfile generation
    - `info.rb` - Info command for displaying environment and configuration information
+   - `template.rb` - Template command for listing and showing templates
 
 ### Modular Plugin System
 Plugin configurators are modularized under `lib/radp_vagrant/configurators/plugins/`:
@@ -210,6 +225,62 @@ To add a new builtin trigger:
 2. Create `scripts/my-trigger.sh` (or `scripts/category/my-trigger.sh` for subdirectory)
 3. Registry auto-discovers from YAML files recursively (no code changes needed)
 
+### Template System
+Templates allow users to initialize projects from predefined configurations with variable substitution.
+
+**Template locations:**
+- Builtin templates: `$RADP_VF_HOME/templates/`
+- User templates: `~/.config/radp-vagrant/templates/`
+
+**Template structure:**
+```
+templates/
+├── base/                      # Template name
+│   ├── template.yaml          # Template metadata
+│   └── files/                 # Files to copy
+│       ├── config/
+│       │   ├── vagrant.yaml
+│       │   └── vagrant-{{env}}.yaml
+│       └── provisions/
+│           ├── definitions/
+│           └── scripts/
+```
+
+**Template metadata format (`template.yaml`):**
+```yaml
+name: my-template
+desc: Human-readable description
+version: 1.0.0
+variables:
+  - name: env
+    desc: Environment name
+    default: dev
+    required: true
+  - name: cluster_name
+    desc: Name of the cluster
+    default: example
+  - name: mem
+    desc: Memory allocation in MB
+    default: 2048
+    type: integer
+```
+
+**Variable substitution:**
+- Use `{{variable}}` syntax in file contents and filenames
+- Example: `vagrant-{{env}}.yaml` becomes `vagrant-dev.yaml` when `env=dev`
+
+**Available builtin templates:**
+- `base` - Minimal template for getting started
+- `single-node` - Enhanced single VM with common provisions
+- `k8s-cluster` - Multi-node Kubernetes cluster
+
+**To create a custom template:**
+1. Create directory under `~/.config/radp-vagrant/templates/my-template/`
+2. Create `template.yaml` with metadata and variables
+3. Create `files/` directory with template files
+4. Use `{{variable}}` placeholders in files and filenames
+5. Run `radp-vf template list` to verify discovery
+
 ### Path Resolution
 All relative paths use unified two-level resolution via `PathResolver`:
 - `{config_dir}/path` (first priority)
@@ -225,6 +296,12 @@ completions/
 ├── radp-vf.bash                    # Bash completion
 └── radp-vf.zsh                     # Zsh completion
 install.sh                          # Installation script
+templates/                          # Builtin project templates
+├── base/                           # Minimal getting-started template
+│   ├── template.yaml               # Template metadata
+│   └── files/                      # Template files
+├── single-node/                    # Enhanced single VM template
+└── k8s-cluster/                    # Kubernetes cluster template
 src/main/ruby/
 ├── Vagrantfile                     # Vagrant entry point
 ├── config/
@@ -240,7 +317,11 @@ src/main/ruby/
         ├── cli/                    # CLI command implementations
         │   ├── base.rb             # Base class with common helpers
         │   ├── list.rb             # List command
-        │   └── validate.rb         # Validate command
+        │   ├── validate.rb         # Validate command
+        │   └── template.rb         # Template list/show command
+        ├── templates/              # Template system
+        │   ├── registry.rb         # Template discovery
+        │   └── renderer.rb         # Variable substitution
         ├── configurators/
         │   ├── box.rb
         │   ├── provider.rb
