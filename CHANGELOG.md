@@ -1,3 +1,10 @@
+## v0.1.7 - 2026-01-25
+
+- 873d6be docs: reorganize and update README with template and usage enhancements
+- d02a76f docs: update README with template system details and CLI usage
+- ec70abc docs: expand CLAUDE.md with template system usage and new CLI commands
+- 34e7da1 feat: add template management and rendering support
+- 5f0a65c feat: add `template` subcommand and support for project initialization with templates and variable customization
 ## v0.1.6 - 2026-01-25
 
 - ce97f66 Release prep v0.1.6
