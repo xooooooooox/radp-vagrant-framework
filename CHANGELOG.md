@@ -1,3 +1,9 @@
+## v0.1.0 - 2026-01-25
+
+- 41c480e refactor: restructure shell scripts, remove install.sh, and simplify RADP CLI
+- f1d97b0 docs: Update README
+- dac2206 chore: update vagrant sample configuration
+- e0255e5 docs(provisions): update README to include new provision structure and triggers definitions
 ## v0.0.27 - 2026-01-23
 
 - 90ef974 docs(triggers): document builtin triggers system and usage details
