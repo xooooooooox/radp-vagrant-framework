@@ -109,8 +109,13 @@ Commands:
   generate [output]       Generate standalone Vagrantfile
   validate                Validate YAML configuration files
   info                    Show environment and configuration info
+  template <subcommand>   Manage project templates (list, show)
   version                 Show version
   help                    Show this help
+
+Init Options:
+  -t, --template <name>   Use a template (default: base)
+  --set <var>=<value>     Set template variable (can be repeated)
 
 List Options:
   -v, --verbose           Show detailed info (box, network, provisions, etc.)
@@ -198,7 +203,47 @@ cmd_vg() {
 }
 
 cmd_init() {
-  local target_dir="${1:-.}"
+  local target_dir=""
+  local template="base"
+  local -a set_vars=()
+
+  # Parse options
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      -t|--template)
+        if [[ -z "${2:-}" ]]; then
+          echo "Error: -t/--template requires a template name" >&2
+          return 1
+        fi
+        template="$2"
+        shift 2
+        ;;
+      --set)
+        if [[ -z "${2:-}" ]]; then
+          echo "Error: --set requires a variable assignment (var=value)" >&2
+          return 1
+        fi
+        set_vars+=("$2")
+        shift 2
+        ;;
+      -*)
+        echo "Unknown option: $1" >&2
+        echo "Usage: radp-vf init [dir] [-t|--template name] [--set var=value ...]" >&2
+        return 1
+        ;;
+      *)
+        if [[ -z "${target_dir}" ]]; then
+          target_dir="$1"
+        else
+          echo "Error: Multiple target directories specified" >&2
+          return 1
+        fi
+        shift
+        ;;
+    esac
+  done
+
+  target_dir="${target_dir:-.}"
   local abs_target_dir
   local abs_config_dir
 
@@ -212,106 +257,74 @@ cmd_init() {
   fi
 
   echo "Initializing RADP Vagrant Framework project..."
+  echo "Template: ${template}"
   echo ""
 
-  mkdir -p "${abs_config_dir}"
+  # Build variables hash as JSON for Ruby
+  local vars_json="{"
+  local first=true
+  for var in "${set_vars[@]}"; do
+    if [[ "${var}" =~ ^([^=]+)=(.*)$ ]]; then
+      local key="${BASH_REMATCH[1]}"
+      local value="${BASH_REMATCH[2]}"
+      if [[ "${first}" == "true" ]]; then
+        first=false
+      else
+        vars_json+=","
+      fi
+      # Escape double quotes in value
+      value="${value//\"/\\\"}"
+      vars_json+="\"${key}\":\"${value}\""
+    else
+      echo "Error: Invalid variable format '${var}'. Use var=value" >&2
+      return 1
+    fi
+  done
+  vars_json+="}"
 
-  # Create sample vagrant.yaml
-  cat > "${abs_config_dir}/vagrant.yaml" << 'VAGRANT_YAML'
-radp:
-  env: sample
-  extend:
-    vagrant:
-      plugins:
-        - name: vagrant-hostmanager
-          required: true
-          options:
-            enabled: true
-            manage_host: true
-            manage_guest: true
-      config:
-        common:
-          # Global settings inherited by all guests
-VAGRANT_YAML
+  # Call Ruby renderer
+  cd "${RUBY_LIB_DIR}"
+  local result
+  result=$(ruby -r ./lib/radp_vagrant -r json -e "
+    require_relative 'lib/radp_vagrant/templates/renderer'
 
-  # Create sample vagrant-sample.yaml
-  cat > "${abs_config_dir}/vagrant-sample.yaml" << 'VAGRANT_DEV_YAML'
-radp:
-  extend:
-    vagrant:
-      config:
-        clusters:
-          - name: example
-            common:
-              box:
-                name: generic/ubuntu2204
-            guests:
-              - id: node-1
-                provider:
-                  mem: 2048
-                  cpus: 2
-                network:
-                  private-network:
-                    enabled: true
-                    type: dhcp
-VAGRANT_DEV_YAML
+    template_name = '${template}'
+    target_dir = '${abs_target_dir}'
+    variables = JSON.parse('${vars_json}')
 
-  # Create user provisions directory structure with example
-  local provisions_dir="${abs_config_dir}/provisions"
-  mkdir -p "${provisions_dir}/definitions"
-  mkdir -p "${provisions_dir}/scripts"
+    renderer = RadpVagrant::Templates::Renderer.new(template_name, variables)
+    result = renderer.render_to(target_dir)
 
-  # Create example user provision definition
-  cat > "${provisions_dir}/definitions/example.yaml" << 'PROVISION_DEF'
-# Example user provision definition
-# Usage in vagrant.yaml or vagrant-{env}.yaml:
-#   provisions:
-#     - name: user:example
-#       enabled: true
-#       env:
-#         MESSAGE: "Hello from user provision"
-desc: Example user provision - demonstrates user-defined provisions
-defaults:
-  privileged: false
-  run: once
-  env:
-    required: []
-    optional:
-      - name: MESSAGE
-        value: "Hello World"
-        desc: Message to display during provisioning
-  script: example.sh
-PROVISION_DEF
+    if result[:success]
+      puts 'SUCCESS'
+      (result[:files] || []).each { |f| puts f }
+    else
+      puts 'ERROR'
+      puts result[:error]
+    end
+  " 2>&1) || true
 
-  # Create example user provision script
-  cat > "${provisions_dir}/scripts/example.sh" << 'PROVISION_SCRIPT'
-#!/usr/bin/env bash
-set -euo pipefail
+  # Parse result
+  local status
+  status=$(echo "${result}" | head -n1)
 
-# Example user provision script
-# This script is executed when the provision runs
-#
-# Environment variables from provision config are available:
-#   ${MESSAGE} - example variable
+  if [[ "${status}" != "SUCCESS" ]]; then
+    local error_msg
+    error_msg=$(echo "${result}" | tail -n +2)
+    echo "Error: ${error_msg}" >&2
+    return 1
+  fi
 
-echo "[INFO] Running example user provision"
-echo "[INFO] MESSAGE=${MESSAGE:-not set}"
-echo "[INFO] User provision completed"
-PROVISION_SCRIPT
-
-  chmod +x "${provisions_dir}/scripts/example.sh"
+  # Get list of created files
+  local files
+  files=$(echo "${result}" | tail -n +2)
 
   echo "Project initialized successfully!"
   echo ""
-  echo "Created:"
-  echo "  ${abs_config_dir}/"
-  echo "  ├── vagrant.yaml              # Base config (env: sample)"
-  echo "  ├── vagrant-sample.yaml       # Cluster definitions"
-  echo "  └── provisions/               # User-defined provisions"
-  echo "      ├── definitions/"
-  echo "      │   └── example.yaml      # Example provision definition"
-  echo "      └── scripts/"
-  echo "          └── example.sh        # Example provision script"
+  echo "Created in ${abs_target_dir}/:"
+  echo "${files}" | while read -r file; do
+    [[ -n "${file}" ]] && echo "  - ${file}"
+  done
   echo ""
   echo "Framework:"
   echo "  RADP_VF_HOME: ${RADP_VF_HOME}"
@@ -335,6 +348,8 @@ PROVISION_SCRIPT
   echo ""
   echo "Edit vagrant.yaml to change 'env' and create your own environment file."
   echo "Add custom provisions in provisions/definitions/ with user: prefix."
+  echo ""
+  echo "Use 'radp-vf template list' to see all available templates."
 }
 
 cmd_list() {
@@ -495,6 +510,17 @@ cmd_validate() {
   "
 }
 
+cmd_template() {
+  local subcommand="${1:-list}"
+  shift || true
+
+  cd "${RUBY_LIB_DIR}"
+  ruby -r ./lib/radp_vagrant -e "
+    cmd = RadpVagrant::CLI::Template.new('${subcommand}', ARGV)
+    exit cmd.execute
+  " -- "$@"
+}
+
 cmd_version() {
   get_version
 }
@@ -567,6 +593,9 @@ main() {
       ;;
     validate)
       cmd_validate "$@"
+      ;;
+    template)
+      cmd_template "$@"
       ;;
     version)
       cmd_version
