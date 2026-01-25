@@ -90,7 +90,15 @@ _radp_vf() {
             # Output file completion
             COMPREPLY=($(compgen -f -- "$cur"))
             ;;
-        list|validate|info|version|help)
+        list)
+            # list options
+            case "$cur" in
+                -*)
+                    COMPREPLY=($(compgen -W "-v --verbose --provisions --synced-folders --triggers" -- "$cur"))
+                    ;;
+            esac
+            ;;
+        validate|info|version|help)
             # No additional arguments
             ;;
     esac

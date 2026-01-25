@@ -54,6 +54,14 @@ _radp_vf() {
         '--output[Output file]:output file:_files'
     )
 
+    list_opts=(
+        '-v[Show detailed info]'
+        '--verbose[Show detailed info]'
+        '--provisions[Show provisions only]'
+        '--synced-folders[Show synced folders only]'
+        '--triggers[Show triggers only]'
+    )
+
     local curcontext="$curcontext" state line
     typeset -A opt_args
 
@@ -82,7 +90,10 @@ _radp_vf() {
                 generate)
                     _files
                     ;;
-                list|validate|info|version|help)
+                list)
+                    _arguments $list_opts '*:filter:'
+                    ;;
+                validate|info|version|help)
                     # No additional arguments
                     ;;
             esac
