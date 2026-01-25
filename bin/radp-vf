@@ -105,7 +105,7 @@ Commands:
   init [dir]              Initialize a new project with sample configuration
   vg <vagrant-cmd>        Run vagrant command with framework
   list                    List clusters and guests from configuration
-  dump-config [options]   Dump merged configuration
+  dump-config [options]   Dump merged configuration (use -o for file output)
   generate [output]       Generate standalone Vagrantfile
   validate                Validate YAML configuration files
   info                    Show environment and configuration info
@@ -133,6 +133,8 @@ Examples:
   radp-vf validate
   radp-vf dump-config
   radp-vf dump-config -f yaml
+  radp-vf dump-config -o config.json
+  radp-vf dump-config -f yaml -o config.yaml
   radp-vf dump-config node-1
   radp-vf generate Vagrantfile.standalone
   radp-vf -c /path/to/config vg status
@@ -425,6 +427,7 @@ cmd_list() {
 cmd_dump_config() {
   local filter=""
   local format="json"
+  local output=""
 
   # Parse dump-config specific options
   while [[ $# -gt 0 ]]; do
@@ -437,9 +440,17 @@ cmd_dump_config() {
         format="$2"
         shift 2
         ;;
+      -o|--output)
+        if [[ -z "${2:-}" ]]; then
+          echo "Error: -o requires an output file path" >&2
+          return 1
+        fi
+        output="$2"
+        shift 2
+        ;;
       -*)
         echo "Unknown option: $1" >&2
-        echo "Usage: radp-vf dump-config [-f json|yaml] [filter]" >&2
+        echo "Usage: radp-vf dump-config [-f json|yaml] [-o file] [filter]" >&2
         return 1
         ;;
       *)
@@ -458,6 +469,11 @@ cmd_dump_config() {
   local config_dir
   config_dir="$(resolve_config_dir)" || return 1
 
+  # Convert relative output path to absolute before changing directory
+  if [[ -n "${output}" && "${output}" != /* ]]; then
+    output="$(pwd)/${output}"
+  fi
+
   # Set environment override if specified
   if [[ -n "${OPT_ENV}" ]]; then
     export RADP_VAGRANT_ENV="${OPT_ENV}"
@@ -468,13 +484,25 @@ cmd_dump_config() {
   if [[ -n "${filter}" ]]; then
     echo "Filter:     ${filter}" >&2
   fi
+  if [[ -n "${output}" ]]; then
+    echo "Output:     ${output}" >&2
+  fi
   echo "" >&2
 
   cd "${RUBY_LIB_DIR}"
+
+  local ruby_cmd
   if [[ -n "${filter}" ]]; then
-    ruby -r ./lib/radp_vagrant -e "RadpVagrant.dump_config('${config_dir}', '${filter}', format: :${format})"
+    ruby_cmd="RadpVagrant.dump_config('${config_dir}', '${filter}', format: :${format})"
   else
-    ruby -r ./lib/radp_vagrant -e "RadpVagrant.dump_config('${config_dir}', nil, format: :${format})"
+    ruby_cmd="RadpVagrant.dump_config('${config_dir}', nil, format: :${format})"
+  fi
+
+  if [[ -n "${output}" ]]; then
+    ruby -r ./lib/radp_vagrant -e "${ruby_cmd}" > "${output}"
+    echo "Written to: ${output}" >&2
+  else
+    ruby -r ./lib/radp_vagrant -e "${ruby_cmd}"
   fi
 }
 
