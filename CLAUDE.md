@@ -19,6 +19,11 @@ RADP Vagrant Framework is a YAML-driven framework for managing multi-machine Vag
 # List clusters and guests
 ./bin/radp-vf list
 ./bin/radp-vf -e prod list
+./bin/radp-vf list -v                    # Verbose mode (all details)
+./bin/radp-vf list -v node-1             # Verbose for specific guest
+./bin/radp-vf list --provisions          # Show provisions only
+./bin/radp-vf list --synced-folders      # Show synced folders only
+./bin/radp-vf list --triggers            # Show triggers only
 
 # Validate YAML configuration
 ./bin/radp-vf validate
