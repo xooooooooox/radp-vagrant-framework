@@ -227,9 +227,9 @@ radp:
 
 **RADP_VF_HOME defaults:**
 
-- Script/Homebrew install: `~/.local/lib/radp-vagrant-framework` or
-  `/opt/homebrew/Cellar/radp-vagrant-framework/<version>/libexec`
-- Git clone: `<repo>/src/main/ruby` (auto-detected)
+- Script install: `~/.local/lib/radp-vagrant-framework`
+- Homebrew install: `/opt/homebrew/Cellar/radp-vagrant-framework/<version>/libexec`
+- Git clone: `<repo>` (project root, auto-detected)
 
 **Environment priority (highest to lowest):**
 
@@ -329,6 +329,10 @@ ruby -r ./lib/radp_vagrant -e "puts RadpVagrant.generate_vagrantfile('config')"
 ```
 bin/
 └── radp-vf                         # CLI entry point
+completions/
+├── radp-vf.bash                    # Bash completion
+└── radp-vf.zsh                     # Zsh completion
+install.sh                          # Installation script
 src/main/ruby/
 ├── Vagrantfile                     # Vagrant entry point
 ├── config/

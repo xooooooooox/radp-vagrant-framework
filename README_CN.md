@@ -225,9 +225,9 @@ radp:
 
 **RADP_VF_HOME 默认值：**
 
-- 脚本/Homebrew 安装：`~/.local/lib/radp-vagrant-framework` 或
-  `/opt/homebrew/Cellar/radp-vagrant-framework/<version>/libexec`
-- Git clone：`<repo>/src/main/ruby`（自动检测）
+- 脚本安装：`~/.local/lib/radp-vagrant-framework`
+- Homebrew 安装：`/opt/homebrew/Cellar/radp-vagrant-framework/<version>/libexec`
+- Git clone：`<repo>`（项目根目录，自动检测）
 
 **环境优先级（从高到低）：**
 
@@ -325,6 +325,10 @@ ruby -r ./lib/radp_vagrant -e "puts RadpVagrant.generate_vagrantfile('config')"
 ```
 bin/
 └── radp-vf                         # CLI 入口
+completions/
+├── radp-vf.bash                    # Bash 补全
+└── radp-vf.zsh                     # Zsh 补全
+install.sh                          # 安装脚本
 src/main/ruby/
 ├── Vagrantfile                     # Vagrant 入口文件
 ├── config/

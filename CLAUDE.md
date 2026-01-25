@@ -268,7 +268,9 @@ radp:
 
 ## Environment Variables
 
+- `RADP_VF_HOME` - Framework installation directory (auto-detected: project root for git clone, libexec for Homebrew)
 - `RADP_VAGRANT_CONFIG_DIR` - Override configuration directory path
+- `RADP_VAGRANT_ENV` - Override environment name
 
 ## Code Style
 
