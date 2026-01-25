@@ -466,13 +466,18 @@ cmd_list() {
     # Helper to format provisions
     def format_provisions(provisions)
       return [] unless provisions && provisions.is_a?(Array) && !provisions.empty?
-      provisions.select { |p| p.is_a?(Hash) && p['enabled'] != false }.map do |p|
-        phase = p['phase'] ? \"[#{p['phase'].to_s.ljust(4)}]\" : '[    ]'
-        name = p['name'] || 'unnamed'
-        type = p['type'] || 'shell'
-        run = p['run'] || 'once'
-        priv = p['privileged'] ? 'privileged' : ''
-        { phase: phase, name: name, type: type, run: run, privileged: priv }
+      begin
+        provisions.select { |p| p.is_a?(Hash) && p['enabled'] != false }.map do |p|
+          phase = p['phase'] ? \"[#{p['phase'].to_s.ljust(4)}]\" : '[    ]'
+          name = p['name'] || 'unnamed'
+          type = p['type'] || 'shell'
+          run = p['run'] || 'once'
+          priv = p['privileged'] ? 'privileged' : ''
+          { phase: phase, name: name, type: type, run: run, privileged: priv }
+        end
+      rescue => e
+        STDERR.puts \"Warning: Error parsing provisions: #{e.message}\"
+        []
       end
     end
 
@@ -480,36 +485,66 @@ cmd_list() {
     def format_synced_folders(synced_folders)
       return [] unless synced_folders
       result = []
-      %w[basic nfs rsync smb].each do |folder_type|
-        folders = synced_folders[folder_type]
-        next unless folders
-        # Ensure folders is an array (handle single hash case)
-        folders = [folders] if folders.is_a?(Hash)
-        next unless folders.is_a?(Array)
-        folders.each do |f|
-          next unless f.is_a?(Hash)
-          next unless f['enabled'] != false
-          host = f['host'] || '-'
-          guest = f['guest'] || '-'
-          extras = []
-          extras << \"owner:#{f['owner']}\" if f['owner']
-          extras << \"nfs-version:#{f['nfs-version']}\" if f['nfs-version']
-          extras << 'bindfs' if f.dig('bindfs', 'enabled')
-          result << { type: folder_type, host: host, guest: guest, extras: extras.join(' ') }
+
+      begin
+        # Handle both hash-by-type and array formats
+        if synced_folders.is_a?(Hash)
+          %w[basic nfs rsync smb].each do |folder_type|
+            items = synced_folders[folder_type]
+            next unless items
+            # Normalize to array and filter valid entries
+            list = items.is_a?(Array) ? items : [items]
+            list.each do |item|
+              # Skip non-hash entries
+              next unless item.is_a?(Hash)
+              next if item['enabled'] == false
+              result << {
+                type: folder_type,
+                host: item['host'].to_s,
+                guest: item['guest'].to_s,
+                extras: [
+                  item['owner'] ? \"owner:#{item['owner']}\" : nil,
+                  item['nfs-version'] ? \"nfs-version:#{item['nfs-version']}\" : nil,
+                  (item['bindfs'].is_a?(Hash) && item['bindfs']['enabled']) ? 'bindfs' : nil
+                ].compact.join(' ')
+              }
+            end
+          end
+        elsif synced_folders.is_a?(Array)
+          synced_folders.each do |item|
+            next unless item.is_a?(Hash)
+            next if item['enabled'] == false
+            result << {
+              type: item['type'] || 'basic',
+              host: item['host'].to_s,
+              guest: item['guest'].to_s,
+              extras: item['owner'] ? \"owner:#{item['owner']}\" : ''
+            }
+          end
         end
+      rescue => e
+        STDERR.puts \"Warning: Error parsing synced-folders (#{synced_folders.class}): #{e.message}\"
+        STDERR.puts e.backtrace.first(3).join(\"\\n\") if ENV['DEBUG']
+        return []
       end
+
       result
     end
 
     # Helper to format triggers
     def format_triggers(triggers)
       return [] unless triggers && triggers.is_a?(Array) && !triggers.empty?
-      triggers.select { |t| t.is_a?(Hash) && t['enabled'] != false }.map do |t|
-        name = t['name'] || 'unnamed'
-        timing = t['on'] || 'before'
-        actions = Array(t['action'] || [:up]).join(',')
-        run_type = t['run-remote'] ? 'run-remote' : (t['run'] ? 'run' : '-')
-        { name: name, timing: timing, actions: actions, run_type: run_type }
+      begin
+        triggers.select { |t| t.is_a?(Hash) && t['enabled'] != false }.map do |t|
+          name = t['name'] || 'unnamed'
+          timing = t['on'] || 'before'
+          actions = Array(t['action'] || [:up]).join(',')
+          run_type = t['run-remote'] ? 'run-remote' : (t['run'] ? 'run' : '-')
+          { name: name, timing: timing, actions: actions, run_type: run_type }
+        end
+      rescue => e
+        STDERR.puts \"Warning: Error parsing triggers: #{e.message}\"
+        []
       end
     end
 
