@@ -13,14 +13,34 @@ RADP Vagrant Framework is a YAML-driven framework for managing multi-machine Vag
 # Show help
 ./bin/radp-vf help
 
+# Initialize a project
+./bin/radp-vf init myproject
+
+# List clusters and guests
+./bin/radp-vf list
+./bin/radp-vf -e prod list
+
+# Validate YAML configuration
+./bin/radp-vf validate
+
 # Dump merged configuration
 ./bin/radp-vf dump-config
-./bin/radp-vf dump-config -e prod
-./bin/radp-vf dump-config -g node-1 -f yaml
+./bin/radp-vf dump-config -f yaml
+./bin/radp-vf dump-config -o config.json
+./bin/radp-vf dump-config -f yaml -o config.yaml
+./bin/radp-vf dump-config node-1
 
 # Generate standalone Vagrantfile
 ./bin/radp-vf generate
-./bin/radp-vf generate -o Vagrantfile.standalone
+./bin/radp-vf generate Vagrantfile.standalone
+
+# Run vagrant commands
+./bin/radp-vf vg status
+./bin/radp-vf -c /path/to/config -e prod vg up
+
+# Global options
+# -c, --config <dir>   Configuration directory
+# -e, --env <name>     Override environment
 ```
 
 ### Vagrant Commands
