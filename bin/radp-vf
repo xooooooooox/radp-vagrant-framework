@@ -58,6 +58,7 @@ export RADP_VF_HOME
 
 # Global options
 OPT_ENV=""
+OPT_CONFIG=""
 
 # Get version
 get_version() {
@@ -65,11 +66,13 @@ get_version() {
 }
 
 # Resolve config directory
-# Priority: RADP_VAGRANT_CONFIG_DIR > ./config (if exists)
+# Priority: -c flag > RADP_VAGRANT_CONFIG_DIR > ./config (if exists)
 resolve_config_dir() {
   local config_dir=""
 
-  if [[ -n "${RADP_VAGRANT_CONFIG_DIR:-}" ]]; then
+  if [[ -n "${OPT_CONFIG}" ]]; then
+    config_dir="${OPT_CONFIG}"
+  elif [[ -n "${RADP_VAGRANT_CONFIG_DIR:-}" ]]; then
     config_dir="${RADP_VAGRANT_CONFIG_DIR}"
   elif [[ -d "./config" && -f "./config/vagrant.yaml" ]]; then
     config_dir="$(pwd)/config"
@@ -77,7 +80,7 @@ resolve_config_dir() {
 
   if [[ -z "${config_dir}" ]]; then
     echo "Error: Cannot determine config directory." >&2
-    echo "Set RADP_VAGRANT_CONFIG_DIR or run from a directory containing config/vagrant.yaml" >&2
+    echo "Use -c <dir>, set RADP_VAGRANT_CONFIG_DIR, or run from a directory containing config/vagrant.yaml" >&2
     return 1
   fi
 
@@ -101,35 +104,39 @@ Usage:
 Commands:
   init [dir]              Initialize a new project with sample configuration
   vg <vagrant-cmd>        Run vagrant command with framework
-  dump-config [filter]    Dump merged configuration (JSON)
+  list                    List clusters and guests from configuration
+  dump-config [options]   Dump merged configuration
   generate [output]       Generate standalone Vagrantfile
+  validate                Validate YAML configuration files
   info                    Show environment and configuration info
   version                 Show version
   help                    Show this help
 
-Options:
-  -e, --env <name>        Override environment (used with vg command)
+Global Options:
+  -c, --config <dir>      Configuration directory (default: ./config)
+  -e, --env <name>        Override environment name
 
 Environment Variables:
   RADP_VF_HOME            Framework installation directory
                           Current: ${RADP_VF_HOME}
-  RADP_VAGRANT_CONFIG_DIR Configuration directory path (required for vg)
+  RADP_VAGRANT_CONFIG_DIR Configuration directory path
   RADP_VAGRANT_ENV        Override environment name
 
-Environment Priority (highest to lowest):
+Priority (highest to lowest):
+  -c flag > RADP_VAGRANT_CONFIG_DIR > ./config
   -e flag > RADP_VAGRANT_ENV > radp.env in vagrant.yaml
 
 Examples:
   radp-vf init myproject
   radp-vf info
-  cd myproject && radp-vf vg status
-  export RADP_VAGRANT_CONFIG_DIR=/path/to/project/config
-  radp-vf vg status
-  radp-vf vg up
-  radp-vf -e dev vg status
-  radp-vf -e prod vg ssh node-1
+  radp-vf list
+  radp-vf validate
   radp-vf dump-config
-  radp-vf generate
+  radp-vf dump-config -f yaml
+  radp-vf dump-config node-1
+  radp-vf generate Vagrantfile.standalone
+  radp-vf -c /path/to/config vg status
+  radp-vf -e prod vg up
 USAGE
 }
 
@@ -181,7 +188,7 @@ cmd_info() {
   else
     echo ""
     echo "Configuration: (not resolved)"
-    echo "  Set RADP_VAGRANT_CONFIG_DIR or run from a directory with config/vagrant.yaml"
+    echo "  Use -c <dir>, set RADP_VAGRANT_CONFIG_DIR, or run from a directory with config/vagrant.yaml"
     echo "  Or run 'radp-vf init <dir>' to create a new project."
   fi
 }
@@ -194,6 +201,7 @@ cmd_vg() {
     echo "  radp-vf vg status" >&2
     echo "  radp-vf vg up" >&2
     echo "  radp-vf -e dev vg status" >&2
+    echo "  radp-vf -c /path/to/config vg up" >&2
     return 1
   fi
 
@@ -348,19 +356,115 @@ PROVISION_SCRIPT
   echo "  radp-vf vg status"
   echo ""
   echo "  # Option 2: Run from anywhere"
-  echo "  export RADP_VAGRANT_CONFIG_DIR=${abs_config_dir}"
-  echo "  radp-vf vg status"
+  echo "  radp-vf -c ${abs_config_dir} vg status"
   echo ""
   echo "Edit vagrant.yaml to change 'env' and create your own environment file."
   echo "Add custom provisions in provisions/definitions/ with user: prefix."
 }
 
-cmd_dump_config() {
-  local filter="${1:-}"
-  local config_dir="${RADP_VAGRANT_CONFIG_DIR:-config}"
+cmd_list() {
+  local config_dir
+  config_dir="$(resolve_config_dir)" || return 1
 
-  echo "Framework:  ${RADP_VF_HOME}" >&2
+  # Set environment override if specified
+  local env_override=""
+  if [[ -n "${OPT_ENV}" ]]; then
+    env_override=", env_override: '${OPT_ENV}'"
+  fi
+
+  cd "${RUBY_LIB_DIR}"
+  ruby -r ./lib/radp_vagrant -e "
+    require 'yaml'
+
+    config_dir = '${config_dir}'
+    env_override = '${OPT_ENV}'.empty? ? nil : '${OPT_ENV}'
+
+    # Override environment if specified
+    ENV['RADP_VAGRANT_ENV'] = env_override if env_override
+
+    merged = RadpVagrant.build_merged_config(config_dir)
+    unless merged
+      puts 'No vagrant configuration found'
+      exit 1
+    end
+
+    env = merged['env']
+    clusters = merged['clusters'] || []
+
+    puts \"Environment: #{env}\"
+    puts \"Config Dir:  #{config_dir}\"
+    puts ''
+
+    if clusters.empty?
+      puts 'No clusters defined'
+      exit 0
+    end
+
+    total_guests = clusters.sum { |c| c['guests'].size }
+    puts \"Clusters: #{clusters.size} (#{total_guests} guests total)\"
+    puts ''
+
+    clusters.each do |cluster|
+      guests = cluster['guests'] || []
+      puts \"  #{cluster['name']} (#{guests.size} guests)\"
+
+      guests.each_with_index do |guest, idx|
+        prefix = idx == guests.size - 1 ? '└──' : '├──'
+        machine_name = guest.dig('provider', 'name') || guest['id']
+        ip = guest.dig('network', 'private-network', 'ip') || 'dhcp'
+        mem = guest.dig('provider', 'mem') || '-'
+        cpus = guest.dig('provider', 'cpus') || '-'
+
+        puts \"    #{prefix} #{machine_name.ljust(25)} #{ip.to_s.ljust(16)} #{mem.to_s.rjust(5)}MB  #{cpus}CPU\"
+      end
+      puts ''
+    end
+  "
+}
+
+cmd_dump_config() {
+  local filter=""
+  local format="json"
+
+  # Parse dump-config specific options
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      -f|--format)
+        if [[ -z "${2:-}" ]]; then
+          echo "Error: -f requires a format (json or yaml)" >&2
+          return 1
+        fi
+        format="$2"
+        shift 2
+        ;;
+      -*)
+        echo "Unknown option: $1" >&2
+        echo "Usage: radp-vf dump-config [-f json|yaml] [filter]" >&2
+        return 1
+        ;;
+      *)
+        filter="$1"
+        shift
+        ;;
+    esac
+  done
+
+  # Validate format
+  if [[ "${format}" != "json" && "${format}" != "yaml" ]]; then
+    echo "Error: Invalid format '${format}'. Use 'json' or 'yaml'." >&2
+    return 1
+  fi
+
+  local config_dir
+  config_dir="$(resolve_config_dir)" || return 1
+
+  # Set environment override if specified
+  if [[ -n "${OPT_ENV}" ]]; then
+    export RADP_VAGRANT_ENV="${OPT_ENV}"
+  fi
+
   echo "Config Dir: ${config_dir}" >&2
+  echo "Format:     ${format}" >&2
   if [[ -n "${filter}" ]]; then
     echo "Filter:     ${filter}" >&2
   fi
@@ -368,22 +472,27 @@ cmd_dump_config() {
 
   cd "${RUBY_LIB_DIR}"
   if [[ -n "${filter}" ]]; then
-    ruby -r ./lib/radp_vagrant -e "RadpVagrant.dump_config('${config_dir}', '${filter}')"
+    ruby -r ./lib/radp_vagrant -e "RadpVagrant.dump_config('${config_dir}', '${filter}', format: :${format})"
   else
-    ruby -r ./lib/radp_vagrant -e "RadpVagrant.dump_config('${config_dir}')"
+    ruby -r ./lib/radp_vagrant -e "RadpVagrant.dump_config('${config_dir}', nil, format: :${format})"
   fi
 }
 
 cmd_generate() {
   local output="${1:-}"
-  local config_dir="${RADP_VAGRANT_CONFIG_DIR:-config}"
+  local config_dir
+  config_dir="$(resolve_config_dir)" || return 1
 
   # Convert relative output path to absolute before changing directory
   if [[ -n "${output}" && "${output}" != /* ]]; then
     output="$(pwd)/${output}"
   fi
 
-  echo "Framework:  ${RADP_VF_HOME}" >&2
+  # Set environment override if specified
+  if [[ -n "${OPT_ENV}" ]]; then
+    export RADP_VAGRANT_ENV="${OPT_ENV}"
+  fi
+
   echo "Config Dir: ${config_dir}" >&2
   if [[ -n "${output}" ]]; then
     echo "Output:     ${output}" >&2
@@ -399,6 +508,122 @@ cmd_generate() {
   fi
 }
 
+cmd_validate() {
+  local config_dir
+  config_dir="$(resolve_config_dir)" || return 1
+
+  # Set environment override if specified
+  if [[ -n "${OPT_ENV}" ]]; then
+    export RADP_VAGRANT_ENV="${OPT_ENV}"
+  fi
+
+  echo "Validating configuration..." >&2
+  echo "Config Dir: ${config_dir}" >&2
+  echo "" >&2
+
+  cd "${RUBY_LIB_DIR}"
+  ruby -r ./lib/radp_vagrant -e "
+    require 'yaml'
+
+    config_dir = '${config_dir}'
+    errors = []
+    warnings = []
+
+    # Check vagrant.yaml exists
+    base_file = File.join(config_dir, 'vagrant.yaml')
+    unless File.exist?(base_file)
+      errors << \"Base config file not found: #{base_file}\"
+    end
+
+    begin
+      # Load and validate using framework
+      config = RadpVagrant::ConfigLoader.load(config_dir)
+
+      env = config.dig('radp', '_resolved_env')
+      env_file = File.join(config_dir, \"vagrant-#{env}.yaml\")
+
+      puts \"Base config:  #{base_file}\"
+      puts \"Environment:  #{env}\"
+      puts \"Env config:   #{env_file}#{File.exist?(env_file) ? '' : ' (not found)'}\"
+      puts ''
+
+      vagrant_section = config.dig('radp', 'extend', 'vagrant')
+      unless vagrant_section
+        errors << 'No vagrant configuration found (radp.extend.vagrant is missing)'
+      else
+        clusters = vagrant_section.dig('config', 'clusters') || []
+
+        if clusters.empty?
+          warnings << 'No clusters defined'
+        else
+          # Check for duplicate cluster names
+          cluster_names = clusters.map { |c| c['name'] }
+          duplicates = cluster_names.select { |n| cluster_names.count(n) > 1 }.uniq
+          duplicates.each do |name|
+            errors << \"Duplicate cluster name: #{name}\"
+          end
+
+          # Check each cluster
+          clusters.each do |cluster|
+            cluster_name = cluster['name'] || 'unnamed'
+            guests = cluster['guests'] || []
+
+            if guests.empty?
+              warnings << \"Cluster '#{cluster_name}' has no guests\"
+            else
+              # Check for duplicate guest IDs within cluster
+              guest_ids = guests.map { |g| g['id'] }
+              dup_guests = guest_ids.select { |id| guest_ids.count(id) > 1 }.uniq
+              dup_guests.each do |id|
+                errors << \"Duplicate guest ID '#{id}' in cluster '#{cluster_name}'\"
+              end
+
+              # Check each guest has required fields
+              guests.each do |guest|
+                unless guest['id']
+                  errors << \"Guest in cluster '#{cluster_name}' is missing 'id'\"
+                end
+              end
+            end
+          end
+
+          puts \"Clusters:     #{clusters.size}\"
+          total_guests = clusters.sum { |c| (c['guests'] || []).size }
+          puts \"Guests:       #{total_guests}\"
+        end
+
+        # Check plugins
+        plugins = vagrant_section['plugins'] || []
+        required_plugins = plugins.select { |p| p['required'] }.map { |p| p['name'] }
+        unless required_plugins.empty?
+          puts \"Required plugins: #{required_plugins.join(', ')}\"
+        end
+      end
+
+    rescue => e
+      errors << \"Configuration error: #{e.message}\"
+    end
+
+    puts ''
+
+    if warnings.any?
+      puts \"Warnings:\"
+      warnings.each { |w| puts \"  - #{w}\" }
+      puts ''
+    end
+
+    if errors.any?
+      puts \"Errors:\"
+      errors.each { |e| puts \"  - #{e}\" }
+      puts ''
+      puts 'Validation FAILED'
+      exit 1
+    else
+      puts 'Validation OK'
+    end
+  "
+}
+
 cmd_version() {
   get_version
 }
@@ -407,6 +632,14 @@ main() {
   # Parse global options
   while [[ $# -gt 0 ]]; do
     case "$1" in
+      -c|--config)
+        if [[ -z "${2:-}" ]]; then
+          echo "Error: -c requires a config directory path" >&2
+          exit 1
+        fi
+        OPT_CONFIG="$2"
+        shift 2
+        ;;
       -e|--env)
         if [[ -z "${2:-}" ]]; then
           echo "Error: -e requires an environment name" >&2
@@ -449,6 +682,9 @@ main() {
     vg)
       cmd_vg "$@"
       ;;
+    list)
+      cmd_list "$@"
+      ;;
     info)
       cmd_info "$@"
       ;;
@@ -457,6 +693,9 @@ main() {
       ;;
     generate)
       cmd_generate "$@"
+      ;;
+    validate)
+      cmd_validate "$@"
       ;;
     version)
       cmd_version
