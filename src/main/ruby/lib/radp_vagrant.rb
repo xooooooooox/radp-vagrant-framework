@@ -18,6 +18,8 @@ require_relative 'radp_vagrant/cli/base'
 require_relative 'radp_vagrant/cli/list'
 require_relative 'radp_vagrant/cli/validate'
 require_relative 'radp_vagrant/cli/dump_config'
+require_relative 'radp_vagrant/cli/generate'
+require_relative 'radp_vagrant/cli/info'
 
 module RadpVagrant
   BANNER_FILE = File.join(__dir__, 'radp_vagrant', 'banner.txt')
