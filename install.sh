@@ -123,7 +123,7 @@ install_cli() {
   mkdir -p "${bin_dir}"
 
   # Copy CLI script from source
-  local src_script="${src_root}/src/main/shell/bin/radp-vf"
+  local src_script="${src_root}/bin/radp-vf"
   local target_script="${bin_dir}/radp-vf"
 
   if [[ -f "${src_script}" ]]; then

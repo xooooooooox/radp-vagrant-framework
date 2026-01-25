@@ -39,15 +39,13 @@
 #### 脚本安装 (curl / wget / fetch)
 
 ```shell
-curl -fsSL https://raw.githubusercontent.com/xooooooooox/radp-vagrant-framework/main/tools/install.sh
-| bash
+curl -fsSL https://raw.githubusercontent.com/xooooooooox/radp-vagrant-framework/main/install.sh | bash
 ```
 
 或:
 
 ```shell
-wget -qO- https://raw.githubusercontent.com/xooooooooox/radp-vagrant-framework/main/tools/install.sh
-| bash
+wget -qO- https://raw.githubusercontent.com/xooooooooox/radp-vagrant-framework/main/install.sh | bash
 ```
 
 可选环境变量:
@@ -58,7 +56,7 @@ RADP_VF_VERSION=vX.Y.Z \
   RADP_VF_INSTALL_DIR="$HOME/.local/lib/radp-vagrant-framework" \
   RADP_VF_BIN_DIR="$HOME/.local/bin" \
   RADP_VF_ALLOW_ANY_DIR=1 \
-  bash -c "$(curl -fsSL https://raw.githubusercontent.com/xooooooooox/radp-vagrant-framework/main/tools/install.sh)"
+  bash -c "$(curl -fsSL https://raw.githubusercontent.com/xooooooooox/radp-vagrant-framework/main/install.sh)"
 ```
 
 `RADP_VF_REF` 可以是分支、标签或提交，优先级高于 `RADP_VF_VERSION`。
@@ -102,6 +100,53 @@ brew upgrade radp-vagrant-framework
 #### 手动
 
 从最新 Release 下载新的发布包并解压，或使用 `git pull` 更新克隆的仓库。
+
+### Shell 补全
+
+Bash:
+
+```shell
+# 复制补全脚本
+curl -fsSL https://raw.githubusercontent.com/xooooooooox/radp-vagrant-framework/main/completions/radp-vf.bash \
+  > ~/.local/share/bash-completion/completions/radp-vf
+
+# 或在 ~/.bashrc 中直接 source
+echo 'source ~/.local/share/bash-completion/completions/radp-vf' >> ~/.bashrc
+```
+
+Zsh:
+
+```shell
+# 创建 zfunc 目录（如不存在）
+mkdir -p ~/.zfunc
+
+# 复制补全脚本
+curl -fsSL https://raw.githubusercontent.com/xooooooooox/radp-vagrant-framework/main/completions/radp-vf.zsh \
+  > ~/.zfunc/_radp-vf
+
+# 添加到 ~/.zshrc（在 compinit 之前）
+echo 'fpath=(~/.zfunc $fpath)' >> ~/.zshrc
+```
+
+### 推荐：使用 homelabctl
+
+如需更丰富的 CLI 体验和统一的 homelab 管理，建议使用
+[homelabctl](https://github.com/xooooooooox/homelabctl)，它封装了 radp-vagrant-framework 并提供：
+
+- 开箱即用的 Shell 补全
+- 统一的命令结构
+- 更多 homelab 管理功能
+
+```shell
+# 安装 homelabctl
+brew tap xooooooooox/radp
+brew install homelabctl
+
+# 使用 homelabctl 代替 radp-vf
+homelabctl vf init myproject
+homelabctl vg status
+homelabctl vg up
+```
 
 ## 如何使用
 
@@ -278,8 +323,10 @@ ruby -r ./lib/radp_vagrant -e "puts RadpVagrant.generate_vagrantfile('config')"
 ## 目录结构
 
 ```
+bin/
+└── radp-vf                         # CLI 入口
 src/main/ruby/
-├── Vagrantfile                     # 入口文件
+├── Vagrantfile                     # Vagrant 入口文件
 ├── config/
 │   ├── vagrant.yaml                # 基础配置（设置 env）
 │   ├── vagrant-sample.yaml         # Sample 环境集群

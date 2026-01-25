@@ -39,15 +39,13 @@ Prerequisites:
 #### Script (curl / wget / fetch)
 
 ```shell
-curl -fsSL https://raw.githubusercontent.com/xooooooooox/radp-vagrant-framework/main/tools/install.sh
-| bash
+curl -fsSL https://raw.githubusercontent.com/xooooooooox/radp-vagrant-framework/main/install.sh | bash
 ```
 
 Or:
 
 ```shell
-wget -qO- https://raw.githubusercontent.com/xooooooooox/radp-vagrant-framework/main/tools/install.sh
-| bash
+wget -qO- https://raw.githubusercontent.com/xooooooooox/radp-vagrant-framework/main/install.sh | bash
 ```
 
 Optional variables:
@@ -58,7 +56,7 @@ RADP_VF_VERSION=vX.Y.Z \
   RADP_VF_INSTALL_DIR="$HOME/.local/lib/radp-vagrant-framework" \
   RADP_VF_BIN_DIR="$HOME/.local/bin" \
   RADP_VF_ALLOW_ANY_DIR=1 \
-  bash -c "$(curl -fsSL https://raw.githubusercontent.com/xooooooooox/radp-vagrant-framework/main/tools/install.sh)"
+  bash -c "$(curl -fsSL https://raw.githubusercontent.com/xooooooooox/radp-vagrant-framework/main/install.sh)"
 ```
 
 `RADP_VF_REF` can be a branch, tag, or commit and takes precedence over `RADP_VF_VERSION`.
@@ -103,6 +101,53 @@ brew upgrade radp-vagrant-framework
 #### Manual
 
 Download the new release archive from the latest release and extract it, or `git pull` if using a cloned repository.
+
+### Shell Completion
+
+Bash:
+
+```shell
+# Copy completion script
+curl -fsSL https://raw.githubusercontent.com/xooooooooox/radp-vagrant-framework/main/completions/radp-vf.bash \
+  > ~/.local/share/bash-completion/completions/radp-vf
+
+# Or source it directly in ~/.bashrc
+echo 'source ~/.local/share/bash-completion/completions/radp-vf' >> ~/.bashrc
+```
+
+Zsh:
+
+```shell
+# Create zfunc directory if needed
+mkdir -p ~/.zfunc
+
+# Copy completion script
+curl -fsSL https://raw.githubusercontent.com/xooooooooox/radp-vagrant-framework/main/completions/radp-vf.zsh \
+  > ~/.zfunc/_radp-vf
+
+# Add to ~/.zshrc (before compinit)
+echo 'fpath=(~/.zfunc $fpath)' >> ~/.zshrc
+```
+
+### Recommended: Use homelabctl
+
+For a more feature-rich CLI experience with unified homelab management, consider using
+[homelabctl](https://github.com/xooooooooox/homelabctl) which wraps radp-vagrant-framework and provides:
+
+- Shell completion out of the box
+- Consistent command structure
+- Additional homelab management features
+
+```shell
+# Install homelabctl
+brew tap xooooooooox/radp
+brew install homelabctl
+
+# Use homelabctl instead of radp-vf
+homelabctl vf init myproject
+homelabctl vg status
+homelabctl vg up
+```
 
 ## How to Use
 
@@ -282,8 +327,10 @@ ruby -r ./lib/radp_vagrant -e "puts RadpVagrant.generate_vagrantfile('config')"
 ## Directory Structure
 
 ```
+bin/
+└── radp-vf                         # CLI entry point
 src/main/ruby/
-├── Vagrantfile                     # Entry point
+├── Vagrantfile                     # Vagrant entry point
 ├── config/
 │   ├── vagrant.yaml                # Base configuration (sets env)
 │   ├── vagrant-sample.yaml         # Sample environment clusters

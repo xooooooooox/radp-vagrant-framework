@@ -8,6 +8,22 @@ RADP Vagrant Framework is a YAML-driven framework for managing multi-machine Vag
 
 ## Key Commands
 
+### CLI (radp-vf)
+```bash
+# Show help
+./bin/radp-vf help
+
+# Dump merged configuration
+./bin/radp-vf dump-config
+./bin/radp-vf dump-config -e prod
+./bin/radp-vf dump-config -g node-1 -f yaml
+
+# Generate standalone Vagrantfile
+./bin/radp-vf generate
+./bin/radp-vf generate -o Vagrantfile.standalone
+```
+
+### Vagrant Commands
 ```bash
 cd src/main/ruby
 
@@ -20,22 +36,23 @@ vagrant status
 # Start VMs (use machine_name: <env>-<cluster>-<guest-id>)
 vagrant up
 vagrant up local-cluster-1-guest-1
+```
 
-# Debug: dump merged configuration (JSON format)
+### Ruby API (for debugging)
+```bash
+cd src/main/ruby
+
+# Dump merged configuration (JSON format)
 ruby -r ./lib/radp_vagrant -e "RadpVagrant.dump_config('config')"
 
 # Filter by guest_id or machine_name
 ruby -r ./lib/radp_vagrant -e "RadpVagrant.dump_config('config', 'guest-1')"
-ruby -r ./lib/radp_vagrant -e "RadpVagrant.dump_config('config', 'local-cluster-1-guest-1')"
 
 # Output as YAML
 ruby -r ./lib/radp_vagrant -e "RadpVagrant.dump_config('config', nil, format: :yaml)"
 
-# Generate standalone Vagrantfile (dry-run preview)
+# Generate standalone Vagrantfile
 ruby -r ./lib/radp_vagrant -e "puts RadpVagrant.generate_vagrantfile('config')"
-
-# Generate and save to file
-ruby -r ./lib/radp_vagrant -e "RadpVagrant.generate_vagrantfile('config', 'Vagrantfile.generated')"
 ```
 
 ## Architecture
@@ -169,8 +186,14 @@ Applies to: provision `path`, file `source`, user provision definitions
 ## Directory Structure
 
 ```
+bin/
+└── radp-vf                         # CLI entry point
+completions/
+├── radp-vf.bash                    # Bash completion
+└── radp-vf.zsh                     # Zsh completion
+install.sh                          # Installation script
 src/main/ruby/
-├── Vagrantfile                     # Entry point
+├── Vagrantfile                     # Vagrant entry point
 ├── config/
 │   ├── vagrant.yaml                # Base config (sets env)
 │   ├── vagrant-sample.yaml         # Sample environment clusters

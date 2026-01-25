@@ -26,8 +26,12 @@ class RadpVagrantFramework < Formula
     libexec.install Dir["src/main/ruby/*"]
 
     # Install CLI script to libexec/bin and create symlink
-    (libexec/"bin").install "src/main/shell/bin/radp-vf"
+    (libexec/"bin").install "bin/radp-vf"
     bin.install_symlink libexec/"bin/radp-vf"
+
+    # Install shell completions
+    bash_completion.install "completions/radp-vf.bash" => "radp-vf"
+    zsh_completion.install "completions/radp-vf.zsh" => "_radp-vf"
   end
 
   def caveats
@@ -42,6 +46,9 @@ class RadpVagrantFramework < Formula
         radp-vf init myproject
         cd myproject
         radp-vf vg status
+
+      For a richer CLI experience, consider using homelabctl:
+        brew install homelabctl
     EOS
   end
 

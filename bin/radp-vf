@@ -18,15 +18,12 @@ resolve_script_dir() {
 
 SCRIPT_DIR="$(resolve_script_dir)"
 
-# Determine RADP_VF_HOME
-# Priority: env var > installed location > source repo layout
+# Determine RADP_VF_HOME (project root directory)
+# Priority: env var > auto-detect from script location
 if [[ -z "${RADP_VF_HOME:-}" ]]; then
-  # Check if we're in installed layout: bin/radp-vf with lib/ as sibling
-  if [[ -d "${SCRIPT_DIR}/../lib/radp_vagrant" ]]; then
+  # bin/radp-vf -> parent is project root
+  if [[ -d "${SCRIPT_DIR}/../src/main/ruby/lib/radp_vagrant" ]]; then
     RADP_VF_HOME="$(cd "${SCRIPT_DIR}/.." && pwd)"
-  # Check source repo layout: src/main/shell/bin/radp-vf
-  elif [[ -d "${SCRIPT_DIR}/../../ruby/lib/radp_vagrant" ]]; then
-    RADP_VF_HOME="$(cd "${SCRIPT_DIR}/../../ruby" && pwd)"
   else
     echo "Error: Cannot locate RADP Vagrant Framework. Set RADP_VF_HOME." >&2
     exit 1
@@ -34,12 +31,15 @@ if [[ -z "${RADP_VF_HOME:-}" ]]; then
 fi
 export RADP_VF_HOME
 
+# Ruby lib directory
+RUBY_LIB_DIR="${RADP_VF_HOME}/src/main/ruby"
+
 # Global options
 OPT_ENV=""
 
 # Get version
 get_version() {
-  (cd "${RADP_VF_HOME}" && ruby -r ./lib/radp_vagrant -e "puts RadpVagrant::VERSION" 2>/dev/null) || echo "unknown"
+  (cd "${RUBY_LIB_DIR}" && ruby -r ./lib/radp_vagrant -e "puts RadpVagrant::VERSION" 2>/dev/null) || echo "unknown"
 }
 
 # Resolve config directory
@@ -120,7 +120,7 @@ cmd_info() {
   echo "Framework:"
   echo "  Version:      ${version}"
   echo "  RADP_VF_HOME: ${RADP_VF_HOME}"
-  echo "  Vagrantfile:  ${RADP_VF_HOME}/Vagrantfile"
+  echo "  Vagrantfile:  ${RUBY_LIB_DIR}/Vagrantfile"
   echo ""
   echo "Environment Variables:"
   echo "  RADP_VAGRANT_CONFIG_DIR: ${RADP_VAGRANT_CONFIG_DIR:-(not set)}"
@@ -184,7 +184,7 @@ cmd_vg() {
   fi
 
   # Use framework's Vagrantfile via VAGRANT_VAGRANTFILE
-  export VAGRANT_VAGRANTFILE="${RADP_VF_HOME}/Vagrantfile"
+  export VAGRANT_VAGRANTFILE="${RUBY_LIB_DIR}/Vagrantfile"
   export RADP_VAGRANT_CONFIG_DIR="${config_dir}"
   export RADP_VF_HOME
 
@@ -310,7 +310,7 @@ PROVISION_SCRIPT
   echo ""
   echo "Framework:"
   echo "  RADP_VF_HOME: ${RADP_VF_HOME}"
-  echo "  Vagrantfile:  ${RADP_VF_HOME}/Vagrantfile"
+  echo "  Vagrantfile:  ${RUBY_LIB_DIR}/Vagrantfile"
   echo ""
   echo "Provisions:"
   echo "  - Framework builtin:"
@@ -344,7 +344,7 @@ cmd_dump_config() {
   fi
   echo "" >&2
 
-  cd "${RADP_VF_HOME}"
+  cd "${RUBY_LIB_DIR}"
   if [[ -n "${filter}" ]]; then
     ruby -r ./lib/radp_vagrant -e "RadpVagrant.dump_config('${config_dir}', '${filter}')"
   else
@@ -368,7 +368,7 @@ cmd_generate() {
   fi
   echo "" >&2
 
-  cd "${RADP_VF_HOME}"
+  cd "${RUBY_LIB_DIR}"
   if [[ -n "${output}" ]]; then
     ruby -r ./lib/radp_vagrant -e "RadpVagrant.generate_vagrantfile('${config_dir}', '${output}')"
     echo "Generated: ${output}" >&2
