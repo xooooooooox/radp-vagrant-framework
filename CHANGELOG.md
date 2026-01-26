@@ -1,3 +1,6 @@
+## v0.1.10 - 2026-01-26
+
+- cdddcda docs: add advanced topics and configuration reference guides
 ## v0.1.9 - 2026-01-26
 
 - 12ef36b feat: Add rebuild zsh completion cache instructions
