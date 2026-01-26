@@ -1,3 +1,8 @@
+## v0.1.9 - 2026-01-26
+
+- 12ef36b feat: Add rebuild zsh completion cache instructions
+- 5bcec51 feat: Add completion scripts
+- 03bd468 feat: Add template subcmd
 ## v0.1.8 - 2026-01-25
 
 - 69e4ecf feat: add support for installing and copying project templates
