@@ -110,6 +110,7 @@ Commands:
   validate                Validate YAML configuration files
   info                    Show environment and configuration info
   template <subcommand>   Manage project templates (list, show)
+  completion <shell>      Generate shell completion script (bash, zsh)
   version                 Show version
   help                    Show this help
 
@@ -521,6 +522,39 @@ cmd_template() {
   " -- "$@"
 }
 
+cmd_completion() {
+  local shell="${1:-}"
+
+  if [[ -z "$shell" ]]; then
+    echo "Usage: radp-vf completion <shell>" >&2
+    echo "Supported shells: bash, zsh" >&2
+    return 1
+  fi
+
+  # Completion files are in completions/ directory relative to RADP_VF_HOME
+  local completion_file=""
+  case "$shell" in
+    bash)
+      completion_file="${RADP_VF_HOME}/completions/radp-vf.bash"
+      ;;
+    zsh)
+      completion_file="${RADP_VF_HOME}/completions/radp-vf.zsh"
+      ;;
+    *)
+      echo "Unsupported shell: $shell" >&2
+      echo "Supported shells: bash, zsh" >&2
+      return 1
+      ;;
+  esac
+
+  if [[ -f "$completion_file" ]]; then
+    cat "$completion_file"
+  else
+    echo "Completion file not found: $completion_file" >&2
+    return 1
+  fi
+}
+
 cmd_version() {
   get_version
 }
@@ -596,6 +630,9 @@ main() {
       ;;
     template)
       cmd_template "$@"
+      ;;
+    completion)
+      cmd_completion "$@"
       ;;
     version)
       cmd_version
