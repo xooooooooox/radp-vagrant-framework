@@ -45,6 +45,20 @@ class RadpVagrantFramework < Formula
         brew install --cask vagrant
         brew install --cask virtualbox
 
+      Shell Completions:
+        Completions are installed to Homebrew's standard directories.
+
+        For Bash, ensure bash-completion is configured:
+          brew install bash-completion@2
+          # Add to ~/.bash_profile or ~/.bashrc:
+          [[ -r "#{HOMEBREW_PREFIX}/etc/profile.d/bash_completion.sh" ]] && \\
+            source "#{HOMEBREW_PREFIX}/etc/profile.d/bash_completion.sh"
+
+        For Zsh, rebuild completion cache after installation:
+          rm -f ~/.zcompdump* ~/.cache/zsh/zcompdump*
+          compinit
+        Or simply restart your terminal.
+
       Quick start:
         radp-vf init myproject
         cd myproject
