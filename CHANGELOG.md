@@ -1,3 +1,6 @@
+## v0.1.11 - 2026-01-26
+
+- 666106c docs: update README with `-c` flag usage for running commands from any directory
 ## v0.1.10 - 2026-01-26
 
 - cdddcda docs: add advanced topics and configuration reference guides
