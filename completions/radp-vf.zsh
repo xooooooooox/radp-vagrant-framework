@@ -6,8 +6,8 @@ _radp_vf() {
     local -a commands
     local -a global_opts
     local -a vagrant_cmds
-    local -a dump_config_opts
-    local -a format_values
+    local -a template_cmds
+    local -a shell_types
 
     commands=(
         'init:Initialize a new project with sample configuration'
@@ -17,6 +17,8 @@ _radp_vf() {
         'generate:Generate standalone Vagrantfile'
         'validate:Validate YAML configuration files'
         'info:Show environment and configuration info'
+        'template:Manage project templates'
+        'completion:Generate shell completion script'
         'version:Show version'
         'help:Show help'
     )
@@ -47,6 +49,16 @@ _radp_vf() {
         'plugin:Manage plugins'
     )
 
+    template_cmds=(
+        'list:List available templates'
+        'show:Show template details'
+    )
+
+    shell_types=(
+        'bash:Generate Bash completion script'
+        'zsh:Generate Zsh completion script'
+    )
+
     dump_config_opts=(
         '-f[Output format]:format:(json yaml)'
         '--format[Output format]:format:(json yaml)'
@@ -60,6 +72,12 @@ _radp_vf() {
         '--provisions[Show provisions only]'
         '--synced-folders[Show synced folders only]'
         '--triggers[Show triggers only]'
+    )
+
+    init_opts=(
+        '-t[Use a template]:template name:'
+        '--template[Use a template]:template name:'
+        '--set[Set template variable]:var=value:'
     )
 
     local curcontext="$curcontext" state line
@@ -82,7 +100,7 @@ _radp_vf() {
                     fi
                     ;;
                 init)
-                    _files -/
+                    _arguments $init_opts '*:directory:_files -/'
                     ;;
                 dump-config)
                     _arguments $dump_config_opts '*:filter:'
@@ -92,6 +110,16 @@ _radp_vf() {
                     ;;
                 list)
                     _arguments $list_opts '*:filter:'
+                    ;;
+                template)
+                    if [[ $CURRENT -eq 3 ]]; then
+                        _describe -t template-commands 'template subcommand' template_cmds
+                    fi
+                    ;;
+                completion)
+                    if [[ $CURRENT -eq 3 ]]; then
+                        _describe -t shell-types 'shell type' shell_types
+                    fi
                     ;;
                 validate|info|version|help)
                     # No additional arguments

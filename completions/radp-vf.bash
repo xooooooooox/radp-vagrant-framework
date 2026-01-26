@@ -15,7 +15,7 @@ _radp_vf() {
         cword="$COMP_CWORD"
     fi
 
-    local commands="init vg list dump-config generate validate info version help"
+    local commands="init vg list dump-config generate validate info template completion version help"
     local global_opts="-c --config -e --env -h --help -v --version"
 
     # Find the command position (skip global options)
@@ -70,8 +70,15 @@ _radp_vf() {
             fi
             ;;
         init)
-            # Directory completion
-            COMPREPLY=($(compgen -d -- "$cur"))
+            # Init options and directory completion
+            case "$cur" in
+                -*)
+                    COMPREPLY=($(compgen -W "-t --template --set" -- "$cur"))
+                    ;;
+                *)
+                    COMPREPLY=($(compgen -d -- "$cur"))
+                    ;;
+            esac
             ;;
         dump-config)
             # dump-config options and filter argument
@@ -97,6 +104,18 @@ _radp_vf() {
                     COMPREPLY=($(compgen -W "-v --verbose --provisions --synced-folders --triggers" -- "$cur"))
                     ;;
             esac
+            ;;
+        template)
+            # template subcommands
+            if [[ $cword -eq $((cmd_pos + 1)) ]]; then
+                COMPREPLY=($(compgen -W "list show" -- "$cur"))
+            fi
+            ;;
+        completion)
+            # shell types
+            if [[ $cword -eq $((cmd_pos + 1)) ]]; then
+                COMPREPLY=($(compgen -W "bash zsh" -- "$cur"))
+            fi
             ;;
         validate|info|version|help)
             # No additional arguments
