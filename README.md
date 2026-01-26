@@ -20,6 +20,7 @@ provisioning.
 - **Declarative YAML Configuration** - Define VMs, networks, provisions, and triggers in YAML
 - **Multi-File Configuration** - Base config + environment-specific overrides (`vagrant.yaml` + `vagrant-{env}.yaml`)
 - **Configuration Inheritance** - Global → Cluster → Guest with automatic merging
+- **Run Anywhere** - No need to `cd` to Vagrantfile directory; run commands from anywhere with `-c` flag
 - **Template System** - Initialize projects from predefined templates (`base`, `single-node`, `k8s-cluster`)
 - **Builtin Provisions & Triggers** - Reusable components with `radp:` prefix
 - **Plugin Support** - vagrant-hostmanager, vagrant-vbguest, vagrant-proxyconf, vagrant-bindfs
@@ -110,10 +111,21 @@ radp:
 
 ### 3. Run Vagrant Commands
 
+Unlike standard Vagrant which requires `cd` to the Vagrantfile directory, radp-vf can run from anywhere:
+
 ```shell
+# From project directory
 cd myproject
 radp-vf vg status
 radp-vf vg up
+
+# Or run from anywhere with -c flag
+radp-vf -c ~/myproject/config vg status
+radp-vf -c ~/myproject/config vg up
+
+# Or set environment variable
+export RADP_VAGRANT_CONFIG_DIR="$HOME/myproject/config"
+radp-vf vg status
 radp-vf vg ssh dev-my-cluster-node-1
 radp-vf vg halt
 radp-vf vg destroy

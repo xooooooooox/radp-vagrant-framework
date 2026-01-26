@@ -19,6 +19,7 @@
 - **声明式 YAML 配置** - 通过 YAML 定义虚拟机、网络、配置脚本和触发器
 - **多文件配置** - 基础配置 + 环境特定覆盖（`vagrant.yaml` + `vagrant-{env}.yaml`）
 - **配置继承** - Global → Cluster → Guest 三级继承，自动合并
+- **随处运行** - 无需 `cd` 到 Vagrantfile 目录，使用 `-c` 参数可从任意位置运行命令
 - **模板系统** - 通过预定义模板初始化项目（`base`、`single-node`、`k8s-cluster`）
 - **内置 Provisions & Triggers** - 使用 `radp:` 前缀的可复用组件
 - **插件支持** - vagrant-hostmanager、vagrant-vbguest、vagrant-proxyconf、vagrant-bindfs
@@ -109,10 +110,21 @@ radp:
 
 ### 3. 运行 Vagrant 命令
 
+与标准 Vagrant 需要 `cd` 到 Vagrantfile 目录不同，radp-vf 可以从任意位置运行：
+
 ```shell
+# 从项目目录运行
 cd myproject
 radp-vf vg status
 radp-vf vg up
+
+# 或使用 -c 参数从任意位置运行
+radp-vf -c ~/myproject/config vg status
+radp-vf -c ~/myproject/config vg up
+
+# 或设置环境变量
+export RADP_VAGRANT_CONFIG_DIR="$HOME/myproject/config"
+radp-vf vg status
 radp-vf vg ssh dev-my-cluster-node-1
 radp-vf vg halt
 radp-vf vg destroy
