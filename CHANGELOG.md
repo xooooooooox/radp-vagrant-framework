@@ -1,3 +1,8 @@
+## v0.2.0 - 2026-01-27
+
+- f0b7bee chore: update CLAUDE.md
+- aec0d70 feat(cli): Update shell completion
+- 33fccd5 feat(cli): consistence cli args
 ## v0.1.11 - 2026-01-27
 
 - 44a6fed chore: Optimize install.sh
