@@ -95,7 +95,7 @@ resolve_config_dir() {
 usage() {
   local version
   version="$(get_version)"
-  cat << USAGE
+  cat <<USAGE
 RADP Vagrant Framework CLI ${version}
 
 Usage:
@@ -127,6 +127,9 @@ List Options:
 Global Options:
   -c, --config <dir>      Configuration directory (default: ./config)
   -e, --env <name>        Override environment name
+  -v, --verbose           Enable verbose output
+  -h, --help              Show this help
+  --version               Show version
 
 Environment Variables:
   RADP_VF_HOME            Framework installation directory
@@ -211,7 +214,7 @@ cmd_init() {
   # Parse options
   while [[ $# -gt 0 ]]; do
     case "$1" in
-      -t|--template)
+      -t | --template)
         if [[ -z "${2:-}" ]]; then
           echo "Error: -t/--template requires a template name" >&2
           return 1
@@ -354,7 +357,8 @@ cmd_init() {
 }
 
 cmd_list() {
-  local verbose=false
+  # Use global verbose if set, otherwise default to false
+  local verbose="${OPT_VERBOSE:-false}"
   local show_provisions=false
   local show_synced_folders=false
   local show_triggers=false
@@ -363,7 +367,7 @@ cmd_list() {
   # Parse list-specific options
   while [[ $# -gt 0 ]]; do
     case "$1" in
-      -v|--verbose)
+      -v | --verbose)
         verbose=true
         shift
         ;;
@@ -417,7 +421,7 @@ cmd_dump_config() {
   # Parse dump-config specific options
   while [[ $# -gt 0 ]]; do
     case "$1" in
-      -f|--format)
+      -f | --format)
         if [[ -z "${2:-}" ]]; then
           echo "Error: -f requires a format (json or yaml)" >&2
           return 1
@@ -425,7 +429,7 @@ cmd_dump_config() {
         format="$2"
         shift 2
         ;;
-      -o|--output)
+      -o | --output)
         if [[ -z "${2:-}" ]]; then
           echo "Error: -o requires an output file path" >&2
           return 1
@@ -563,7 +567,7 @@ main() {
   # Parse global options
   while [[ $# -gt 0 ]]; do
     case "$1" in
-      -c|--config)
+      -c | --config)
         if [[ -z "${2:-}" ]]; then
           echo "Error: -c requires a config directory path" >&2
           exit 1
@@ -571,7 +575,7 @@ main() {
         OPT_CONFIG="$2"
         shift 2
         ;;
-      -e|--env)
+      -e | --env)
         if [[ -z "${2:-}" ]]; then
           echo "Error: -e requires an environment name" >&2
           exit 1
@@ -579,23 +583,22 @@ main() {
         OPT_ENV="$2"
         shift 2
         ;;
+      -v | --verbose)
+        OPT_VERBOSE=true
+        shift
+        ;;
+      -h | --help)
+        usage
+        exit 0
+        ;;
+      --version)
+        cmd_version
+        exit 0
+        ;;
       -*)
-        # Check if it's a help/version flag
-        case "$1" in
-          -h|--help)
-            usage
-            exit 0
-            ;;
-          -v|--version)
-            cmd_version
-            exit 0
-            ;;
-          *)
-            echo "Unknown option: $1" >&2
-            usage >&2
-            exit 1
-            ;;
-        esac
+        echo "Unknown option: $1" >&2
+        usage >&2
+        exit 1
         ;;
       *)
         break
@@ -619,7 +622,7 @@ main() {
     info)
       cmd_info "$@"
       ;;
-    dump-config|dump_config)
+    dump-config | dump_config)
       cmd_dump_config "$@"
       ;;
     generate)
