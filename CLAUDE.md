@@ -60,6 +60,9 @@ RADP Vagrant Framework is a YAML-driven framework for managing multi-machine Vag
 # Global options
 # -c, --config <dir>   Configuration directory
 # -e, --env <name>     Override environment
+# -v, --verbose        Enable verbose output
+# -h, --help           Show help
+# --version            Show version
 ```
 
 ### Vagrant Commands
