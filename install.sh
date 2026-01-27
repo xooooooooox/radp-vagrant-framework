@@ -40,13 +40,13 @@ detect_os() {
     # shellcheck disable=SC1091
     source /etc/os-release
     case "${ID:-}" in
-      fedora|centos|rhel|rocky|almalinux|ol)
+      fedora | centos | rhel | rocky | almalinux | ol)
         os="rhel"
         ;;
-      debian|ubuntu|linuxmint|pop)
+      debian | ubuntu | linuxmint | pop)
         os="debian"
         ;;
-      opensuse*|sles)
+      opensuse* | sles)
         os="suse"
         ;;
       *)
@@ -111,10 +111,10 @@ check_repo_configured() {
       fi
       return 1
       ;;
-    dnf|yum)
+    dnf | yum)
       # Check if COPR repo is enabled
-      if [[ -f /etc/yum.repos.d/_copr:copr.fedorainfracloud.org:xooooooooox:radp.repo ]] || \
-         [[ -f /etc/yum.repos.d/radp.repo ]]; then
+      if [[ -f /etc/yum.repos.d/_copr:copr.fedorainfracloud.org:xooooooooox:radp.repo ]] \
+        || [[ -f /etc/yum.repos.d/radp.repo ]]; then
         return 0
       fi
       return 1
@@ -183,10 +183,10 @@ setup_repo() {
         err "Cannot detect distribution for OBS repository"
         return 1
       fi
-      echo "deb http://download.opensuse.org/repositories/home:/xooooooooox:/radp/${distro}/ /" | \
-        sudo tee /etc/apt/sources.list.d/home:xooooooooox:radp.list >/dev/null
-      curl -fsSL "https://download.opensuse.org/repositories/home:xooooooooox:radp/${distro}/Release.key" | \
-        gpg --dearmor | sudo tee /etc/apt/trusted.gpg.d/home_xooooooooox_radp.gpg >/dev/null
+      echo "deb http://download.opensuse.org/repositories/home:/xooooooooox:/radp/${distro}/ /" \
+        | sudo tee /etc/apt/sources.list.d/home:xooooooooox:radp.list >/dev/null
+      curl -fsSL "https://download.opensuse.org/repositories/home:xooooooooox:radp/${distro}/Release.key" \
+        | gpg --dearmor | sudo tee /etc/apt/trusted.gpg.d/home_xooooooooox_radp.gpg >/dev/null
       sudo apt-get update >/dev/null
       ;;
     zypper)
@@ -225,9 +225,38 @@ setup_repo() {
   esac
 }
 
+# Refresh package manager cache
+refresh_cache() {
+  local pkm="$1"
+
+  log "Refreshing package cache..."
+
+  case "${pkm}" in
+    homebrew)
+      brew update >/dev/null 2>&1 || true
+      ;;
+    dnf)
+      sudo dnf clean all >/dev/null 2>&1 || true
+      sudo dnf makecache >/dev/null 2>&1 || true
+      ;;
+    yum)
+      sudo yum clean all >/dev/null 2>&1 || true
+      ;;
+    apt)
+      sudo apt-get update >/dev/null 2>&1 || true
+      ;;
+    zypper)
+      sudo zypper refresh >/dev/null 2>&1 || true
+      ;;
+  esac
+}
+
 # Install using package manager
 install_via_pkm() {
   local pkm="$1"
+
+  # Refresh cache to ensure we get the latest version
+  refresh_cache "${pkm}"
 
   log "Installing ${REPO_NAME} via ${pkm}..."
 
@@ -280,18 +309,18 @@ fetch_url() {
   local out="$3"
 
   case "${tool}" in
-  curl)
-    curl -fsSL "${url}" -o "${out}"
-    ;;
-  wget)
-    wget -qO "${out}" "${url}"
-    ;;
-  fetch)
-    fetch -qo "${out}" "${url}"
-    ;;
-  *)
-    return 1
-    ;;
+    curl)
+      curl -fsSL "${url}" -o "${out}"
+      ;;
+    wget)
+      wget -qO "${out}" "${url}"
+      ;;
+    fetch)
+      fetch -qo "${out}" "${url}"
+      ;;
+    *)
+      return 1
+      ;;
   esac
 }
 
@@ -300,18 +329,18 @@ fetch_text() {
   local url="$2"
 
   case "${tool}" in
-  curl)
-    curl -fsSL "${url}"
-    ;;
-  wget)
-    wget -qO- "${url}"
-    ;;
-  fetch)
-    fetch -qo- "${url}"
-    ;;
-  *)
-    return 1
-    ;;
+    curl)
+      curl -fsSL "${url}"
+      ;;
+    wget)
+      wget -qO- "${url}"
+      ;;
+    fetch)
+      fetch -qo- "${url}"
+      ;;
+    *)
+      return 1
+      ;;
   esac
 }
 
@@ -463,7 +492,7 @@ main() {
       install_manual
       return 0
       ;;
-    homebrew|dnf|yum|apt|zypper)
+    homebrew | dnf | yum | apt | zypper)
       # Force specific package manager
       pkm="${mode}"
       if ! have "${pkm}" && [[ "${pkm}" != "homebrew" ]]; then
@@ -473,7 +502,7 @@ main() {
         die "Homebrew not found"
       fi
       ;;
-    auto|"")
+    auto | "")
       # Auto-detect package manager
       pkm="$(detect_package_manager)"
       if [[ -z "${pkm}" ]]; then
