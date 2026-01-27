@@ -29,20 +29,27 @@ wget -qO- https://raw.githubusercontent.com/xooooooooox/radp-vagrant-framework/m
   | bash
 ```
 
-**Optional variables:**
+#### Script Options
 
 ```shell
-RADP_VF_VERSION=vX.Y.Z \
-  RADP_VF_REF=main \
-  RADP_VF_INSTALL_DIR="$HOME/.local/lib/radp-vagrant-framework" \
-  RADP_VF_BIN_DIR="$HOME/.local/bin" \
-  RADP_VF_ALLOW_ANY_DIR=1 \
-  bash -c "$(curl -fsSL https://raw.githubusercontent.com/xooooooooox/radp-vagrant-framework/main/install.sh)"
+bash install.sh --ref main
+bash install.sh --ref v1.0.0-rc1
+bash install.sh --mode manual
+bash install.sh --mode dnf
 ```
 
-- `RADP_VF_REF` can be a branch, tag, or commit (takes precedence over `RADP_VF_VERSION`)
-- Set `RADP_VF_ALLOW_ANY_DIR=1` for custom install directories not ending with `radp-vagrant-framework`
-- Defaults: `~/.local/lib/radp-vagrant-framework` and `~/.local/bin`
+| Option              | Description                                                              | Default                               |
+|---------------------|--------------------------------------------------------------------------|---------------------------------------|
+| `--ref <ref>`       | Install from a git ref (branch, tag, SHA). Implies manual install.       | latest release                        |
+| `--mode <mode>`     | `auto`, `manual`, or specific: `homebrew`, `dnf`, `yum`, `apt`, `zypper` | `auto`                                |
+| `--install-dir <d>` | Manual install location                                                  | `~/.local/lib/radp-vagrant-framework` |
+| `--bin-dir <d>`     | Symlink location                                                         | `~/.local/bin`                        |
+
+Environment variables (`RADP_VF_REF`, `RADP_VF_VERSION`, `RADP_VF_INSTALL_MODE`, `RADP_VF_INSTALL_DIR`,
+`RADP_VF_BIN_DIR`) are also supported as fallbacks.
+
+When `--ref` is used and a package-manager version is already installed, the script automatically removes it first to
+avoid conflicts.
 
 ### Manual (Git Clone)
 
@@ -68,6 +75,30 @@ Re-run the installation script.
 ### Manual
 
 `git pull` or download new release archive.
+
+## Uninstalling
+
+### Uninstall Script (Recommended)
+
+```shell
+bash uninstall.sh
+bash uninstall.sh --yes # Skip confirmation
+```
+
+The script auto-detects both package-manager and manual installations and removes them.
+
+### Homebrew
+
+```shell
+brew uninstall radp-vagrant-framework
+```
+
+### Manual
+
+```shell
+rm -rf ~/.local/lib/radp-vagrant-framework
+rm -f ~/.local/bin/radp-vf ~/.local/bin/radp-vagrant-framework
+```
 
 ## Shell Completion
 

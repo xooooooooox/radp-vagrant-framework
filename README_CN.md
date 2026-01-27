@@ -44,8 +44,14 @@ brew install radp-vagrant-framework
 ### 脚本安装 (curl)
 
 ```shell
-curl -fsSL https://raw.githubusercontent.com/xooooooooox/radp-vagrant-framework/main/install.sh
-  | bash
+curl -fsSL https://raw.githubusercontent.com/xooooooooox/radp-vagrant-framework/main/install.sh | bash
+```
+
+从指定分支或标签安装：
+
+```shell
+bash install.sh --ref main
+bash install.sh --ref v1.0.0-rc1
 ```
 
 更多安装选项（手动安装、升级、Shell 补全）请参阅[安装指南](docs/installation.md)。

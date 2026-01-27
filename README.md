@@ -45,8 +45,14 @@ brew install radp-vagrant-framework
 ### Script (curl)
 
 ```shell
-curl -fsSL https://raw.githubusercontent.com/xooooooooox/radp-vagrant-framework/main/install.sh
-  | bash
+curl -fsSL https://raw.githubusercontent.com/xooooooooox/radp-vagrant-framework/main/install.sh | bash
+```
+
+Install from a specific branch or tag:
+
+```shell
+bash install.sh --ref main
+bash install.sh --ref v1.0.0-rc1
 ```
 
 See [Installation Guide](docs/installation.md) for more options (manual install, upgrade, shell completion).
