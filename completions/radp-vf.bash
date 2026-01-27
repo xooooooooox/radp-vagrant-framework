@@ -16,7 +16,7 @@ _radp_vf() {
     fi
 
     local commands="init vg list dump-config generate validate info template completion version help"
-    local global_opts="-c --config -e --env -h --help -v --version"
+    local global_opts="-c --config -e --env -h --help -v --verbose --version"
 
     # Find the command position (skip global options)
     local cmd_pos=1

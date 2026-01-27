@@ -30,7 +30,8 @@ _radp_vf() {
         '--env[Override environment]:environment name:'
         '-h[Show help]'
         '--help[Show help]'
-        '-v[Show version]'
+        '-v[Enable verbose output]'
+        '--verbose[Enable verbose output]'
         '--version[Show version]'
     )
 
