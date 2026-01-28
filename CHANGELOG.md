@@ -1,3 +1,6 @@
+## v0.2.5 - 2026-01-28
+
+- b9c63af fix(provision): fix radp:yadm/clone
 ## v0.2.4 - 2026-01-28
 
 - 50e3e49 feat(provision): Add provision radp:crypto/gpg-preset-passphrase
