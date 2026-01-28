@@ -1,3 +1,6 @@
+## v0.2.4 - 2026-01-28
+
+- 50e3e49 feat(provision): Add provision radp:crypto/gpg-preset-passphrase
 ## v0.2.3 - 2026-01-28
 
 - d6a3a61 feat(provision): Add provision radp:git/clone and radp:yadm/clone
