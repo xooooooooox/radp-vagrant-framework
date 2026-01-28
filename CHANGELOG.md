@@ -1,3 +1,16 @@
+## v0.2.3 - 2026-01-28
+
+- feat(provision): add builtin provision radp:git/clone
+  - Support HTTPS and SSH clone
+  - Support HTTPS authentication with token
+  - Support SSH with key, host override, port override
+  - Auto-detect target user when unprivileged
+- feat(provision): add builtin provision radp:yadm/clone
+  - Support HTTPS and SSH clone for yadm dotfiles
+  - Support bootstrap and decrypt options
+  - Support yadm class configuration
+  - Works with radp:crypto/gpg-import for encrypted dotfiles
+
 ## v0.2.2 - 2026-01-28
 
 - d263971 feat(provision): optimize builtin provision gpg-import

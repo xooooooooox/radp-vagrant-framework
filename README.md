@@ -196,7 +196,7 @@ provisions:
       NFS_ROOT: "/volume1/nfs"
 ```
 
-Available: `radp:crypto/gpg-import`, `radp:nfs/external-nfs-mount`, `radp:ssh/host-trust`, `radp:ssh/cluster-trust`, `radp:time/chrony-sync`
+Available: `radp:crypto/gpg-import`, `radp:git/clone`, `radp:nfs/external-nfs-mount`, `radp:ssh/host-trust`, `radp:ssh/cluster-trust`, `radp:time/chrony-sync`, `radp:yadm/clone`
 
 ### Builtin Triggers
 

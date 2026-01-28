@@ -1,0 +1,50 @@
+desc: Clone git repository (HTTPS or SSH)
+defaults:
+  privileged: false
+  run: once
+  env:
+    required:
+      - name: GIT_REPO_URL
+        desc: Repository URL (HTTPS or SSH format)
+    optional:
+      # --- Target ---
+      - name: GIT_CLONE_DIR
+        value: ""
+        desc: 'Target directory (default: ~/repo-name)'
+      - name: GIT_CLONE_OPTIONS
+        value: ""
+        desc: Additional git clone options (e.g., --depth 1, --branch main)
+
+      # --- HTTPS Authentication ---
+      - name: GIT_HTTPS_USER
+        value: ""
+        desc: Username for HTTPS authentication
+      - name: GIT_HTTPS_TOKEN
+        value: ""
+        desc: Personal access token for HTTPS authentication
+      - name: GIT_HTTPS_TOKEN_FILE
+        value: ""
+        desc: Path to file containing access token
+
+      # --- SSH Options ---
+      - name: GIT_SSH_KEY_FILE
+        value: ""
+        desc: Path to SSH private key file
+      - name: GIT_SSH_HOST
+        value: ""
+        desc: Override SSH hostname/IP (for private servers with DNS issues)
+      - name: GIT_SSH_PORT
+        value: ""
+        desc: Override SSH port (default 22)
+      - name: GIT_SSH_STRICT_HOST_KEY
+        value: "false"
+        desc: Strict host key checking (default false for automation)
+
+      # --- General ---
+      - name: GIT_SKIP_IF_EXISTS
+        value: "true"
+        desc: Skip clone if target directory already exists
+      - name: GIT_USERS
+        value: ""
+        desc: "Target users (auto-detected when privileged: false; required when privileged: true)"
+  script: clone.sh

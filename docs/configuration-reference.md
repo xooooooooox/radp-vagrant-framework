@@ -502,10 +502,12 @@ Builtin provisions use `radp:` prefix and come with sensible defaults.
 | Name                          | Description                                        | Defaults                        |
 |-------------------------------|----------------------------------------------------|---------------------------------|
 | `radp:crypto/gpg-import`      | Import GPG keys (public/secret) into user keyrings | `privileged: false, run: once`  |
+| `radp:git/clone`              | Clone git repository (HTTPS or SSH)                | `privileged: false, run: once`  |
 | `radp:nfs/external-nfs-mount` | Mount external NFS shares                          | `privileged: true, run: always` |
 | `radp:ssh/host-trust`         | Add host SSH key to guest                          | `privileged: false, run: once`  |
 | `radp:ssh/cluster-trust`      | Configure SSH trust between VMs                    | `privileged: true, run: once`   |
 | `radp:time/chrony-sync`       | Configure chrony for time sync                     | `privileged: true, run: once`   |
+| `radp:yadm/clone`             | Clone dotfiles repository using yadm               | `privileged: false, run: once`  |
 
 **Usage:**
 
@@ -660,6 +662,141 @@ echo "your-passphrase" >passphrase.txt
 ```
 
 **Security Note:** Store exported keys securely. Consider using Vagrant synced folders with restricted permissions.
+
+#### Git Clone Provision Details
+
+The `radp:git/clone` provision clones git repositories with HTTPS or SSH authentication.
+
+**Environment Variables:**
+
+| Variable                              | Description                                          |
+|---------------------------------------|------------------------------------------------------|
+| **Required:**                         |                                                      |
+| `GIT_REPO_URL`                        | Repository URL (HTTPS or SSH format)                 |
+| **Target Options:**                   |                                                      |
+| `GIT_CLONE_DIR`                       | Target directory (default: ~/repo-name)              |
+| `GIT_CLONE_OPTIONS`                   | Additional git clone options (e.g., `--depth 1`)     |
+| **HTTPS Authentication:**             |                                                      |
+| `GIT_HTTPS_USER`                      | Username for HTTPS auth                              |
+| `GIT_HTTPS_TOKEN`                     | Personal access token                                |
+| `GIT_HTTPS_TOKEN_FILE`                | Path to file containing token                        |
+| **SSH Options:**                      |                                                      |
+| `GIT_SSH_KEY_FILE`                    | Path to SSH private key file                         |
+| `GIT_SSH_HOST`                        | Override SSH hostname/IP (for DNS issues)            |
+| `GIT_SSH_PORT`                        | Override SSH port (default: 22)                      |
+| `GIT_SSH_STRICT_HOST_KEY`             | Strict host key checking (default: false)            |
+| **General:**                          |                                                      |
+| `GIT_SKIP_IF_EXISTS`                  | Skip if directory exists (default: true)             |
+| `GIT_USERS`                           | Target users (auto-detected when unprivileged)       |
+
+**Common Use Cases:**
+
+```yaml
+# HTTPS clone (public repo)
+provisions:
+  - name: radp:git/clone
+    enabled: true
+    env:
+      GIT_REPO_URL: "https://github.com/user/repo.git"
+
+# HTTPS clone (private repo with token)
+provisions:
+  - name: radp:git/clone
+    enabled: true
+    env:
+      GIT_REPO_URL: "https://github.com/user/private-repo.git"
+      GIT_HTTPS_TOKEN_FILE: "/vagrant/.secrets/github-token"
+
+# SSH clone (with key)
+provisions:
+  - name: radp:git/clone
+    enabled: true
+    env:
+      GIT_REPO_URL: "git@github.com:user/repo.git"
+      GIT_SSH_KEY_FILE: "/vagrant/.secrets/id_rsa"
+
+# SSH clone (private GitLab with DNS override)
+provisions:
+  - name: radp:git/clone
+    enabled: true
+    env:
+      GIT_REPO_URL: "git@gitlab.example.com:group/repo.git"
+      GIT_SSH_KEY_FILE: "/mnt/ssh/id_rsa_gitlab"
+      GIT_SSH_HOST: "192.168.20.35"
+```
+
+#### yadm Clone Provision Details
+
+The `radp:yadm/clone` provision clones dotfiles repositories using [yadm](https://yadm.io/) (Yet Another Dotfiles Manager).
+
+**What is yadm?**
+
+yadm is a dotfiles manager that wraps around git:
+
+- Tracks files in `$HOME` without moving them
+- Stores repo in `~/.local/share/yadm/repo.git`
+- Supports encrypted files (via GPG)
+- Supports alternate files per host/class/OS
+- Has bootstrap script for automated setup
+
+**Environment Variables:**
+
+| Variable                              | Description                                          |
+|---------------------------------------|------------------------------------------------------|
+| **Required:**                         |                                                      |
+| `YADM_REPO_URL`                       | Dotfiles repository URL (HTTPS or SSH)               |
+| **yadm Options:**                     |                                                      |
+| `YADM_BOOTSTRAP`                      | Run bootstrap after clone (default: false)           |
+| `YADM_DECRYPT`                        | Run decrypt after clone (default: false, needs GPG)  |
+| `YADM_CLASS`                          | Set yadm class before clone                          |
+| **HTTPS Authentication:**             |                                                      |
+| `YADM_HTTPS_USER`                     | Username for HTTPS auth                              |
+| `YADM_HTTPS_TOKEN`                    | Personal access token                                |
+| `YADM_HTTPS_TOKEN_FILE`               | Path to file containing token                        |
+| **SSH Options:**                      |                                                      |
+| `YADM_SSH_KEY_FILE`                   | Path to SSH private key file                         |
+| `YADM_SSH_HOST`                       | Override SSH hostname/IP (for DNS issues)            |
+| `YADM_SSH_PORT`                       | Override SSH port (default: 22)                      |
+| `YADM_SSH_STRICT_HOST_KEY`            | Strict host key checking (default: false)            |
+| **General:**                          |                                                      |
+| `YADM_USERS`                          | Target users (auto-detected when unprivileged)       |
+
+**Common Use Cases:**
+
+```yaml
+# Basic yadm clone (HTTPS)
+provisions:
+  - name: radp:yadm/clone
+    enabled: true
+    env:
+      YADM_REPO_URL: "https://github.com/user/dotfiles.git"
+
+# SSH clone with bootstrap
+provisions:
+  - name: radp:yadm/clone
+    enabled: true
+    env:
+      YADM_REPO_URL: "git@github.com:user/dotfiles.git"
+      YADM_SSH_KEY_FILE: "/vagrant/.secrets/id_rsa"
+      YADM_BOOTSTRAP: "true"
+
+# Private GitLab with GPG decryption
+# (requires radp:crypto/gpg-import first)
+provisions:
+  - name: radp:crypto/gpg-import
+    enabled: true
+    env:
+      GPG_SECRET_KEY_FILE: "/vagrant/.secrets/gpg-key.asc"
+      GPG_OWNERTRUST_FILE: "/vagrant/.secrets/ownertrust.txt"
+
+  - name: radp:yadm/clone
+    enabled: true
+    env:
+      YADM_REPO_URL: "git@gitlab.example.com:user/dotfiles.git"
+      YADM_SSH_KEY_FILE: "/mnt/ssh/id_rsa_gitlab"
+      YADM_SSH_HOST: "192.168.20.35"
+      YADM_DECRYPT: "true"
+```
 
 ### User Provisions
 

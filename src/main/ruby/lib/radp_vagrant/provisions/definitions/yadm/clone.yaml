@@ -1,0 +1,50 @@
+desc: Clone dotfiles repository using yadm
+defaults:
+  privileged: false
+  run: once
+  env:
+    required:
+      - name: YADM_REPO_URL
+        desc: Dotfiles repository URL (HTTPS or SSH format)
+    optional:
+      # --- yadm Options ---
+      - name: YADM_BOOTSTRAP
+        value: "false"
+        desc: Run yadm bootstrap after clone (default false)
+      - name: YADM_DECRYPT
+        value: "false"
+        desc: Run yadm decrypt after clone (requires GPG key imported)
+      - name: YADM_CLASS
+        value: ""
+        desc: Set yadm class before clone
+
+      # --- HTTPS Authentication ---
+      - name: YADM_HTTPS_USER
+        value: ""
+        desc: Username for HTTPS authentication
+      - name: YADM_HTTPS_TOKEN
+        value: ""
+        desc: Personal access token for HTTPS authentication
+      - name: YADM_HTTPS_TOKEN_FILE
+        value: ""
+        desc: Path to file containing access token
+
+      # --- SSH Options ---
+      - name: YADM_SSH_KEY_FILE
+        value: ""
+        desc: Path to SSH private key file
+      - name: YADM_SSH_HOST
+        value: ""
+        desc: Override SSH hostname/IP (for private servers with DNS issues)
+      - name: YADM_SSH_PORT
+        value: ""
+        desc: Override SSH port (default 22)
+      - name: YADM_SSH_STRICT_HOST_KEY
+        value: "false"
+        desc: Strict host key checking (default false for automation)
+
+      # --- General ---
+      - name: YADM_USERS
+        value: ""
+        desc: "Target users (auto-detected when privileged: false; required when privileged: true)"
+  script: clone.sh
