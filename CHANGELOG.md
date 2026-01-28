@@ -1,5 +1,8 @@
 ## v0.2.3 - 2026-01-28
 
+- d6a3a61 feat(provision): Add provision radp:git/clone and radp:yadm/clone
+## v0.2.3 - 2026-01-28
+
 - feat(provision): add builtin provision radp:git/clone
   - Support HTTPS and SSH clone
   - Support HTTPS authentication with token
