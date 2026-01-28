@@ -1,3 +1,12 @@
+## v0.2.1 - 2026-01-28
+
+- feat(provision): add builtin GPG key import provision (radp:crypto/gpg-import)
+  - Support public key import from content, file, or keyserver
+  - Support secret key import with passphrase
+  - Support trust configuration via level or ownertrust file
+  - Common use case: yadm encrypted files, git commit signing
+- docs: add comprehensive GPG import documentation with examples
+
 ## v0.2.0 - 2026-01-27
 
 - f0b7bee chore: update CLAUDE.md

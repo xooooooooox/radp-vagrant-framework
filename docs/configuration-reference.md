@@ -499,24 +499,33 @@ Execution order: `global-pre → cluster-pre → guest → cluster-post → glob
 
 Builtin provisions use `radp:` prefix and come with sensible defaults.
 
-| Name                          | Description                     | Defaults                         |
-|-------------------------------|---------------------------------|----------------------------------|
-| `radp:crypto/gpg-import`      | Import GPG public keys into user keyrings | `privileged: false, run: once` |
-| `radp:nfs/external-nfs-mount` | Mount external NFS shares       | `privileged: true, run: always`  |
-| `radp:ssh/host-trust`         | Add host SSH key to guest       | `privileged: false, run: once`   |
-| `radp:ssh/cluster-trust`      | Configure SSH trust between VMs | `privileged: true, run: once`    |
-| `radp:time/chrony-sync`       | Configure chrony for time sync  | `privileged: true, run: once`    |
+| Name                          | Description                                        | Defaults                        |
+|-------------------------------|----------------------------------------------------|---------------------------------|
+| `radp:crypto/gpg-import`      | Import GPG keys (public/secret) into user keyrings | `privileged: false, run: once`  |
+| `radp:nfs/external-nfs-mount` | Mount external NFS shares                          | `privileged: true, run: always` |
+| `radp:ssh/host-trust`         | Add host SSH key to guest                          | `privileged: false, run: once`  |
+| `radp:ssh/cluster-trust`      | Configure SSH trust between VMs                    | `privileged: true, run: once`   |
+| `radp:time/chrony-sync`       | Configure chrony for time sync                     | `privileged: true, run: once`   |
 
 **Usage:**
 
 ```yaml
 provisions:
+  # Import your own GPG key pair for yadm/git signing
   - name: radp:crypto/gpg-import
     enabled: true
     env:
-      GPG_PUBLIC_KEY_FILE: "/vagrant/keys/mykey.asc"
-      GPG_TRUST_LEVEL: "5"
+      GPG_SECRET_KEY_FILE: "/vagrant/.secrets/secret-key.asc"
+      GPG_PASSPHRASE_FILE: "/vagrant/.secrets/passphrase.txt"
+      GPG_OWNERTRUST_FILE: "/vagrant/.secrets/ownertrust.txt"
       GPG_USERS: "vagrant"
+
+  # Or just import a public key
+  - name: radp:crypto/gpg-import
+    enabled: true
+    env:
+      GPG_PUBLIC_KEY_FILE: "/vagrant/keys/colleague.asc"
+      GPG_TRUST_LEVEL: "4"
 
   - name: radp:nfs/external-nfs-mount
     enabled: true
@@ -544,13 +553,95 @@ provisions:
 
 **Environment Variables:**
 
-| Provision                     | Required                 | Optional (defaults)                                                                                                           |
-|-------------------------------|--------------------------|-------------------------------------------------------------------------------------------------------------------------------|
-| `radp:crypto/gpg-import`      | None (one of below)      | `GPG_PUBLIC_KEY`, `GPG_PUBLIC_KEY_FILE`, `GPG_KEY_ID`, `GPG_KEYSERVER`(keys.openpgp.org), `GPG_TRUST_LEVEL`, `GPG_USERS`(vagrant) |
-| `radp:nfs/external-nfs-mount` | `NFS_SERVER`, `NFS_ROOT` | None                                                                                                                          |
-| `radp:ssh/host-trust`         | None (one of below)      | `HOST_SSH_PUBLIC_KEY`, `HOST_SSH_PUBLIC_KEY_FILE`, `SSH_USERS`(vagrant)                                                       |
-| `radp:ssh/cluster-trust`      | `CLUSTER_SSH_KEY_DIR`    | `SSH_USERS`(vagrant), `TRUSTED_HOST_PATTERN`(auto)                                                                            |
-| `radp:time/chrony-sync`       | None                     | `NTP_SERVERS`, `NTP_POOL`(pool.ntp.org), `TIMEZONE`, `SYNC_NOW`(true)                                                         |
+| Provision                     | Required                 | Optional (defaults)                                                     |
+|-------------------------------|--------------------------|-------------------------------------------------------------------------|
+| `radp:crypto/gpg-import`      | None (one key source)    | See [GPG Import Details](#gpg-import-provision-details) below           |
+| `radp:nfs/external-nfs-mount` | `NFS_SERVER`, `NFS_ROOT` | None                                                                    |
+| `radp:ssh/host-trust`         | None (one of below)      | `HOST_SSH_PUBLIC_KEY`, `HOST_SSH_PUBLIC_KEY_FILE`, `SSH_USERS`(vagrant) |
+| `radp:ssh/cluster-trust`      | `CLUSTER_SSH_KEY_DIR`    | `SSH_USERS`(vagrant), `TRUSTED_HOST_PATTERN`(auto)                      |
+| `radp:time/chrony-sync`       | None                     | `NTP_SERVERS`, `NTP_POOL`(pool.ntp.org), `TIMEZONE`, `SYNC_NOW`(true)   |
+
+#### GPG Import Provision Details
+
+The `radp:crypto/gpg-import` provision imports GPG keys into user keyrings. It supports both public and secret (private)
+keys, with flexible trust configuration.
+
+**GPG Basics:**
+
+| Term        | Description                                                                   |
+|-------------|-------------------------------------------------------------------------------|
+| Public Key  | Can be shared freely. Used to encrypt data TO you or verify your signatures   |
+| Secret Key  | Must be kept secure. Used to decrypt data or sign. Often passphrase-protected |
+| Key ID      | Short identifier (e.g., `0xABCD1234`) - last 8/16 hex digits of fingerprint   |
+| Trust Level | 2=unknown, 3=marginal, 4=full, 5=ultimate (your own key)                      |
+
+**Environment Variables:**
+
+| Variable                                 | Description                                        |
+|------------------------------------------|----------------------------------------------------|
+| **Key Sources (at least one required):** |                                                    |
+| `GPG_PUBLIC_KEY`                         | Public key content (ASCII-armored block)           |
+| `GPG_PUBLIC_KEY_FILE`                    | Path to public key file (.asc or .gpg)             |
+| `GPG_KEY_ID`                             | Key ID to fetch from keyserver                     |
+| `GPG_SECRET_KEY_FILE`                    | Path to secret key file (.asc or .gpg)             |
+| **Keyserver Options:**                   |                                                    |
+| `GPG_KEYSERVER`                          | Keyserver URL (default: `keys.openpgp.org`)        |
+| **Secret Key Options:**                  |                                                    |
+| `GPG_PASSPHRASE`                         | Passphrase for secret key import                   |
+| `GPG_PASSPHRASE_FILE`                    | Path to file containing passphrase                 |
+| **Trust Options (choose one):**          |                                                    |
+| `GPG_TRUST_LEVEL`                        | Trust level (2-5) for imported key                 |
+| `GPG_OWNERTRUST_FILE`                    | Path to ownertrust file for batch import           |
+| **General:**                             |                                                    |
+| `GPG_USERS`                              | Comma-separated list of users (default: `vagrant`) |
+
+**Common Use Cases:**
+
+```yaml
+# Use case 1: yadm / git commit signing (import your own key pair)
+provisions:
+  - name: radp:crypto/gpg-import
+    enabled: true
+    env:
+      GPG_SECRET_KEY_FILE: "/vagrant/.secrets/secret-key.asc"
+      GPG_PASSPHRASE_FILE: "/vagrant/.secrets/passphrase.txt"
+      GPG_OWNERTRUST_FILE: "/vagrant/.secrets/ownertrust.txt"
+      GPG_USERS: "vagrant"
+
+# Use case 2: Verify signatures from a colleague
+provisions:
+  - name: radp:crypto/gpg-import
+    enabled: true
+    env:
+      GPG_PUBLIC_KEY_FILE: "/vagrant/keys/colleague.asc"
+      GPG_TRUST_LEVEL: "4"
+
+# Use case 3: Fetch a key from keyserver
+provisions:
+  - name: radp:crypto/gpg-import
+    enabled: true
+    env:
+      GPG_KEY_ID: "0x1234567890ABCDEF"
+      GPG_KEYSERVER: "keys.openpgp.org"
+```
+
+**How to Export Your Keys (run on host):**
+
+```bash
+# 1. Find your key ID
+gpg --list-secret-keys --keyid-format LONG
+
+# 2. Export secret key (includes public key)
+gpg --export-secret-keys --armor YOUR_KEY_ID >secret-key.asc
+
+# 3. Export ownertrust
+gpg --export-ownertrust >ownertrust.txt
+
+# 4. Store passphrase (if key is protected)
+echo "your-passphrase" >passphrase.txt
+```
+
+**Security Note:** Store exported keys securely. Consider using Vagrant synced folders with restricted permissions.
 
 ### User Provisions
 

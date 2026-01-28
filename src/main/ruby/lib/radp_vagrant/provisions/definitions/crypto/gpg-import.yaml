@@ -1,10 +1,11 @@
-desc: Import GPG public keys into user keyrings
+desc: Import GPG keys (public and/or secret) into user keyrings
 defaults:
   privileged: false
   run: once
   env:
     required: []
     optional:
+      # --- Public Key Import (choose one or more) ---
       - name: GPG_PUBLIC_KEY
         value: ""
         desc: GPG public key content (ASCII-armored block)
@@ -17,9 +18,27 @@ defaults:
       - name: GPG_KEYSERVER
         value: "keys.openpgp.org"
         desc: Keyserver to fetch keys from
+
+      # --- Secret Key Import ---
+      - name: GPG_SECRET_KEY_FILE
+        value: ""
+        desc: Path to GPG secret (private) key file (.asc or .gpg)
+      - name: GPG_PASSPHRASE
+        value: ""
+        desc: Passphrase for secret key import (if key is passphrase-protected)
+      - name: GPG_PASSPHRASE_FILE
+        value: ""
+        desc: Path to file containing passphrase for secret key import
+
+      # --- Trust Configuration (choose one) ---
       - name: GPG_TRUST_LEVEL
         value: ""
-        desc: "Trust level to set: 2=marginal, 3=full, 4=full, 5=ultimate (empty=skip)"
+        desc: "Trust level for imported key: 2=unknown, 3=marginal, 4=full, 5=ultimate"
+      - name: GPG_OWNERTRUST_FILE
+        value: ""
+        desc: Path to ownertrust file for batch trust import
+
+      # --- General ---
       - name: GPG_USERS
         value: "vagrant"
         desc: Comma-separated list of users to configure
