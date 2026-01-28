@@ -1,0 +1,27 @@
+desc: Preset GPG passphrase in gpg-agent cache for non-interactive operations
+defaults:
+  privileged: false
+  run: once
+  env:
+    required:
+      - name: GPG_KEY_UID
+        desc: Key UID (email) to identify the key (e.g., user@example.com)
+    optional:
+      # --- Passphrase ---
+      - name: GPG_PASSPHRASE
+        value: ""
+        desc: Passphrase content
+      - name: GPG_PASSPHRASE_FILE
+        value: ""
+        desc: Path to file containing passphrase
+
+      # --- Options ---
+      - name: GPG_AGENT_ALLOW_PRESET
+        value: "true"
+        desc: Auto-configure gpg-agent.conf with allow-preset-passphrase
+
+      # --- General ---
+      - name: GPG_USERS
+        value: ""
+        desc: "Target users (auto-detected when privileged: false; required when privileged: true)"
+  script: gpg-preset-passphrase.sh

@@ -499,10 +499,11 @@ Execution order: `global-pre → cluster-pre → guest → cluster-post → glob
 
 Builtin provisions use `radp:` prefix and come with sensible defaults.
 
-| Name                          | Description                                        | Defaults                        |
-|-------------------------------|----------------------------------------------------|---------------------------------|
-| `radp:crypto/gpg-import`      | Import GPG keys (public/secret) into user keyrings | `privileged: false, run: once`  |
-| `radp:git/clone`              | Clone git repository (HTTPS or SSH)                | `privileged: false, run: once`  |
+| Name                              | Description                                        | Defaults                        |
+|-----------------------------------|----------------------------------------------------|---------------------------------|
+| `radp:crypto/gpg-import`          | Import GPG keys (public/secret) into user keyrings | `privileged: false, run: once`  |
+| `radp:crypto/gpg-preset-passphrase` | Preset GPG passphrase in gpg-agent cache         | `privileged: false, run: once`  |
+| `radp:git/clone`                  | Clone git repository (HTTPS or SSH)                | `privileged: false, run: once`  |
 | `radp:nfs/external-nfs-mount` | Mount external NFS shares                          | `privileged: true, run: always` |
 | `radp:ssh/host-trust`         | Add host SSH key to guest                          | `privileged: false, run: once`  |
 | `radp:ssh/cluster-trust`      | Configure SSH trust between VMs                    | `privileged: true, run: once`   |
@@ -662,6 +663,62 @@ echo "your-passphrase" >passphrase.txt
 ```
 
 **Security Note:** Store exported keys securely. Consider using Vagrant synced folders with restricted permissions.
+
+#### GPG Preset Passphrase Provision Details
+
+The `radp:crypto/gpg-preset-passphrase` provision caches the GPG passphrase in gpg-agent for non-interactive operations.
+
+**Why Preset Passphrase?**
+
+By default, GPG prompts for your passphrase every time you use your secret key. This is problematic for:
+
+- `yadm decrypt`
+- `git commit --gpg-sign`
+- Automated encryption/decryption scripts
+
+**Prerequisites:**
+
+1. Secret key must be imported first (use `radp:crypto/gpg-import`)
+2. `gpg-agent.conf` must have `allow-preset-passphrase` (auto-configured by default)
+
+**Environment Variables:**
+
+| Variable                 | Description                                          |
+|--------------------------|------------------------------------------------------|
+| **Required:**            |                                                      |
+| `GPG_KEY_UID`            | Key UID (email) to identify the key                  |
+| **Passphrase (one required):** |                                                |
+| `GPG_PASSPHRASE`         | Passphrase content                                   |
+| `GPG_PASSPHRASE_FILE`    | Path to file containing passphrase                   |
+| **Options:**             |                                                      |
+| `GPG_AGENT_ALLOW_PRESET` | Auto-configure gpg-agent.conf (default: true)        |
+| **General:**             |                                                      |
+| `GPG_USERS`              | Target users (auto-detected when unprivileged)       |
+
+**Common Use Cases:**
+
+```yaml
+# Complete workflow: import key, preset passphrase, clone with decrypt
+provisions:
+  - name: radp:crypto/gpg-import
+    enabled: true
+    env:
+      GPG_SECRET_KEY_FILE: "/vagrant/.secrets/gpg-key.asc"
+      GPG_OWNERTRUST_FILE: "/vagrant/.secrets/ownertrust.txt"
+
+  - name: radp:crypto/gpg-preset-passphrase
+    enabled: true
+    env:
+      GPG_KEY_UID: "user@example.com"
+      GPG_PASSPHRASE_FILE: "/vagrant/.secrets/passphrase.txt"
+
+  - name: radp:yadm/clone
+    enabled: true
+    env:
+      YADM_REPO_URL: "git@github.com:user/dotfiles.git"
+      YADM_SSH_KEY_FILE: "/vagrant/.secrets/id_rsa"
+      YADM_DECRYPT: "true"  # Will work without passphrase prompt
+```
 
 #### Git Clone Provision Details
 

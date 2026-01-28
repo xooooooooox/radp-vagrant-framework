@@ -3,6 +3,10 @@
 - d6a3a61 feat(provision): Add provision radp:git/clone and radp:yadm/clone
 ## v0.2.3 - 2026-01-28
 
+- feat(provision): add builtin provision radp:crypto/gpg-preset-passphrase
+  - Preset GPG passphrase in gpg-agent cache for non-interactive operations
+  - Auto-configure gpg-agent.conf with allow-preset-passphrase
+  - Works with yadm decrypt, git signing, etc.
 - feat(provision): add builtin provision radp:git/clone
   - Support HTTPS and SSH clone
   - Support HTTPS authentication with token
