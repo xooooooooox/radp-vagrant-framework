@@ -195,7 +195,7 @@ provisions:
       NFS_ROOT: "/volume1/nfs"
 ```
 
-可用：`radp:nfs/external-nfs-mount`、`radp:ssh/host-trust`、`radp:ssh/cluster-trust`、`radp:time/chrony-sync`
+可用：`radp:crypto/gpg-import`、`radp:nfs/external-nfs-mount`、`radp:ssh/host-trust`、`radp:ssh/cluster-trust`、`radp:time/chrony-sync`
 
 ### 内置 Triggers
 

@@ -1,0 +1,26 @@
+desc: Import GPG public keys into user keyrings
+defaults:
+  privileged: false
+  run: once
+  env:
+    required: []
+    optional:
+      - name: GPG_PUBLIC_KEY
+        value: ""
+        desc: GPG public key content (ASCII-armored block)
+      - name: GPG_PUBLIC_KEY_FILE
+        value: ""
+        desc: Path to GPG public key file (.asc or .gpg)
+      - name: GPG_KEY_ID
+        value: ""
+        desc: GPG key ID to fetch from keyserver
+      - name: GPG_KEYSERVER
+        value: "keys.openpgp.org"
+        desc: Keyserver to fetch keys from
+      - name: GPG_TRUST_LEVEL
+        value: ""
+        desc: "Trust level to set: 2=marginal, 3=full, 4=full, 5=ultimate (empty=skip)"
+      - name: GPG_USERS
+        value: "vagrant"
+        desc: Comma-separated list of users to configure
+  script: gpg-import.sh

@@ -499,17 +499,25 @@ Execution order: `global-pre → cluster-pre → guest → cluster-post → glob
 
 Builtin provisions use `radp:` prefix and come with sensible defaults.
 
-| Name                          | Description                     | Defaults                        |
-|-------------------------------|---------------------------------|---------------------------------|
-| `radp:nfs/external-nfs-mount` | Mount external NFS shares       | `privileged: true, run: always` |
-| `radp:ssh/host-trust`         | Add host SSH key to guest       | `privileged: false, run: once`  |
-| `radp:ssh/cluster-trust`      | Configure SSH trust between VMs | `privileged: true, run: once`   |
-| `radp:time/chrony-sync`       | Configure chrony for time sync  | `privileged: true, run: once`   |
+| Name                          | Description                     | Defaults                         |
+|-------------------------------|---------------------------------|----------------------------------|
+| `radp:crypto/gpg-import`      | Import GPG public keys into user keyrings | `privileged: false, run: once` |
+| `radp:nfs/external-nfs-mount` | Mount external NFS shares       | `privileged: true, run: always`  |
+| `radp:ssh/host-trust`         | Add host SSH key to guest       | `privileged: false, run: once`   |
+| `radp:ssh/cluster-trust`      | Configure SSH trust between VMs | `privileged: true, run: once`    |
+| `radp:time/chrony-sync`       | Configure chrony for time sync  | `privileged: true, run: once`    |
 
 **Usage:**
 
 ```yaml
 provisions:
+  - name: radp:crypto/gpg-import
+    enabled: true
+    env:
+      GPG_PUBLIC_KEY_FILE: "/vagrant/keys/mykey.asc"
+      GPG_TRUST_LEVEL: "5"
+      GPG_USERS: "vagrant"
+
   - name: radp:nfs/external-nfs-mount
     enabled: true
     env:
@@ -536,12 +544,13 @@ provisions:
 
 **Environment Variables:**
 
-| Provision                     | Required                 | Optional (defaults)                                                     |
-|-------------------------------|--------------------------|-------------------------------------------------------------------------|
-| `radp:nfs/external-nfs-mount` | `NFS_SERVER`, `NFS_ROOT` | None                                                                    |
-| `radp:ssh/host-trust`         | None (one of below)      | `HOST_SSH_PUBLIC_KEY`, `HOST_SSH_PUBLIC_KEY_FILE`, `SSH_USERS`(vagrant) |
-| `radp:ssh/cluster-trust`      | `CLUSTER_SSH_KEY_DIR`    | `SSH_USERS`(vagrant), `TRUSTED_HOST_PATTERN`(auto)                      |
-| `radp:time/chrony-sync`       | None                     | `NTP_SERVERS`, `NTP_POOL`(pool.ntp.org), `TIMEZONE`, `SYNC_NOW`(true)   |
+| Provision                     | Required                 | Optional (defaults)                                                                                                           |
+|-------------------------------|--------------------------|-------------------------------------------------------------------------------------------------------------------------------|
+| `radp:crypto/gpg-import`      | None (one of below)      | `GPG_PUBLIC_KEY`, `GPG_PUBLIC_KEY_FILE`, `GPG_KEY_ID`, `GPG_KEYSERVER`(keys.openpgp.org), `GPG_TRUST_LEVEL`, `GPG_USERS`(vagrant) |
+| `radp:nfs/external-nfs-mount` | `NFS_SERVER`, `NFS_ROOT` | None                                                                                                                          |
+| `radp:ssh/host-trust`         | None (one of below)      | `HOST_SSH_PUBLIC_KEY`, `HOST_SSH_PUBLIC_KEY_FILE`, `SSH_USERS`(vagrant)                                                       |
+| `radp:ssh/cluster-trust`      | `CLUSTER_SSH_KEY_DIR`    | `SSH_USERS`(vagrant), `TRUSTED_HOST_PATTERN`(auto)                                                                            |
+| `radp:time/chrony-sync`       | None                     | `NTP_SERVERS`, `NTP_POOL`(pool.ntp.org), `TIMEZONE`, `SYNC_NOW`(true)                                                         |
 
 ### User Provisions
 
