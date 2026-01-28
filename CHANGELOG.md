@@ -4,6 +4,7 @@
   - Support public key import from content, file, or keyserver
   - Support secret key import with passphrase
   - Support trust configuration via level or ownertrust file
+  - Smart GPG_USERS handling: auto-detect when unprivileged, required when privileged
   - Common use case: yadm encrypted files, git commit signing
 - docs: add comprehensive GPG import documentation with examples
 

@@ -511,14 +511,13 @@ Builtin provisions use `radp:` prefix and come with sensible defaults.
 
 ```yaml
 provisions:
-  # Import your own GPG key pair for yadm/git signing
+  # Import your own GPG key pair for yadm/git signing (GPG_USERS auto-detected)
   - name: radp:crypto/gpg-import
     enabled: true
     env:
       GPG_SECRET_KEY_FILE: "/vagrant/.secrets/secret-key.asc"
       GPG_PASSPHRASE_FILE: "/vagrant/.secrets/passphrase.txt"
       GPG_OWNERTRUST_FILE: "/vagrant/.secrets/ownertrust.txt"
-      GPG_USERS: "vagrant"
 
   # Or just import a public key
   - name: radp:crypto/gpg-import
@@ -577,28 +576,38 @@ keys, with flexible trust configuration.
 
 **Environment Variables:**
 
-| Variable                                 | Description                                        |
-|------------------------------------------|----------------------------------------------------|
-| **Key Sources (at least one required):** |                                                    |
-| `GPG_PUBLIC_KEY`                         | Public key content (ASCII-armored block)           |
-| `GPG_PUBLIC_KEY_FILE`                    | Path to public key file (.asc or .gpg)             |
-| `GPG_KEY_ID`                             | Key ID to fetch from keyserver                     |
-| `GPG_SECRET_KEY_FILE`                    | Path to secret key file (.asc or .gpg)             |
-| **Keyserver Options:**                   |                                                    |
-| `GPG_KEYSERVER`                          | Keyserver URL (default: `keys.openpgp.org`)        |
-| **Secret Key Options:**                  |                                                    |
-| `GPG_PASSPHRASE`                         | Passphrase for secret key import                   |
-| `GPG_PASSPHRASE_FILE`                    | Path to file containing passphrase                 |
-| **Trust Options (choose one):**          |                                                    |
-| `GPG_TRUST_LEVEL`                        | Trust level (2-5) for imported key                 |
-| `GPG_OWNERTRUST_FILE`                    | Path to ownertrust file for batch import           |
-| **General:**                             |                                                    |
-| `GPG_USERS`                              | Comma-separated list of users (default: `vagrant`) |
+| Variable                                 | Description                                 |
+|------------------------------------------|---------------------------------------------|
+| **Key Sources (at least one required):** |                                             |
+| `GPG_PUBLIC_KEY`                         | Public key content (ASCII-armored block)    |
+| `GPG_PUBLIC_KEY_FILE`                    | Path to public key file (.asc or .gpg)      |
+| `GPG_KEY_ID`                             | Key ID to fetch from keyserver              |
+| `GPG_SECRET_KEY_FILE`                    | Path to secret key file (.asc or .gpg)      |
+| **Keyserver Options:**                   |                                             |
+| `GPG_KEYSERVER`                          | Keyserver URL (default: `keys.openpgp.org`) |
+| **Secret Key Options:**                  |                                             |
+| `GPG_PASSPHRASE`                         | Passphrase for secret key import            |
+| `GPG_PASSPHRASE_FILE`                    | Path to file containing passphrase          |
+| **Trust Options (choose one):**          |                                             |
+| `GPG_TRUST_LEVEL`                        | Trust level (2-5) for imported key          |
+| `GPG_OWNERTRUST_FILE`                    | Path to ownertrust file for batch import    |
+| **General:**                             |                                             |
+| `GPG_USERS`                              | Target users (see GPG_USERS behavior below) |
+
+**GPG_USERS Behavior:**
+
+| privileged        | GPG_USERS | Behavior                                  |
+|-------------------|-----------|-------------------------------------------|
+| `false` (default) | Not set   | Auto-detect current user                  |
+| `false` (default) | Set       | Ignored, uses current user (with warning) |
+| `true`            | Not set   | **Error** — must specify target users     |
+| `true`            | Set       | Uses specified users                      |
 
 **Common Use Cases:**
 
 ```yaml
 # Use case 1: yadm / git commit signing (import your own key pair)
+# GPG_USERS not needed — auto-detects current user
 provisions:
   - name: radp:crypto/gpg-import
     enabled: true
@@ -606,7 +615,6 @@ provisions:
       GPG_SECRET_KEY_FILE: "/vagrant/.secrets/secret-key.asc"
       GPG_PASSPHRASE_FILE: "/vagrant/.secrets/passphrase.txt"
       GPG_OWNERTRUST_FILE: "/vagrant/.secrets/ownertrust.txt"
-      GPG_USERS: "vagrant"
 
 # Use case 2: Verify signatures from a colleague
 provisions:
@@ -623,6 +631,16 @@ provisions:
     env:
       GPG_KEY_ID: "0x1234567890ABCDEF"
       GPG_KEYSERVER: "keys.openpgp.org"
+
+# Use case 4: Import for multiple users (requires privileged)
+provisions:
+  - name: radp:crypto/gpg-import
+    enabled: true
+    privileged: true
+    env:
+      GPG_SECRET_KEY_FILE: "/vagrant/.secrets/secret-key.asc"
+      GPG_OWNERTRUST_FILE: "/vagrant/.secrets/ownertrust.txt"
+      GPG_USERS: "vagrant,root"
 ```
 
 **How to Export Your Keys (run on host):**

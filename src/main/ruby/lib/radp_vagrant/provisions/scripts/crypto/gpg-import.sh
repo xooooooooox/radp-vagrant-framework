@@ -55,7 +55,9 @@ set -euo pipefail
 #   GPG_OWNERTRUST_FILE  - Path to ownertrust file for batch import
 #
 # General:
-#   GPG_USERS            - Comma-separated list of users (default: vagrant)
+#   GPG_USERS            - Target users for key import
+#                          - When privileged: false → auto-detects current user (optional)
+#                          - When privileged: true  → REQUIRED, comma-separated list
 #
 # ============================================================================
 # USAGE EXAMPLES
@@ -78,6 +80,7 @@ set -euo pipefail
 #         GPG_KEYSERVER: "keys.openpgp.org"
 #
 # Example 3: Full key pair for yadm/git signing (your own key)
+#            GPG_USERS not needed — auto-detects current user
 #   provisions:
 #     - name: radp:crypto/gpg-import
 #       enabled: true
@@ -85,16 +88,16 @@ set -euo pipefail
 #         GPG_SECRET_KEY_FILE: "/vagrant/.secrets/my-secret-key.asc"
 #         GPG_PASSPHRASE_FILE: "/vagrant/.secrets/passphrase.txt"
 #         GPG_OWNERTRUST_FILE: "/vagrant/.secrets/ownertrust.txt"
-#         GPG_USERS: "vagrant"
 #
-# Example 4: Multiple users
+# Example 4: Multiple users (requires privileged: true)
 #   provisions:
 #     - name: radp:crypto/gpg-import
 #       enabled: true
+#       privileged: true
 #       env:
 #         GPG_SECRET_KEY_FILE: "/vagrant/.secrets/shared-key.asc"
-#         GPG_TRUST_LEVEL: "5"
-#         GPG_USERS: "vagrant,developer"
+#         GPG_OWNERTRUST_FILE: "/vagrant/.secrets/ownertrust.txt"
+#         GPG_USERS: "vagrant,root"
 #
 # ============================================================================
 # HOW TO EXPORT YOUR KEYS (run on your host machine)
@@ -140,7 +143,33 @@ done
 
 # Default values
 GPG_KEYSERVER="${GPG_KEYSERVER:-keys.openpgp.org}"
-GPG_USERS="${GPG_USERS:-vagrant}"
+
+# Determine target users based on execution context
+CURRENT_USER=$(whoami)
+if [[ "$CURRENT_USER" == "root" ]]; then
+  # Running as root (privileged: true) — GPG_USERS must be specified
+  if [[ -z "${GPG_USERS:-}" ]]; then
+    echo "[ERROR] GPG_USERS must be specified when running as root (privileged: true)"
+    echo "        Example: GPG_USERS: \"vagrant\" or GPG_USERS: \"vagrant,root\""
+    exit 1
+  fi
+else
+  # Running as non-root (privileged: false) — default to current user
+  if [[ -z "${GPG_USERS:-}" ]]; then
+    GPG_USERS="$CURRENT_USER"
+    echo "[INFO] GPG_USERS not specified, using current user: $CURRENT_USER"
+  elif [[ "$GPG_USERS" != "$CURRENT_USER" && "$GPG_USERS" != *","* ]]; then
+    # Single user specified but not current user
+    echo "[WARN] Running as '$CURRENT_USER' but GPG_USERS='$GPG_USERS'"
+    echo "[WARN] Cannot configure other users without privileged: true, using '$CURRENT_USER'"
+    GPG_USERS="$CURRENT_USER"
+  elif [[ "$GPG_USERS" == *","* ]]; then
+    # Multiple users specified
+    echo "[WARN] Running as '$CURRENT_USER' but GPG_USERS contains multiple users"
+    echo "[WARN] Cannot configure other users without privileged: true, using '$CURRENT_USER'"
+    GPG_USERS="$CURRENT_USER"
+  fi
+fi
 
 # Install gnupg if not present
 install_gnupg() {

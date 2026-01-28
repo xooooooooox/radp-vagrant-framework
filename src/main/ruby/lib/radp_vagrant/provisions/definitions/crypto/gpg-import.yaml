@@ -40,6 +40,6 @@ defaults:
 
       # --- General ---
       - name: GPG_USERS
-        value: "vagrant"
-        desc: Comma-separated list of users to configure
+        value: ""
+        desc: "Target users (auto-detected when privileged: false; required when privileged: true)"
   script: gpg-import.sh
