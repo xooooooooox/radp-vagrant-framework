@@ -1,5 +1,14 @@
 ## v0.2.1 - 2026-01-28
 
+- bb55267 feat(provision): Add builtin provision gpg-import
+- f0d3583 feat(provision): Add builtin provision gpg-import
+- 3519472 chore: fix install
+- 14fc729 chore: add post-install message
+- f05c06e docs: update installation
+- 46170ad chore: update install and uninstall
+- 391477f chore: update install and uninstall
+## v0.2.1 - 2026-01-28
+
 - feat(provision): add builtin GPG key import provision (radp:crypto/gpg-import)
   - Support public key import from content, file, or keyserver
   - Support secret key import with passphrase
