@@ -128,6 +128,29 @@ else
   fi
 fi
 
+# Install git if not present (yadm requires git)
+install_git() {
+  if command -v git &>/dev/null; then
+    return 0
+  fi
+
+  echo "[INFO] Installing git (required by yadm)..."
+  if command -v apt-get &>/dev/null; then
+    sudo apt-get update -qq && sudo apt-get install -y -qq git
+  elif command -v yum &>/dev/null; then
+    sudo yum install -y -q git
+  elif command -v dnf &>/dev/null; then
+    sudo dnf install -y -q git
+  elif command -v apk &>/dev/null; then
+    sudo apk add --quiet git
+  elif command -v pacman &>/dev/null; then
+    sudo pacman -S --noconfirm git
+  else
+    echo "[ERROR] Unsupported package manager — cannot install git"
+    exit 1
+  fi
+}
+
 # Install yadm if not present
 install_yadm() {
   if command -v yadm &>/dev/null; then
@@ -171,6 +194,7 @@ install_yadm() {
   fi
 }
 
+install_git
 install_yadm
 
 # Detect URL type
