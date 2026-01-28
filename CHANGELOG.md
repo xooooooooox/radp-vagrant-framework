@@ -1,3 +1,6 @@
+## v0.2.2 - 2026-01-28
+
+- d263971 feat(provision): optimize builtin provision gpg-import
 ## v0.2.1 - 2026-01-28
 
 - bb55267 feat(provision): Add builtin provision gpg-import
