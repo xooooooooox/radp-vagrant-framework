@@ -1,3 +1,13 @@
+## Unreleased
+
+### feat
+- Display accurate version info when installed via `--ref <branch>` or `--ref <sha>`
+- Generate `.install-version` file during manual installation
+- Update `radp-vf version` to check `.install-version` first
+
+This allows installations via `--ref main` to show version like `v0.2.5+main`
+instead of the hardcoded source version.
+
 ## v0.2.5 - 2026-01-28
 
 - b9c63af fix(provision): fix radp:yadm/clone

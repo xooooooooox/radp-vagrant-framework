@@ -628,6 +628,21 @@ install_manual() {
   echo "manual" >"${install_dir}/.install-method"
   echo "${ref}" >"${install_dir}/.install-ref"
 
+  # Write actual installed version for CLI display
+  local installed_version
+  if [[ "${ref}" =~ ^v[0-9]+\.[0-9]+ ]]; then
+    # ref is a version tag, use it directly
+    installed_version="${ref}"
+  else
+    # ref is branch/SHA, append to base version from source
+    local base_version
+    base_version=$(grep -oE "VERSION = 'v[0-9]+\.[0-9]+\.[0-9]+'" \
+      "${install_dir}/lib/radp_vagrant/version.rb" 2>/dev/null \
+      | grep -oE 'v[0-9]+\.[0-9]+\.[0-9]+' || echo "v0.0.0")
+    installed_version="${base_version}+${ref}"
+  fi
+  echo "${installed_version}" >"${install_dir}/.install-version"
+
   # Install CLI script
   install_cli "${install_dir}" "${bin_dir}" "${src_root}"
 

@@ -61,7 +61,15 @@ OPT_ENV=""
 OPT_CONFIG=""
 
 # Get version
+# Priority: .install-version file > Ruby VERSION constant
 get_version() {
+  # Check for .install-version file first (written by install.sh for manual installs)
+  if [[ -f "${RADP_VF_HOME}/.install-version" ]]; then
+    cat "${RADP_VF_HOME}/.install-version"
+    return 0
+  fi
+
+  # Fall back to Ruby VERSION constant
   (cd "${RUBY_LIB_DIR}" && ruby -r ./lib/radp_vagrant -e "puts RadpVagrant::VERSION" 2>/dev/null) || echo "unknown"
 }
 
