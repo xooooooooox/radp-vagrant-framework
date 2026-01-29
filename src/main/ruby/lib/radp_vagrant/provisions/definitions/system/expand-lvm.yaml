@@ -1,0 +1,20 @@
+desc: Expand LVM partition and filesystem to use all available disk space
+defaults:
+  privileged: true
+  run: once
+  env:
+    required: []
+    optional:
+      - name: LVM_PARTITION
+        value: ""
+        desc: LVM partition to expand (e.g., /dev/sda3). Auto-detected if empty.
+      - name: LVM_VG
+        value: ""
+        desc: Volume group name. Auto-detected if empty.
+      - name: LVM_LV
+        value: ""
+        desc: Logical volume to expand. Auto-detected (root LV) if empty.
+      - name: DRY_RUN
+        value: "false"
+        desc: Show what would be done without making changes.
+  script: expand-lvm.sh

@@ -1,6 +1,8 @@
 ## Unreleased
 
 ### feat
+- Add `vagrant-disksize` plugin support for disk resizing (e.g., Ubuntu boxes with 10GB default)
+- Add `radp:system/expand-lvm` builtin provision to expand LVM partition and filesystem
 - Display accurate version info when installed via `--ref <branch>` or `--ref <sha>`
 - Generate `.install-version` file during manual installation
 - Update `radp-vf version` to check `.install-version` first
