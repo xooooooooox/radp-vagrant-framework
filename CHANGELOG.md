@@ -1,3 +1,7 @@
+## v0.2.7 - 2026-01-29
+
+- 727532a feat(provision): Add `radp:system/expand-lvm` builtin provision to expand LVM partition and filesystem
+- 3b41e4c feat(plugin): Add `vagrant-disksize` plugin support for disk resizing (e.g., Ubuntu boxes with 10GB default)
 ## v0.2.6 - 2026-01-28
 
 - 399b44b fix: fix banner version
