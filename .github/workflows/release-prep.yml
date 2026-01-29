@@ -116,7 +116,6 @@ jobs:
         run: |
           set -euo pipefail
           python3 - <<'PY'
-          import datetime as dt
           import os
           import re
           import subprocess
@@ -158,13 +157,14 @@ jobs:
           log_range = f"{last_tag}..HEAD" if last_tag else "HEAD"
           log_output = try_git("log", "--no-merges", "--pretty=%h %s", log_range)
           
-          today = dt.datetime.utcnow().strftime("%Y-%m-%d")
-          
           # Build changelog entry
-          entry_lines = [f"## {version} - {today}", ""]
+          entry_lines = [f"## {version}", ""]
           if log_output.strip():
             for line in log_output.strip().splitlines():
-              entry_lines.append(f"- {line}")
+              # Remove commit hash prefix (first word)
+              parts = line.split(" ", 1)
+              desc = parts[1] if len(parts) > 1 else parts[0]
+              entry_lines.append(f"- {desc}")
           else:
             entry_lines.append("- Initial release")
           entry_lines.append("")
