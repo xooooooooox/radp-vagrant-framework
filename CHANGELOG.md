@@ -1,3 +1,6 @@
+## v0.2.6 - 2026-01-28
+
+- 399b44b fix: fix banner version
 ## Unreleased
 
 ### feat
