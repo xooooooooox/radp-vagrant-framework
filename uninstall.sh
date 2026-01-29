@@ -115,20 +115,12 @@ detect_manual_installed() {
     return 0
   fi
 
-  # Also check if the symlink points to a manual install
-  local link_path="$HOME/.local/bin/radp-vf"
-  if [[ -L "${link_path}" ]]; then
-    local target
-    target="$(readlink -f "${link_path}" 2>/dev/null || readlink "${link_path}")"
-    local target_dir
-    target_dir="$(dirname "${target}")"
-    # radp-vf is copied to bin_dir directly, not symlinked through install_dir
-    # Check if the install dir marker exists
-    local install_dir="$HOME/.local/lib/${REPO_NAME}"
-    if [[ -d "${install_dir}" ]]; then
-      echo "${install_dir}"
-      return 0
-    fi
+  # Fallback: check if radp-vf exists in bin_dir and install_dir exists
+  # (radp-vf is copied to bin_dir, not symlinked)
+  local bin_path="$HOME/.local/bin/radp-vf"
+  if [[ -f "${bin_path}" && -d "${default_dir}" ]]; then
+    echo "${default_dir}"
+    return 0
   fi
 
   echo ""
@@ -252,6 +244,10 @@ main() {
 
   log ""
   log "${REPO_NAME} has been uninstalled"
+  log ""
+  log "Note: User configuration files may remain at:"
+  log "  ~/.config/radp-vagrant-framework/"
+  log "Remove manually if no longer needed."
 }
 
 main "$@"
