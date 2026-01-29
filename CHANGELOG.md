@@ -2,6 +2,11 @@
 
 ## v0.2.8
 
+- docs: update changelog
+- chore(ci): update release-prep step 'update changelog'
+
+## v0.2.8
+
 ### feat
 
 - Add `vagrant-disksize` plugin support for disk resizing (e.g., Ubuntu boxes with 10GB default)
