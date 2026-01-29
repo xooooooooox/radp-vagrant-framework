@@ -5,6 +5,7 @@ require_relative 'hostmanager'
 require_relative 'vbguest'
 require_relative 'proxyconf'
 require_relative 'bindfs'
+require_relative 'disksize'
 
 module RadpVagrant
   module Configurators
@@ -57,7 +58,8 @@ module RadpVagrant
               Hostmanager,
               Vbguest,
               Proxyconf,
-              Bindfs
+              Bindfs,
+              Disksize
             ]
           end
         end

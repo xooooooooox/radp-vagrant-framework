@@ -14,6 +14,7 @@ require_relative 'radp_vagrant/configurators/synced_folder'
 require_relative 'radp_vagrant/configurators/provision'
 require_relative 'radp_vagrant/configurators/trigger'
 require_relative 'radp_vagrant/configurators/plugin'
+require_relative 'radp_vagrant/configurators/disksize'
 require_relative 'radp_vagrant/cli/base'
 require_relative 'radp_vagrant/cli/list'
 require_relative 'radp_vagrant/cli/validate'
@@ -194,6 +195,7 @@ module RadpVagrant
       vagrant_config.vm.define machine_name do |vm_config|
         Configurators::Box.configure(vm_config, guest)
         Configurators::Provider.configure(vm_config, guest)
+        Configurators::Disksize.configure(vm_config, guest)
         Configurators::Network.configure(vm_config, guest, env: env)
         Configurators::Hostmanager.configure(vm_config, guest)
         Configurators::SyncedFolder.configure(vm_config, guest)

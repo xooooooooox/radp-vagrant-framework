@@ -349,6 +349,37 @@ provider:
 | `gui`       | boolean | `false`                      | Show VirtualBox GUI                            |
 | `customize` | array   | -                            | VirtualBox customize commands (modifyvm, etc.) |
 
+## Disk Size
+
+Resize the primary disk of VirtualBox VMs. Requires `vagrant-disksize` plugin.
+
+> **Note:** Only works with VirtualBox provider. Some boxes (like Ubuntu) default to small root partitions (10GB).
+
+```yaml
+guests:
+  - id: master
+    disk_size: 50GB               # Resize disk to 50GB
+    box:
+      name: ubuntu/jammy64
+    provider:
+      mem: 4096
+      cpus: 2
+```
+
+**Configuration:**
+
+| Option      | Type   | Default | Description                                      |
+|-------------|--------|---------|--------------------------------------------------|
+| `disk_size` | string | -       | Disk size (e.g., `50GB`, `100GB`). Numbers without unit default to GB. |
+
+**Plugin requirement:**
+
+```yaml
+plugins:
+  - name: vagrant-disksize
+    required: true
+```
+
 ## Network
 
 ```yaml
@@ -507,6 +538,7 @@ Builtin provisions use `radp:` prefix and come with sensible defaults.
 | `radp:nfs/external-nfs-mount` | Mount external NFS shares                          | `privileged: true, run: always` |
 | `radp:ssh/host-trust`         | Add host SSH key to guest                          | `privileged: false, run: once`  |
 | `radp:ssh/cluster-trust`      | Configure SSH trust between VMs                    | `privileged: true, run: once`   |
+| `radp:system/expand-lvm`      | Expand LVM partition and filesystem                | `privileged: true, run: once`   |
 | `radp:time/chrony-sync`       | Configure chrony for time sync                     | `privileged: true, run: once`   |
 | `radp:yadm/clone`             | Clone dotfiles repository using yadm               | `privileged: false, run: once`  |
 
@@ -561,7 +593,69 @@ provisions:
 | `radp:nfs/external-nfs-mount` | `NFS_SERVER`, `NFS_ROOT` | None                                                                    |
 | `radp:ssh/host-trust`         | None (one of below)      | `HOST_SSH_PUBLIC_KEY`, `HOST_SSH_PUBLIC_KEY_FILE`, `SSH_USERS`(vagrant) |
 | `radp:ssh/cluster-trust`      | `CLUSTER_SSH_KEY_DIR`    | `SSH_USERS`(vagrant), `TRUSTED_HOST_PATTERN`(auto)                      |
+| `radp:system/expand-lvm`      | None                     | `LVM_PARTITION`, `LVM_VG`, `LVM_LV`, `DRY_RUN`(false)                    |
 | `radp:time/chrony-sync`       | None                     | `NTP_SERVERS`, `NTP_POOL`(pool.ntp.org), `TIMEZONE`, `SYNC_NOW`(true)   |
+
+#### Expand LVM Provision Details
+
+The `radp:system/expand-lvm` provision expands LVM partition and filesystem to use all available disk space.
+
+**When to Use:**
+
+This is needed when using `vagrant-disksize` plugin to resize the virtual disk. The plugin only resizes the virtual disk,
+but the partition table and LVM volumes are not automatically expanded.
+
+**What it Does:**
+
+1. Installs `growpart` (from `cloud-guest-utils` or `cloud-utils-growpart`)
+2. Expands the partition using `growpart`
+3. Resizes the physical volume using `pvresize`
+4. Extends the logical volume using `lvextend`
+5. Resizes the filesystem using `resize2fs` (ext4) or `xfs_growfs` (xfs)
+
+**Environment Variables:**
+
+| Variable        | Description                                           |
+|-----------------|-------------------------------------------------------|
+| `LVM_PARTITION` | LVM partition to expand (e.g., /dev/sda3). Auto-detected if empty. |
+| `LVM_VG`        | Volume group name. Auto-detected if empty.            |
+| `LVM_LV`        | Logical volume to expand. Auto-detected (root LV) if empty. |
+| `DRY_RUN`       | Show what would be done without making changes (default: false). |
+
+**Example:**
+
+```yaml
+guests:
+  - id: master
+    disk_size: 50GB
+    box:
+      name: ubuntu/jammy64
+    provisions:
+      - name: radp:system/expand-lvm
+        enabled: true
+```
+
+**Before:**
+```
+$ lsblk
+NAME                      MAJ:MIN RM  SIZE RO TYPE MOUNTPOINTS
+sda                         8:0    0   50G  0 disk
+├─sda1                      8:1    0  538M  0 part /boot/efi
+├─sda2                      8:2    0  1.8G  0 part /boot
+└─sda3                      8:3    0  7.7G  0 part
+  └─ubuntu--vg-ubuntu--lv 252:0    0  7.7G  0 lvm  /
+```
+
+**After:**
+```
+$ lsblk
+NAME                      MAJ:MIN RM  SIZE RO TYPE MOUNTPOINTS
+sda                         8:0    0   50G  0 disk
+├─sda1                      8:1    0  538M  0 part /boot/efi
+├─sda2                      8:2    0  1.8G  0 part /boot
+└─sda3                      8:3    0 47.7G  0 part
+  └─ubuntu--vg-ubuntu--lv 252:0    0 47.7G  0 lvm  /
+```
 
 #### GPG Import Provision Details
 
@@ -992,6 +1086,7 @@ Supported plugins:
 - `vagrant-vbguest` - VirtualBox Guest Additions
 - `vagrant-proxyconf` - Proxy configuration
 - `vagrant-bindfs` - Bind mounts (per synced-folder)
+- `vagrant-disksize` - Disk resizing (VirtualBox only)
 
 ### vagrant-hostmanager
 
@@ -1139,3 +1234,40 @@ plugins:
         force_user: vagrant
         force_group: vagrant
 ```
+
+### vagrant-disksize
+
+Resizes the primary disk of VirtualBox VMs. Useful for boxes with small default disk sizes (e.g., Ubuntu with 10GB root).
+
+> **Note:** Only works with VirtualBox provider.
+
+**Plugin configuration:**
+
+```yaml
+plugins:
+  - name: vagrant-disksize
+    required: true
+```
+
+**Per-guest disk size:**
+
+```yaml
+guests:
+  - id: k8s-master
+    disk_size: 50GB
+    box:
+      name: ubuntu/jammy64
+    provider:
+      mem: 4096
+      cpus: 2
+```
+
+**Size formats:**
+
+| Format  | Example   | Description          |
+|---------|-----------|----------------------|
+| With GB | `50GB`    | 50 gigabytes         |
+| Number  | `50`      | Defaults to 50GB     |
+| With TB | `1TB`     | 1 terabyte           |
+
+Reference: https://github.com/sprotheroe/vagrant-disksize
