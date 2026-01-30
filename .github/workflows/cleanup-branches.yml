@@ -1,0 +1,108 @@
+name: Cleanup stale workflow branches
+
+on:
+  schedule:
+    # Run every Sunday at 00:00 UTC
+    - cron: "0 0 * * 0"
+  workflow_dispatch:
+    inputs:
+      days_old:
+        description: "Delete branches older than this many days"
+        type: number
+        default: 14
+        required: false
+      dry_run:
+        description: "Dry run (list branches without deleting)"
+        type: boolean
+        default: false
+        required: false
+
+permissions:
+  contents: write
+
+jobs:
+  cleanup-branches:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Delete stale workflow branches
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+
+          # Configuration
+          days_old="${{ inputs.days_old || 14 }}"
+          dry_run="${{ inputs.dry_run || false }}"
+          branch_pattern="workflow/v"
+
+          echo "Configuration:"
+          echo "  Days old threshold: ${days_old}"
+          echo "  Dry run: ${dry_run}"
+          echo "  Branch pattern: ${branch_pattern}*"
+          echo ""
+
+          # Calculate cutoff date
+          cutoff_date=$(date -d "${days_old} days ago" +%Y-%m-%dT%H:%M:%SZ 2>/dev/null || \
+                        date -v-${days_old}d +%Y-%m-%dT%H:%M:%SZ)
+          cutoff_epoch=$(date -d "${cutoff_date}" +%s 2>/dev/null || \
+                         date -j -f "%Y-%m-%dT%H:%M:%SZ" "${cutoff_date}" +%s)
+
+          echo "Cutoff date: ${cutoff_date}"
+          echo ""
+
+          # Get remote branches matching pattern
+          git fetch --prune origin
+
+          deleted_count=0
+          skipped_count=0
+
+          while IFS= read -r ref; do
+            [[ -z "$ref" ]] && continue
+
+            branch="${ref#refs/remotes/origin/}"
+            [[ "$branch" != ${branch_pattern}* ]] && continue
+
+            # Get last commit date for this branch
+            last_commit_date=$(git log -1 --format=%cI "origin/${branch}" 2>/dev/null || echo "")
+            if [[ -z "$last_commit_date" ]]; then
+              echo "[SKIP] ${branch} (no commit date)"
+              skipped_count=$((skipped_count + 1))
+              continue
+            fi
+
+            # Convert to epoch for comparison
+            commit_epoch=$(date -d "${last_commit_date}" +%s 2>/dev/null || \
+                           date -j -f "%Y-%m-%dT%H:%M:%S%z" "${last_commit_date}" +%s 2>/dev/null || \
+                           echo "0")
+
+            if [[ "$commit_epoch" -lt "$cutoff_epoch" ]]; then
+              if [[ "$dry_run" == "true" ]]; then
+                echo "[DRY-RUN] Would delete: ${branch} (last commit: ${last_commit_date})"
+              else
+                echo "[DELETE] ${branch} (last commit: ${last_commit_date})"
+                git push origin --delete "${branch}" || {
+                  echo "  Failed to delete ${branch}"
+                  skipped_count=$((skipped_count + 1))
+                  continue
+                }
+              fi
+              deleted_count=$((deleted_count + 1))
+            else
+              echo "[KEEP] ${branch} (last commit: ${last_commit_date})"
+              skipped_count=$((skipped_count + 1))
+            fi
+          done < <(git for-each-ref --format='%(refname)' refs/remotes/origin/)
+
+          echo ""
+          echo "Summary:"
+          if [[ "$dry_run" == "true" ]]; then
+            echo "  Would delete: ${deleted_count} branches"
+          else
+            echo "  Deleted: ${deleted_count} branches"
+          fi
+          echo "  Kept/Skipped: ${skipped_count} branches"
