@@ -184,6 +184,13 @@ jobs:
           print(f"Updated version to {version}")
           PY
 
+      - name: Regenerate completion scripts
+        run: |
+          set -euo pipefail
+          ./bin/radp-vf completion bash > completions/radp-vf.bash
+          ./bin/radp-vf completion zsh > completions/radp-vf.zsh
+          echo "Completion scripts regenerated"
+
       - name: Commit changes
         run: |
           set -euo pipefail
@@ -197,7 +204,11 @@ jobs:
           fi
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add src/main/ruby/lib/radp_vagrant/version.rb CHANGELOG.md
+          git add \
+            src/main/ruby/lib/radp_vagrant/version.rb \
+            completions/radp-vf.bash \
+            completions/radp-vf.zsh \
+            CHANGELOG.md
           git commit -m "Release prep ${{ steps.version.outputs.version }}"
 
       - name: Push branch
