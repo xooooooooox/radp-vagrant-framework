@@ -1,11 +1,6 @@
 # CHANGELOG
 
-## v0.2.8
-
-- docs: update changelog
-- chore(ci): update release-prep step 'update changelog'
-
-## v0.2.8
+## v0.2.9
 
 ### feat
 
@@ -14,27 +9,20 @@
 - Display accurate version info when installed via `--ref <branch>` or `--ref <sha>`
 - Generate `.install-version` file during manual installation
 - Update `radp-vf version` to check `.install-version` first
-
-## v0.2.7
-
-### feat
-
-- Add `vagrant-disksize` plugin support for disk resizing
-- Add `radp:system/expand-lvm` builtin provision to expand LVM partition and filesystem
 - Add provision radp:crypto/gpg-preset-passphrase
 - Add provision radp:git/clone and radp:yadm/clone
   - Support HTTPS and SSH clone
   - Support HTTPS authentication with token
   - Support SSH with key, host override, port override
   - Auto-detect target user when unprivileged
-- Optimize builtin provision gpg-import
 - Add builtin provision gpg-import
   - Support public key import from content, file, or keyserver
   - Support secret key import with passphrase
   - Support trust configuration via level or ownertrust file
   - Smart GPG_USERS handling: auto-detect when unprivileged, required when privileged
-- Update shell completion
-- Consistence cli args
+- Optimize builtin provision gpg-import
+- Update shell completion with auto-generation support
+- Consistent CLI args
 
 ### fix
 
@@ -43,11 +31,9 @@
 
 ### chore
 
-- Update CLAUDE.md
-- Fix install
+- Fix install script
 - Add post-install message
-- Update installation
-- Update install and uninstall
+- Update installation and uninstall scripts
 
 ## v0.1.11
 
