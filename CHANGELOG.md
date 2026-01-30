@@ -2,6 +2,13 @@
 
 ## v0.2.9
 
+- docs: update changelog
+- feat: update radp-bf completion
+- feat(ci): Add workflow cleanup-branches.yml
+- feat(uninstall): Fix dead code in detect_manual_installed and add post-install note about user config directory
+
+## v0.2.9
+
 ### feat
 
 - Add `vagrant-disksize` plugin support for disk resizing (e.g., Ubuntu boxes with 10GB default)
