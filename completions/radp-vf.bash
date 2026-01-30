@@ -44,9 +44,21 @@ _radp_vf() {
             return
             ;;
         vg)
-            # Vagrant command completion
-            local vagrant_cmds="up halt destroy status ssh provision reload suspend resume snapshot"
-            COMPREPLY=($(compgen -W "$vagrant_cmds" -- "$cur"))
+            # Delegate to vagrant's native completion for consistent experience
+            if type _vagrant &>/dev/null; then
+                # Shift words to simulate vagrant being called directly
+                local vagrant_words=("vagrant" "${words[@]:2}")
+                local vagrant_cword=$((cword - 1))
+                COMP_WORDS=("${vagrant_words[@]}")
+                COMP_CWORD=$vagrant_cword
+                COMP_LINE="${vagrant_words[*]}"
+                COMP_POINT=${#COMP_LINE}
+                _vagrant
+            else
+                # Fallback if vagrant completion not loaded
+                local vagrant_cmds="up halt destroy status ssh provision reload suspend resume snapshot box plugin validate"
+                COMPREPLY=($(compgen -W "$vagrant_cmds" -- "$cur"))
+            fi
             return
             ;;
         list)
