@@ -4,16 +4,44 @@ require 'yaml'
 
 module RadpVagrant
   # Loads and validates YAML configuration with multi-file support
-  # Supports: vagrant.yaml (base) + vagrant-{env}.yaml (environment-specific)
+  # Supports: vagrant.yaml or config.yaml (base) + {base}-{env}.yaml (environment-specific)
   module ConfigLoader
     class ConfigError < StandardError; end
 
+    # Supported base configuration filenames (in priority order)
+    SUPPORTED_BASE_FILENAMES = %w[vagrant.yaml config.yaml].freeze
+
     class << self
+      # Detect the base configuration filename
+      # Priority: RADP_VAGRANT_CONFIG_BASE_FILENAME env var > auto-detect (vagrant.yaml > config.yaml)
+      # @param config_dir [String] Directory containing config files
+      # @return [String] Detected base filename
+      # @raise [ConfigError] If no configuration file is found
+      def detect_base_filename(config_dir)
+        # Priority 1: Environment variable (supports any filename)
+        if (env_filename = ENV['RADP_VAGRANT_CONFIG_BASE_FILENAME'])
+          if File.exist?(File.join(config_dir, env_filename))
+            return env_filename
+          else
+            raise ConfigError, "Specified config file not found: #{env_filename} in #{config_dir}"
+          end
+        end
+
+        # Priority 2: Auto-detect from supported filenames
+        SUPPORTED_BASE_FILENAMES.each do |filename|
+          return filename if File.exist?(File.join(config_dir, filename))
+        end
+
+        raise ConfigError, "No configuration file found in #{config_dir}. " \
+                           "Expected one of: #{SUPPORTED_BASE_FILENAMES.join(', ')}"
+      end
+
       # Load configuration with environment-based merging
       # @param config_dir [String] Directory containing config files
-      # @param base_filename [String] Base config filename (default: vagrant.yaml)
+      # @param base_filename [String, nil] Base config filename (auto-detected if nil)
       # @return [Hash] Merged configuration
-      def load(config_dir, base_filename = 'vagrant.yaml')
+      def load(config_dir, base_filename = nil)
+        base_filename ||= detect_base_filename(config_dir)
         base_path = File.join(config_dir, base_filename)
         raise ConfigError, "Base configuration file not found: #{base_path}" unless File.exist?(base_path)
 
@@ -40,10 +68,11 @@ module RadpVagrant
         # Merge plugins by name (later entries override/extend earlier ones)
         merge_plugins_by_name!(final_config)
 
-        # Store resolved env for reference
+        # Store resolved metadata for reference
         final_config['radp'] ||= {}
         final_config['radp']['_resolved_env'] = env
         final_config['radp']['_config_dir'] = config_dir
+        final_config['radp']['_base_filename'] = base_filename
 
         validate!(final_config)
         final_config
@@ -132,8 +161,8 @@ module RadpVagrant
         clusters = config.dig('radp', 'extend', 'vagrant', 'config', 'clusters')
         return if clusters.nil? || clusters.empty?
 
-        raise ConfigError, "Clusters must not be defined in base vagrant.yaml. " \
-                           "Define clusters in vagrant-<env>.yaml instead."
+        raise ConfigError, "Clusters must not be defined in base configuration file. " \
+                           "Define clusters in the environment-specific file (e.g., vagrant-<env>.yaml or config-<env>.yaml)."
       end
 
       def validate_plugins!(plugins)

@@ -219,11 +219,14 @@ radp:
 
 Configuration is loaded in order with deep merging:
 
-1. `vagrant.yaml` - Base configuration (must contain `radp.env`)
-2. `vagrant-{env}.yaml` - Environment-specific clusters
+1. Base configuration file (must contain `radp.env`)
+   - Auto-detected: `vagrant.yaml` (preferred) or `config.yaml`
+   - Or set via `RADP_VAGRANT_CONFIG_BASE_FILENAME` environment variable
+2. Environment-specific file: `{base}-{env}.yaml`
+   - e.g., `vagrant-dev.yaml` or `config-dev.yaml`
 
 ```yaml
-# vagrant.yaml - Base configuration
+# vagrant.yaml (or config.yaml) - Base configuration
 radp:
   env: dev  # Determines which env file to load
   extend:
@@ -261,7 +264,7 @@ radp:
 
 #### File-Level Merging
 
-`vagrant.yaml` (base) + `vagrant-{env}.yaml` (environment) are deep merged:
+Base config (`vagrant.yaml` or `config.yaml`) + environment config (`{base}-{env}.yaml`) are deep merged:
 
 | Type        | Merge Behavior                                 |
 |-------------|------------------------------------------------|

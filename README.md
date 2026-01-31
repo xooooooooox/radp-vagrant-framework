@@ -19,7 +19,8 @@ provisioning.
 ## Features
 
 - **Declarative YAML Configuration** - Define VMs, networks, provisions, and triggers in YAML
-- **Multi-File Configuration** - Base config + environment-specific overrides (`vagrant.yaml` + `vagrant-{env}.yaml`)
+- **Multi-File Configuration** - Base config + environment-specific overrides (`vagrant.yaml` or `config.yaml` +
+  `{base}-{env}.yaml`)
 - **Configuration Inheritance** - Global → Cluster → Guest with automatic merging
 - **Run Anywhere** - No need to `cd` to Vagrantfile directory; run commands from anywhere with `-c` flag
 - **Template System** - Initialize projects from predefined templates (`base`, `single-node`, `k8s-cluster`)
@@ -46,7 +47,8 @@ brew install radp-vagrant-framework
 ### Script (curl)
 
 ```shell
-curl -fsSL https://raw.githubusercontent.com/xooooooooox/radp-vagrant-framework/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/xooooooooox/radp-vagrant-framework/main/install.sh
+| bash
 ```
 
 Install from a specific branch or tag:
@@ -163,18 +165,21 @@ radp-vf vg destroy
 
 ### Environment Variables
 
-| Variable                  | Description                      |
-|---------------------------|----------------------------------|
-| `RADP_VF_HOME`            | Framework installation directory |
-| `RADP_VAGRANT_CONFIG_DIR` | Configuration directory path     |
-| `RADP_VAGRANT_ENV`        | Override environment name        |
+| Variable                            | Description                                              |
+|-------------------------------------|----------------------------------------------------------|
+| `RADP_VF_HOME`                      | Framework installation directory                         |
+| `RADP_VAGRANT_CONFIG_DIR`           | Configuration directory path                             |
+| `RADP_VAGRANT_ENV`                  | Override environment name                                |
+| `RADP_VAGRANT_CONFIG_BASE_FILENAME` | Override base config filename (supports any custom name) |
 
 ## Configuration Overview
 
 ### Multi-File Loading
 
-1. `vagrant.yaml` - Base configuration (must contain `radp.env`)
-2. `vagrant-{env}.yaml` - Environment-specific clusters
+Base configuration file is auto-detected (or set via `RADP_VAGRANT_CONFIG_BASE_FILENAME`):
+
+1. `vagrant.yaml` or `config.yaml` - Base configuration (must contain `radp.env`)
+2. `{base}-{env}.yaml` - Environment-specific clusters (e.g., `vagrant-dev.yaml` or `config-dev.yaml`)
 
 ### Inheritance Hierarchy
 
@@ -197,7 +202,9 @@ provisions:
       NFS_ROOT: "/volume1/nfs"
 ```
 
-Available: `radp:crypto/gpg-import`, `radp:crypto/gpg-preset-passphrase`, `radp:git/clone`, `radp:nfs/external-nfs-mount`, `radp:ssh/host-trust`, `radp:ssh/cluster-trust`, `radp:time/chrony-sync`, `radp:yadm/clone`
+Available: `radp:crypto/gpg-import`, `radp:crypto/gpg-preset-passphrase`, `radp:git/clone`,
+`radp:nfs/external-nfs-mount`, `radp:ssh/host-trust`, `radp:ssh/cluster-trust`, `radp:time/chrony-sync`,
+`radp:yadm/clone`
 
 ### Builtin Triggers
 

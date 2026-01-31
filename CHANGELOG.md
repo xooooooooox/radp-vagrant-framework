@@ -1,9 +1,13 @@
 # CHANGELOG
 
-## v0.2.10
+## v0.2.11
 
 ### feat
 
+- Add support for `config.yaml` as alternative base configuration filename
+  - Auto-detection: `vagrant.yaml` (preferred) > `config.yaml`
+  - New env var `RADP_VAGRANT_CONFIG_BASE_FILENAME` supports any custom filename
+  - Environment files follow base filename pattern (e.g., `config-dev.yaml`)
 - Add `vagrant-disksize` plugin support for disk resizing (e.g., Ubuntu boxes with 10GB default)
 - Add `radp:system/expand-lvm` builtin provision to expand LVM partition and filesystem
 - Display accurate version info when installed via `--ref <branch>` or `--ref <sha>`

@@ -10,9 +10,15 @@ module RadpVagrant
         errors = []
         warnings = []
 
-        # Check vagrant.yaml exists
-        base_file = File.join(config_dir, 'vagrant.yaml')
-        errors << "Base config file not found: #{base_file}" unless File.exist?(base_file)
+        # Detect base filename
+        base_filename = nil
+        begin
+          base_filename = RadpVagrant::ConfigLoader.detect_base_filename(config_dir)
+        rescue RadpVagrant::ConfigLoader::ConfigError => e
+          errors << e.message
+        end
+
+        base_file = base_filename ? File.join(config_dir, base_filename) : nil
 
         begin
           # Set environment override if specified
@@ -22,7 +28,9 @@ module RadpVagrant
           config = RadpVagrant::ConfigLoader.load(config_dir)
 
           env_name = config.dig('radp', '_resolved_env')
-          env_file = File.join(config_dir, "vagrant-#{env_name}.yaml")
+          resolved_base_filename = config.dig('radp', '_base_filename') || base_filename
+          env_filename = resolved_base_filename.sub('.yaml', "-#{env_name}.yaml")
+          env_file = File.join(config_dir, env_filename)
 
           puts "Base config:  #{base_file}"
           puts "Environment:  #{env_name}"

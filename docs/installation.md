@@ -128,11 +128,12 @@ echo 'fpath=(~/.zfunc $fpath)' >>~/.zshrc
 
 ## Environment Variables
 
-| Variable                  | Description                      | Default                    |
-|---------------------------|----------------------------------|----------------------------|
-| `RADP_VF_HOME`            | Framework installation directory | Auto-detected              |
-| `RADP_VAGRANT_CONFIG_DIR` | Configuration directory path     | `./config` if exists       |
-| `RADP_VAGRANT_ENV`        | Override environment name        | `radp.env` in vagrant.yaml |
+| Variable                            | Description                           | Default                         |
+|-------------------------------------|---------------------------------------|---------------------------------|
+| `RADP_VF_HOME`                      | Framework installation directory      | Auto-detected                   |
+| `RADP_VAGRANT_CONFIG_DIR`           | Configuration directory path          | `./config` if exists            |
+| `RADP_VAGRANT_ENV`                  | Override environment name             | `radp.env` in config file       |
+| `RADP_VAGRANT_CONFIG_BASE_FILENAME` | Override base config filename         | Auto-detect: `vagrant.yaml` > `config.yaml` |
 
 **RADP_VF_HOME defaults:**
 
@@ -143,8 +144,17 @@ echo 'fpath=(~/.zfunc $fpath)' >>~/.zshrc
 **Priority (highest to lowest):**
 
 ```
--c flag > RADP_VAGRANT_CONFIG_DIR > ./config
--e flag > RADP_VAGRANT_ENV > radp.env in vagrant.yaml
+Config dir:  -c flag > RADP_VAGRANT_CONFIG_DIR > ./config
+Config file: RADP_VAGRANT_CONFIG_BASE_FILENAME > vagrant.yaml > config.yaml
+Environment: -e flag > RADP_VAGRANT_ENV > radp.env in config file
+```
+
+**Custom config filename:**
+
+```bash
+# Use a custom base filename (supports any name)
+export RADP_VAGRANT_CONFIG_BASE_FILENAME=myproject.yaml
+# Will load: myproject.yaml + myproject-{env}.yaml
 ```
 
 ## VAGRANT_DOTFILE_PATH Recommendation

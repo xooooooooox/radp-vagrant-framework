@@ -104,8 +104,9 @@ ruby -r ./lib/radp_vagrant -e "puts RadpVagrant.generate_vagrantfile('config')"
 
 ### Configuration Flow
 1. **ConfigLoader** (`lib/radp_vagrant/config_loader.rb`) loads YAML with multi-file support:
-   - Base config: `config/vagrant.yaml` (must contain `radp.env`)
-   - Environment config: `config/vagrant-{env}.yaml`
+   - Base config: auto-detected (`vagrant.yaml` or `config.yaml`, must contain `radp.env`)
+   - Environment config: `{base}-{env}.yaml` (e.g., `vagrant-dev.yaml` or `config-dev.yaml`)
+   - Override via `RADP_VAGRANT_CONFIG_BASE_FILENAME` env var (supports any filename)
    - Deep merge with array concatenation
    - **Plugins merge by name** (same-named plugins have options deep merged)
 
@@ -392,6 +393,7 @@ radp:
 - `RADP_VF_HOME` - Framework installation directory (auto-detected: project root for git clone, libexec for Homebrew)
 - `RADP_VAGRANT_CONFIG_DIR` - Override configuration directory path
 - `RADP_VAGRANT_ENV` - Override environment name
+- `RADP_VAGRANT_CONFIG_BASE_FILENAME` - Override base config filename (default: auto-detect `vagrant.yaml` > `config.yaml`; supports any custom filename)
 
 ## Code Style
 
@@ -408,11 +410,12 @@ radp:
 5. **Plugin Options**: Use underscores to match official Vagrant plugin documentation
 6. **Modular Plugins**: Each plugin configurator in separate file for maintainability
 7. **Machine Naming**: Vagrant machine name uses `provider.name` (default: `{env}-{cluster}-{id}`) for uniqueness in `$VAGRANT_DOTFILE_PATH/machines/<name>`
-8. **Clusters Only in Env Files**: Clusters must be defined in `vagrant-{env}.yaml`, not in base `vagrant.yaml`
-9. **Hybrid Bash/Ruby Architecture**: CLI entry point (`bin/radp-vf`) is Bash for option parsing and environment setup; complex logic is in Ruby modules (`lib/radp_vagrant/cli/`)
+8. **Clusters Only in Env Files**: Clusters must be defined in environment-specific file (e.g., `vagrant-{env}.yaml` or `config-{env}.yaml`), not in base config
+9. **Flexible Config Filename**: Supports `vagrant.yaml` (default), `config.yaml`, or custom filename via `RADP_VAGRANT_CONFIG_BASE_FILENAME` env var
+10. **Hybrid Bash/Ruby Architecture**: CLI entry point (`bin/radp-vf`) is Bash for option parsing and environment setup; complex logic is in Ruby modules (`lib/radp_vagrant/cli/`)
 
 ## Validation Rules
 
 - Duplicate cluster names in the same env file are not allowed
 - Duplicate guest IDs within the same cluster are not allowed
-- Clusters cannot be defined in base `vagrant.yaml` (only in `vagrant-{env}.yaml`)
+- Clusters cannot be defined in base config file (only in environment-specific file like `vagrant-{env}.yaml` or `config-{env}.yaml`)

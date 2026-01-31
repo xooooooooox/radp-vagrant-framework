@@ -42,7 +42,14 @@ module RadpVagrant
       end
 
       def display_resolved_config
-        return display_config_not_resolved unless config_dir && File.exist?("#{config_dir}/vagrant.yaml")
+        # Try to detect base filename
+        begin
+          base_filename = RadpVagrant::ConfigLoader.detect_base_filename(config_dir) if config_dir
+        rescue RadpVagrant::ConfigLoader::ConfigError
+          base_filename = nil
+        end
+
+        return display_config_not_resolved unless config_dir && base_filename
 
         # Set environment override if specified
         ENV['RADP_VAGRANT_ENV'] = env_override if env_override
@@ -50,7 +57,11 @@ module RadpVagrant
         begin
           config = RadpVagrant::ConfigLoader.load(config_dir)
           resolved_env = config.dig('radp', '_resolved_env')
+          resolved_base_filename = config.dig('radp', '_base_filename') || base_filename
           env_source = determine_env_source(resolved_env)
+
+          # Derive env filename from base filename (vagrant.yaml -> vagrant-env.yaml, config.yaml -> config-env.yaml)
+          env_filename = resolved_base_filename.sub('.yaml', "-#{resolved_env}.yaml")
 
           puts ''
           puts 'Resolved Configuration:'
@@ -59,9 +70,9 @@ module RadpVagrant
           puts "                #{env_source}"
           puts ''
           puts 'Config Files:'
-          puts "  Base: #{config_dir}/vagrant.yaml"
+          puts "  Base: #{config_dir}/#{resolved_base_filename}"
 
-          env_file = "#{config_dir}/vagrant-#{resolved_env}.yaml"
+          env_file = "#{config_dir}/#{env_filename}"
           if resolved_env && File.exist?(env_file)
             puts "  Env:  #{env_file}"
           elsif resolved_env
@@ -76,7 +87,7 @@ module RadpVagrant
       def display_config_not_resolved
         puts ''
         puts 'Configuration: (not resolved)'
-        puts '  Use -c <dir>, set RADP_VAGRANT_CONFIG_DIR, or run from a directory with config/vagrant.yaml'
+        puts '  Use -c <dir>, set RADP_VAGRANT_CONFIG_DIR, or run from a directory with config/vagrant.yaml or config/config.yaml'
         puts "  Or run 'radp-vf init <dir>' to create a new project."
       end
 
@@ -84,7 +95,7 @@ module RadpVagrant
         return '(from -e flag)' if env_override && env_override == resolved_env
         return '(from RADP_VAGRANT_ENV)' if ENV['RADP_VAGRANT_ENV'] && ENV['RADP_VAGRANT_ENV'] == resolved_env
 
-        '(from vagrant.yaml)'
+        '(from config file)'
       end
     end
   end

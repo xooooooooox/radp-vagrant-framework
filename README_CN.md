@@ -18,7 +18,7 @@
 ## 特性
 
 - **声明式 YAML 配置** - 通过 YAML 定义虚拟机、网络、配置脚本和触发器
-- **多文件配置** - 基础配置 + 环境特定覆盖（`vagrant.yaml` + `vagrant-{env}.yaml`）
+- **多文件配置** - 基础配置 + 环境特定覆盖（`vagrant.yaml` 或 `config.yaml` + `{base}-{env}.yaml`）
 - **配置继承** - Global → Cluster → Guest 三级继承，自动合并
 - **随处运行** - 无需 `cd` 到 Vagrantfile 目录，使用 `-c` 参数可从任意位置运行命令
 - **模板系统** - 通过预定义模板初始化项目（`base`、`single-node`、`k8s-cluster`）
@@ -45,7 +45,8 @@ brew install radp-vagrant-framework
 ### 脚本安装 (curl)
 
 ```shell
-curl -fsSL https://raw.githubusercontent.com/xooooooooox/radp-vagrant-framework/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/xooooooooox/radp-vagrant-framework/main/install.sh
+  | bash
 ```
 
 从指定分支或标签安装：
@@ -162,18 +163,21 @@ radp-vf vg destroy
 
 ### 环境变量
 
-| 变量                        | 描述     |
-|---------------------------|--------|
-| `RADP_VF_HOME`            | 框架安装目录 |
-| `RADP_VAGRANT_CONFIG_DIR` | 配置目录路径 |
-| `RADP_VAGRANT_ENV`        | 覆盖环境名称 |
+| 变量                                  | 描述                    |
+|-------------------------------------|-----------------------|
+| `RADP_VF_HOME`                      | 框架安装目录                |
+| `RADP_VAGRANT_CONFIG_DIR`           | 配置目录路径                |
+| `RADP_VAGRANT_ENV`                  | 覆盖环境名称                |
+| `RADP_VAGRANT_CONFIG_BASE_FILENAME` | 覆盖基础配置文件名（支持任意自定义文件名） |
 
 ## 配置概述
 
 ### 多文件加载
 
-1. `vagrant.yaml` - 基础配置（必须包含 `radp.env`）
-2. `vagrant-{env}.yaml` - 环境特定的集群配置
+基础配置文件自动检测（或通过 `RADP_VAGRANT_CONFIG_BASE_FILENAME` 设置）：
+
+1. `vagrant.yaml` 或 `config.yaml` - 基础配置（必须包含 `radp.env`）
+2. `{base}-{env}.yaml` - 环境特定的集群配置（如 `vagrant-dev.yaml` 或 `config-dev.yaml`）
 
 ### 继承层级
 
@@ -196,7 +200,8 @@ provisions:
       NFS_ROOT: "/volume1/nfs"
 ```
 
-可用：`radp:crypto/gpg-import`、`radp:crypto/gpg-preset-passphrase`、`radp:git/clone`、`radp:nfs/external-nfs-mount`、`radp:ssh/host-trust`、`radp:ssh/cluster-trust`、`radp:time/chrony-sync`、`radp:yadm/clone`
+可用：`radp:crypto/gpg-import`、`radp:crypto/gpg-preset-passphrase`、`radp:git/clone`、`radp:nfs/external-nfs-mount`、
+`radp:ssh/host-trust`、`radp:ssh/cluster-trust`、`radp:time/chrony-sync`、`radp:yadm/clone`
 
 ### 内置 Triggers
 

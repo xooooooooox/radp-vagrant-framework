@@ -73,6 +73,22 @@ get_version() {
   (cd "${RUBY_LIB_DIR}" && ruby -r ./lib/radp_vagrant -e "puts RadpVagrant::VERSION" 2>/dev/null) || echo "unknown"
 }
 
+# Check if a config file exists in directory
+# Supports: vagrant.yaml, config.yaml, or RADP_VAGRANT_CONFIG_BASE_FILENAME
+has_config_file() {
+  local dir="$1"
+  # Priority 1: Environment variable
+  if [[ -n "${RADP_VAGRANT_CONFIG_BASE_FILENAME:-}" ]]; then
+    [[ -f "${dir}/${RADP_VAGRANT_CONFIG_BASE_FILENAME}" ]]
+    return
+  fi
+  # Priority 2: vagrant.yaml (default)
+  [[ -f "${dir}/vagrant.yaml" ]] && return 0
+  # Priority 3: config.yaml
+  [[ -f "${dir}/config.yaml" ]] && return 0
+  return 1
+}
+
 # Resolve config directory
 # Priority: -c flag > RADP_VAGRANT_CONFIG_DIR > ./config (if exists)
 resolve_config_dir() {
@@ -82,18 +98,22 @@ resolve_config_dir() {
     config_dir="${OPT_CONFIG}"
   elif [[ -n "${RADP_VAGRANT_CONFIG_DIR:-}" ]]; then
     config_dir="${RADP_VAGRANT_CONFIG_DIR}"
-  elif [[ -d "./config" && -f "./config/vagrant.yaml" ]]; then
+  elif [[ -d "./config" ]] && has_config_file "./config"; then
     config_dir="$(pwd)/config"
   fi
 
   if [[ -z "${config_dir}" ]]; then
     echo "Error: Cannot determine config directory." >&2
-    echo "Use -c <dir>, set RADP_VAGRANT_CONFIG_DIR, or run from a directory containing config/vagrant.yaml" >&2
+    echo "Use -c <dir>, set RADP_VAGRANT_CONFIG_DIR, or run from a directory containing config/vagrant.yaml or config/config.yaml" >&2
     return 1
   fi
 
-  if [[ ! -f "${config_dir}/vagrant.yaml" ]]; then
-    echo "Error: No vagrant.yaml found in ${config_dir}" >&2
+  if ! has_config_file "${config_dir}"; then
+    echo "Error: No configuration file found in ${config_dir}" >&2
+    echo "Expected one of: vagrant.yaml, config.yaml" >&2
+    if [[ -n "${RADP_VAGRANT_CONFIG_BASE_FILENAME:-}" ]]; then
+      echo "Or the file specified by RADP_VAGRANT_CONFIG_BASE_FILENAME: ${RADP_VAGRANT_CONFIG_BASE_FILENAME}" >&2
+    fi
     return 1
   fi
 
@@ -144,10 +164,14 @@ Environment Variables:
                           Current: ${RADP_VF_HOME}
   RADP_VAGRANT_CONFIG_DIR Configuration directory path
   RADP_VAGRANT_ENV        Override environment name
+  RADP_VAGRANT_CONFIG_BASE_FILENAME
+                          Override base config filename (default: auto-detect)
+                          Supports any filename, e.g., myproject.yaml
 
 Priority (highest to lowest):
-  -c flag > RADP_VAGRANT_CONFIG_DIR > ./config
-  -e flag > RADP_VAGRANT_ENV > radp.env in vagrant.yaml
+  Config dir: -c flag > RADP_VAGRANT_CONFIG_DIR > ./config
+  Config file: RADP_VAGRANT_CONFIG_BASE_FILENAME > vagrant.yaml > config.yaml
+  Environment: -e flag > RADP_VAGRANT_ENV > radp.env in config file
 
 Examples:
   radp-vf init myproject
@@ -263,7 +287,7 @@ cmd_init() {
   abs_target_dir="$(cd "${target_dir}" && pwd)"
   abs_config_dir="${abs_target_dir}/config"
 
-  if [[ -f "${abs_config_dir}/vagrant.yaml" ]]; then
+  if has_config_file "${abs_config_dir}"; then
     echo "Error: Configuration already exists in ${abs_config_dir}" >&2
     exit 1
   fi
@@ -358,7 +382,7 @@ cmd_init() {
   echo "  # Option 2: Run from anywhere"
   echo "  radp-vf -c ${abs_config_dir} vg status"
   echo ""
-  echo "Edit vagrant.yaml to change 'env' and create your own environment file."
+  echo "Edit the config file (vagrant.yaml or config.yaml) to change 'env' and create your own environment file."
   echo "Add custom provisions in provisions/definitions/ with user: prefix."
   echo ""
   echo "Use 'radp-vf template list' to see all available templates."
