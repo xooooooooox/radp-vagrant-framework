@@ -2,11 +2,6 @@
 
 ## v0.2.10
 
-- docs: update changelog
-- feat: update radp-bf completion
-
-## v0.2.10
-
 ### feat
 
 - Add `vagrant-disksize` plugin support for disk resizing (e.g., Ubuntu boxes with 10GB default)
