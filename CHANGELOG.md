@@ -2,6 +2,12 @@
 
 ## v0.2.11
 
+- feat: Add support for `config.yaml` as alternative base configuration filename
+- docs: update readme
+- docs: update changelog
+
+## v0.2.11
+
 ### feat
 
 - Add support for `config.yaml` as alternative base configuration filename
