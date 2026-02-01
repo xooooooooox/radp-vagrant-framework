@@ -1,7 +1,5 @@
 # CHANGELOG
 
-## v0.2.12
-
 ### feat
 
 - Add user triggers support with `user:` prefix
