@@ -171,6 +171,9 @@ module RadpVagrant
       # Convention: if name is empty, default to <env>-<cluster-name>-<guest-id>
       # Note: VirtualBox name uses dashes, group-id uses slashes
       provider['name'] ||= "#{env}-#{cluster_name}-#{guest['id']}"
+
+      # Convention: if hostname is empty, default to <guest-id>.<cluster-name>.<env>
+      guest['hostname'] ||= "#{guest['id']}.#{cluster_name}.#{env}"
     end
 
     def output_config(config, format)
