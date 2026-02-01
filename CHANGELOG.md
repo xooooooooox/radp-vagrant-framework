@@ -1,15 +1,5 @@
 # CHANGELOG
 
-## v0.2.12
-
-- docs: update docs
-- feat: add builtin templates
-- feat(radp-vf): update scaffold
-- feat: Add user triggers support with `user:` prefix
-- feat: Add user triggers support with `user:` prefix
-
-## v0.2.12
-
 ### feat
 
 - Add user triggers support with `user:` prefix
