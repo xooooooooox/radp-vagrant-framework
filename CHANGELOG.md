@@ -2,6 +2,11 @@
 
 ## v0.2.13
 
+- docs: update changelog
+- fix: if hostname is empty, default to <guest-id>.<cluster-name>.<env>
+
+## v0.2.13
+
 ### feat
 
 - Add user triggers support with `user:` prefix
