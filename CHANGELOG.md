@@ -1,6 +1,6 @@
 # CHANGELOG
 
-## v0.2.13
+## v0.2.14
 
 ### feat
 
@@ -10,6 +10,9 @@
     - Uses same definition format as builtin triggers
 - Add triggers directory to project templates (base, single-node, k8s-cluster)
 - Update `radp-vf init` output to show available triggers
+- Add `inline` support for builtin/user provision definitions
+    - Definitions can now use `inline: |...` instead of `script: xxx.sh`
+    - User config can override definition's inline/script
 - Add support for `config.yaml` as alternative base configuration filename
   - Auto-detection: `vagrant.yaml` (preferred) > `config.yaml`
   - New env var `RADP_VAGRANT_CONFIG_BASE_FILENAME` supports any custom filename
@@ -54,6 +57,8 @@
 - Expand "Creating Custom Templates" section in docs/advanced.md with detailed guide
 - Add "User Triggers System" section to CLAUDE.md
 - Update directory structure in CLAUDE.md to include triggers
+- Document script path resolution mechanism for provisions and triggers
+- Document inline script support in definition format
 
 ## v0.1.11
 

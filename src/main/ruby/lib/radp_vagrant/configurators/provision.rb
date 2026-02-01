@@ -56,8 +56,15 @@ module RadpVagrant
           return provision unless definition
 
           resolved = merge_with_defaults(provision, definition)
-          resolved['path'] = Provisions::Registry.script_path(name)
           resolved['_builtin'] = true
+
+          # Only set path if definition uses script (not inline)
+          # User-provided inline or path takes precedence
+          unless resolved['inline'] || resolved['path']
+            script_path = Provisions::Registry.script_path(name)
+            resolved['path'] = script_path if script_path
+          end
+
           resolved
         end
 
@@ -69,13 +76,20 @@ module RadpVagrant
           return provision unless definition
 
           resolved = merge_with_defaults(provision, definition)
-          resolved['path'] = Provisions::UserRegistry.script_path(name, config_dir)
           resolved['_user_provision'] = true
+
+          # Only set path if definition uses script (not inline)
+          # User-provided inline or path takes precedence
+          unless resolved['inline'] || resolved['path']
+            script_path = Provisions::UserRegistry.script_path(name, config_dir)
+            resolved['path'] = script_path if script_path
+          end
+
           resolved
         end
 
         # Merge user config with definition defaults
-        # New definition format:
+        # Definition format:
         #   desc: Human-readable description
         #   defaults:
         #     privileged: true
@@ -83,7 +97,10 @@ module RadpVagrant
         #     env:
         #       required: [{name, desc}]
         #       optional: [{name, value, desc}]
-        #     script: xxx.sh
+        #     script: xxx.sh      # Use external script file
+        #     # OR
+        #     inline: |           # Use inline script
+        #       echo "Hello"
         #
         # @param provision [Hash] User provision configuration
         # @param definition [Hash] Definition with defaults
@@ -95,6 +112,12 @@ module RadpVagrant
           # Apply simple defaults (privileged, run)
           resolved['privileged'] = defaults['privileged'] if defaults.key?('privileged')
           resolved['run'] = defaults['run'] if defaults.key?('run')
+
+          # Apply inline from defaults (if no script is defined)
+          resolved['inline'] = defaults['inline'] if defaults.key?('inline')
+
+          # Apply args from defaults
+          resolved['args'] = defaults['args'] if defaults.key?('args')
 
           # Merge user config (user values override defaults)
           provision.each do |key, value|

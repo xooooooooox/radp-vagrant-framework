@@ -220,10 +220,10 @@ radp:
 Configuration is loaded in order with deep merging:
 
 1. Base configuration file (must contain `radp.env`)
-   - Auto-detected: `vagrant.yaml` (preferred) or `config.yaml`
-   - Or set via `RADP_VAGRANT_CONFIG_BASE_FILENAME` environment variable
+    - Auto-detected: `vagrant.yaml` (preferred) or `config.yaml`
+    - Or set via `RADP_VAGRANT_CONFIG_BASE_FILENAME` environment variable
 2. Environment-specific file: `{base}-{env}.yaml`
-   - e.g., `vagrant-dev.yaml` or `config-dev.yaml`
+    - e.g., `vagrant-dev.yaml` or `config-dev.yaml`
 
 ```yaml
 # vagrant.yaml (or config.yaml) - Base configuration
@@ -371,8 +371,8 @@ guests:
 
 **Configuration:**
 
-| Option      | Type   | Default | Description                                      |
-|-------------|--------|---------|--------------------------------------------------|
+| Option      | Type   | Default | Description                                                            |
+|-------------|--------|---------|------------------------------------------------------------------------|
 | `disk_size` | string | -       | Disk size (e.g., `50GB`, `100GB`). Numbers without unit default to GB. |
 
 **Plugin requirement:**
@@ -533,17 +533,17 @@ Execution order: `global-pre → cluster-pre → guest → cluster-post → glob
 
 Builtin provisions use `radp:` prefix and come with sensible defaults.
 
-| Name                              | Description                                        | Defaults                        |
-|-----------------------------------|----------------------------------------------------|---------------------------------|
-| `radp:crypto/gpg-import`          | Import GPG keys (public/secret) into user keyrings | `privileged: false, run: once`  |
-| `radp:crypto/gpg-preset-passphrase` | Preset GPG passphrase in gpg-agent cache         | `privileged: false, run: once`  |
-| `radp:git/clone`                  | Clone git repository (HTTPS or SSH)                | `privileged: false, run: once`  |
-| `radp:nfs/external-nfs-mount` | Mount external NFS shares                          | `privileged: true, run: always` |
-| `radp:ssh/host-trust`         | Add host SSH key to guest                          | `privileged: false, run: once`  |
-| `radp:ssh/cluster-trust`      | Configure SSH trust between VMs                    | `privileged: true, run: once`   |
-| `radp:system/expand-lvm`      | Expand LVM partition and filesystem                | `privileged: true, run: once`   |
-| `radp:time/chrony-sync`       | Configure chrony for time sync                     | `privileged: true, run: once`   |
-| `radp:yadm/clone`             | Clone dotfiles repository using yadm               | `privileged: false, run: once`  |
+| Name                                | Description                                        | Defaults                        |
+|-------------------------------------|----------------------------------------------------|---------------------------------|
+| `radp:crypto/gpg-import`            | Import GPG keys (public/secret) into user keyrings | `privileged: false, run: once`  |
+| `radp:crypto/gpg-preset-passphrase` | Preset GPG passphrase in gpg-agent cache           | `privileged: false, run: once`  |
+| `radp:git/clone`                    | Clone git repository (HTTPS or SSH)                | `privileged: false, run: once`  |
+| `radp:nfs/external-nfs-mount`       | Mount external NFS shares                          | `privileged: true, run: always` |
+| `radp:ssh/host-trust`               | Add host SSH key to guest                          | `privileged: false, run: once`  |
+| `radp:ssh/cluster-trust`            | Configure SSH trust between VMs                    | `privileged: true, run: once`   |
+| `radp:system/expand-lvm`            | Expand LVM partition and filesystem                | `privileged: true, run: once`   |
+| `radp:time/chrony-sync`             | Configure chrony for time sync                     | `privileged: true, run: once`   |
+| `radp:yadm/clone`                   | Clone dotfiles repository using yadm               | `privileged: false, run: once`  |
 
 **Usage:**
 
@@ -596,7 +596,7 @@ provisions:
 | `radp:nfs/external-nfs-mount` | `NFS_SERVER`, `NFS_ROOT` | None                                                                    |
 | `radp:ssh/host-trust`         | None (one of below)      | `HOST_SSH_PUBLIC_KEY`, `HOST_SSH_PUBLIC_KEY_FILE`, `SSH_USERS`(vagrant) |
 | `radp:ssh/cluster-trust`      | `CLUSTER_SSH_KEY_DIR`    | `SSH_USERS`(vagrant), `TRUSTED_HOST_PATTERN`(auto)                      |
-| `radp:system/expand-lvm`      | None                     | `LVM_PARTITION`, `LVM_VG`, `LVM_LV`, `DRY_RUN`(false)                    |
+| `radp:system/expand-lvm`      | None                     | `LVM_PARTITION`, `LVM_VG`, `LVM_LV`, `DRY_RUN`(false)                   |
 | `radp:time/chrony-sync`       | None                     | `NTP_SERVERS`, `NTP_POOL`(pool.ntp.org), `TIMEZONE`, `SYNC_NOW`(true)   |
 
 #### Expand LVM Provision Details
@@ -605,7 +605,8 @@ The `radp:system/expand-lvm` provision expands LVM partition and filesystem to u
 
 **When to Use:**
 
-This is needed when using `vagrant-disksize` plugin to resize the virtual disk. The plugin only resizes the virtual disk,
+This is needed when using `vagrant-disksize` plugin to resize the virtual disk. The plugin only resizes the virtual
+disk,
 but the partition table and LVM volumes are not automatically expanded.
 
 **What it Does:**
@@ -618,12 +619,12 @@ but the partition table and LVM volumes are not automatically expanded.
 
 **Environment Variables:**
 
-| Variable        | Description                                           |
-|-----------------|-------------------------------------------------------|
+| Variable        | Description                                                        |
+|-----------------|--------------------------------------------------------------------|
 | `LVM_PARTITION` | LVM partition to expand (e.g., /dev/sda3). Auto-detected if empty. |
-| `LVM_VG`        | Volume group name. Auto-detected if empty.            |
-| `LVM_LV`        | Logical volume to expand. Auto-detected (root LV) if empty. |
-| `DRY_RUN`       | Show what would be done without making changes (default: false). |
+| `LVM_VG`        | Volume group name. Auto-detected if empty.                         |
+| `LVM_LV`        | Logical volume to expand. Auto-detected (root LV) if empty.        |
+| `DRY_RUN`       | Show what would be done without making changes (default: false).   |
 
 **Example:**
 
@@ -639,6 +640,7 @@ guests:
 ```
 
 **Before:**
+
 ```
 $ lsblk
 NAME                      MAJ:MIN RM  SIZE RO TYPE MOUNTPOINTS
@@ -650,6 +652,7 @@ sda                         8:0    0   50G  0 disk
 ```
 
 **After:**
+
 ```
 $ lsblk
 NAME                      MAJ:MIN RM  SIZE RO TYPE MOUNTPOINTS
@@ -780,17 +783,17 @@ By default, GPG prompts for your passphrase every time you use your secret key. 
 
 **Environment Variables:**
 
-| Variable                 | Description                                          |
-|--------------------------|------------------------------------------------------|
-| **Required:**            |                                                      |
-| `GPG_KEY_UID`            | Key UID (email) to identify the key                  |
+| Variable                       | Description                                    |
+|--------------------------------|------------------------------------------------|
+| **Required:**                  |                                                |
+| `GPG_KEY_UID`                  | Key UID (email) to identify the key            |
 | **Passphrase (one required):** |                                                |
-| `GPG_PASSPHRASE`         | Passphrase content                                   |
-| `GPG_PASSPHRASE_FILE`    | Path to file containing passphrase                   |
-| **Options:**             |                                                      |
-| `GPG_AGENT_ALLOW_PRESET` | Auto-configure gpg-agent.conf (default: true)        |
-| **General:**             |                                                      |
-| `GPG_USERS`              | Target users (auto-detected when unprivileged)       |
+| `GPG_PASSPHRASE`               | Passphrase content                             |
+| `GPG_PASSPHRASE_FILE`          | Path to file containing passphrase             |
+| **Options:**                   |                                                |
+| `GPG_AGENT_ALLOW_PRESET`       | Auto-configure gpg-agent.conf (default: true)  |
+| **General:**                   |                                                |
+| `GPG_USERS`                    | Target users (auto-detected when unprivileged) |
 
 **Common Use Cases:**
 
@@ -823,25 +826,25 @@ The `radp:git/clone` provision clones git repositories with HTTPS or SSH authent
 
 **Environment Variables:**
 
-| Variable                              | Description                                          |
-|---------------------------------------|------------------------------------------------------|
-| **Required:**                         |                                                      |
-| `GIT_REPO_URL`                        | Repository URL (HTTPS or SSH format)                 |
-| **Target Options:**                   |                                                      |
-| `GIT_CLONE_DIR`                       | Target directory (default: ~/repo-name)              |
-| `GIT_CLONE_OPTIONS`                   | Additional git clone options (e.g., `--depth 1`)     |
-| **HTTPS Authentication:**             |                                                      |
-| `GIT_HTTPS_USER`                      | Username for HTTPS auth                              |
-| `GIT_HTTPS_TOKEN`                     | Personal access token                                |
-| `GIT_HTTPS_TOKEN_FILE`                | Path to file containing token                        |
-| **SSH Options:**                      |                                                      |
-| `GIT_SSH_KEY_FILE`                    | Path to SSH private key file                         |
-| `GIT_SSH_HOST`                        | Override SSH hostname/IP (for DNS issues)            |
-| `GIT_SSH_PORT`                        | Override SSH port (default: 22)                      |
-| `GIT_SSH_STRICT_HOST_KEY`             | Strict host key checking (default: false)            |
-| **General:**                          |                                                      |
-| `GIT_SKIP_IF_EXISTS`                  | Skip if directory exists (default: true)             |
-| `GIT_USERS`                           | Target users (auto-detected when unprivileged)       |
+| Variable                  | Description                                      |
+|---------------------------|--------------------------------------------------|
+| **Required:**             |                                                  |
+| `GIT_REPO_URL`            | Repository URL (HTTPS or SSH format)             |
+| **Target Options:**       |                                                  |
+| `GIT_CLONE_DIR`           | Target directory (default: ~/repo-name)          |
+| `GIT_CLONE_OPTIONS`       | Additional git clone options (e.g., `--depth 1`) |
+| **HTTPS Authentication:** |                                                  |
+| `GIT_HTTPS_USER`          | Username for HTTPS auth                          |
+| `GIT_HTTPS_TOKEN`         | Personal access token                            |
+| `GIT_HTTPS_TOKEN_FILE`    | Path to file containing token                    |
+| **SSH Options:**          |                                                  |
+| `GIT_SSH_KEY_FILE`        | Path to SSH private key file                     |
+| `GIT_SSH_HOST`            | Override SSH hostname/IP (for DNS issues)        |
+| `GIT_SSH_PORT`            | Override SSH port (default: 22)                  |
+| `GIT_SSH_STRICT_HOST_KEY` | Strict host key checking (default: false)        |
+| **General:**              |                                                  |
+| `GIT_SKIP_IF_EXISTS`      | Skip if directory exists (default: true)         |
+| `GIT_USERS`               | Target users (auto-detected when unprivileged)   |
 
 **Common Use Cases:**
 
@@ -881,7 +884,8 @@ provisions:
 
 #### yadm Clone Provision Details
 
-The `radp:yadm/clone` provision clones dotfiles repositories using [yadm](https://yadm.io/) (Yet Another Dotfiles Manager).
+The `radp:yadm/clone` provision clones dotfiles repositories using [yadm](https://yadm.io/) (Yet Another Dotfiles
+Manager).
 
 **What is yadm?**
 
@@ -895,25 +899,25 @@ yadm is a dotfiles manager that wraps around git:
 
 **Environment Variables:**
 
-| Variable                              | Description                                          |
-|---------------------------------------|------------------------------------------------------|
-| **Required:**                         |                                                      |
-| `YADM_REPO_URL`                       | Dotfiles repository URL (HTTPS or SSH)               |
-| **yadm Options:**                     |                                                      |
-| `YADM_BOOTSTRAP`                      | Run bootstrap after clone (default: false)           |
-| `YADM_DECRYPT`                        | Run decrypt after clone (default: false, needs GPG)  |
-| `YADM_CLASS`                          | Set yadm class before clone                          |
-| **HTTPS Authentication:**             |                                                      |
-| `YADM_HTTPS_USER`                     | Username for HTTPS auth                              |
-| `YADM_HTTPS_TOKEN`                    | Personal access token                                |
-| `YADM_HTTPS_TOKEN_FILE`               | Path to file containing token                        |
-| **SSH Options:**                      |                                                      |
-| `YADM_SSH_KEY_FILE`                   | Path to SSH private key file                         |
-| `YADM_SSH_HOST`                       | Override SSH hostname/IP (for DNS issues)            |
-| `YADM_SSH_PORT`                       | Override SSH port (default: 22)                      |
-| `YADM_SSH_STRICT_HOST_KEY`            | Strict host key checking (default: false)            |
-| **General:**                          |                                                      |
-| `YADM_USERS`                          | Target users (auto-detected when unprivileged)       |
+| Variable                   | Description                                         |
+|----------------------------|-----------------------------------------------------|
+| **Required:**              |                                                     |
+| `YADM_REPO_URL`            | Dotfiles repository URL (HTTPS or SSH)              |
+| **yadm Options:**          |                                                     |
+| `YADM_BOOTSTRAP`           | Run bootstrap after clone (default: false)          |
+| `YADM_DECRYPT`             | Run decrypt after clone (default: false, needs GPG) |
+| `YADM_CLASS`               | Set yadm class before clone                         |
+| **HTTPS Authentication:**  |                                                     |
+| `YADM_HTTPS_USER`          | Username for HTTPS auth                             |
+| `YADM_HTTPS_TOKEN`         | Personal access token                               |
+| `YADM_HTTPS_TOKEN_FILE`    | Path to file containing token                       |
+| **SSH Options:**           |                                                     |
+| `YADM_SSH_KEY_FILE`        | Path to SSH private key file                        |
+| `YADM_SSH_HOST`            | Override SSH hostname/IP (for DNS issues)           |
+| `YADM_SSH_PORT`            | Override SSH port (default: 22)                     |
+| `YADM_SSH_STRICT_HOST_KEY` | Strict host key checking (default: false)           |
+| **General:**               |                                                     |
+| `YADM_USERS`               | Target users (auto-detected when unprivileged)      |
 
 **Common Use Cases:**
 
@@ -972,18 +976,58 @@ myproject/
                 └── setup.sh
 ```
 
-**Definition format:**
+**Definition format (using script file):**
 
 ```yaml
 # config/provisions/definitions/docker/setup.yaml
-description: Install and configure Docker
+desc: Install and configure Docker
 defaults:
   privileged: true
   run: once
-required_env:
-  - DOCKER_VERSION
-script: setup.sh
+  env:
+    required:
+      - name: DOCKER_VERSION
+        desc: Docker version to install
+    optional:
+      - name: DOCKER_COMPOSE
+        value: "true"
+        desc: Install Docker Compose
+  script: setup.sh
 ```
+
+**Definition format (using inline script):**
+
+```yaml
+# config/provisions/definitions/hello.yaml
+desc: Simple hello world provision
+defaults:
+  privileged: false
+  run: once
+  inline: |
+    echo "Hello from inline provision!"
+    echo "Environment: ${MY_VAR:-default}"
+  env:
+    optional:
+      - name: MY_VAR
+        value: "world"
+        desc: Variable to display
+```
+
+**Script path resolution:**
+
+For definitions using `script`, the path is resolved as follows:
+
+| Provision Type    | Script Location                                                            | Resolution                        |
+|-------------------|----------------------------------------------------------------------------|-----------------------------------|
+| Builtin (`radp:`) | `lib/radp_vagrant/provisions/scripts/`                                     | Absolute path within framework    |
+| User (`user:`)    | `{config_dir}/provisions/scripts/` or `{project_root}/provisions/scripts/` | Two-level lookup via PathResolver |
+
+For user provisions, scripts follow the same subdirectory structure as definitions:
+
+- Definition: `provisions/definitions/docker/setup.yaml`
+- Script: `provisions/scripts/docker/setup.sh`
+
+If a script exists in both `config_dir` and `project_root`, `config_dir` takes precedence (with a warning).
 
 **Usage:**
 
@@ -993,6 +1037,11 @@ provisions:
     enabled: true
     env:
       DOCKER_VERSION: "24.0"
+
+  - name: user:hello
+    enabled: true
+    env:
+      MY_VAR: "custom value"
 ```
 
 ## Triggers
@@ -1091,7 +1140,7 @@ myproject/
                 └── cleanup.sh
 ```
 
-**Definition format:**
+**Definition format (using script file):**
 
 ```yaml
 # config/triggers/definitions/system/cleanup.yaml
@@ -1107,6 +1156,22 @@ defaults:
     script: cleanup.sh
 ```
 
+**Definition format (using inline script):**
+
+```yaml
+# config/triggers/definitions/notify.yaml
+desc: Send notification after VM start
+defaults:
+  "on": after
+  action:
+    - up
+  type: action
+  run:
+    inline: |
+      echo "VM started at $(date)"
+      # Add notification logic here
+```
+
 For triggers that run on the guest (instead of host):
 
 ```yaml
@@ -1118,13 +1183,33 @@ defaults:
     - up
   run-remote:
     script: guest-cleanup.sh
+    # OR use inline:
+    # inline: |
+    #   rm -rf /tmp/*
 ```
+
+**Script path resolution:**
+
+For definitions using `run.script` or `run-remote.script`:
+
+| Trigger Type      | Script Location                                                        | Resolution                        |
+|-------------------|------------------------------------------------------------------------|-----------------------------------|
+| Builtin (`radp:`) | `lib/radp_vagrant/triggers/scripts/`                                   | Absolute path within framework    |
+| User (`user:`)    | `{config_dir}/triggers/scripts/` or `{project_root}/triggers/scripts/` | Two-level lookup via PathResolver |
+
+Scripts follow the same subdirectory structure as definitions:
+
+- Definition: `triggers/definitions/system/cleanup.yaml`
+- Script: `triggers/scripts/system/cleanup.sh`
 
 **Usage:**
 
 ```yaml
 triggers:
   - name: user:system/cleanup
+    enabled: true
+
+  - name: user:notify
     enabled: true
 ```
 
@@ -1297,7 +1382,8 @@ plugins:
 
 ### vagrant-disksize
 
-Resizes the primary disk of VirtualBox VMs. Useful for boxes with small default disk sizes (e.g., Ubuntu with 10GB root).
+Resizes the primary disk of VirtualBox VMs. Useful for boxes with small default disk sizes (e.g., Ubuntu with 10GB
+root).
 
 > **Note:** Only works with VirtualBox provider.
 
@@ -1324,10 +1410,10 @@ guests:
 
 **Size formats:**
 
-| Format  | Example   | Description          |
-|---------|-----------|----------------------|
-| With GB | `50GB`    | 50 gigabytes         |
-| Number  | `50`      | Defaults to 50GB     |
-| With TB | `1TB`     | 1 terabyte           |
+| Format  | Example | Description      |
+|---------|---------|------------------|
+| With GB | `50GB`  | 50 gigabytes     |
+| Number  | `50`    | Defaults to 50GB |
+| With TB | `1TB`   | 1 terabyte       |
 
 Reference: https://github.com/sprotheroe/vagrant-disksize
