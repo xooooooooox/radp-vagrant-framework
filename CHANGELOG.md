@@ -38,7 +38,7 @@
 
 - Fix banner version
 - Fix radp:yadm/clone
-- Fix if hostname is empty, default to <guest-id>.<cluster-name>.<env>
+- Fix if hostname is empty, default to `<guest-id>.<cluster-name>.<env>`
 
 ### chore
 
