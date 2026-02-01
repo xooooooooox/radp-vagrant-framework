@@ -1,5 +1,7 @@
 # CHANGELOG
 
+## v0.2.13
+
 ### feat
 
 - Add user triggers support with `user:` prefix
@@ -36,6 +38,7 @@
 
 - Fix banner version
 - Fix radp:yadm/clone
+- Fix if hostname is empty, default to <guest-id>.<cluster-name>.<env>
 
 ### chore
 
