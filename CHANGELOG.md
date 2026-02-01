@@ -2,11 +2,6 @@
 
 ## v0.2.14
 
-- feat(provision): Add `inline` support for builtin/user provision definitions
-- docs: update changelog
-
-## v0.2.14
-
 ### feat
 
 - Add user triggers support with `user:` prefix
