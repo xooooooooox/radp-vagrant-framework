@@ -216,6 +216,55 @@ triggers:
 
 Available: `radp:system/disable-swap`, `radp:system/disable-selinux`, `radp:system/disable-firewalld`
 
+### User-Defined Provisions & Triggers
+
+Define reusable components with `user:` prefix in your project:
+
+```
+myproject/
+└── config/
+    ├── provisions/
+    │   ├── definitions/
+    │   │   └── docker/setup.yaml    # -> user:docker/setup
+    │   └── scripts/
+    │       └── docker/setup.sh
+    └── triggers/
+        ├── definitions/
+        │   └── system/cleanup.yaml  # -> user:system/cleanup
+        └── scripts/
+            └── system/cleanup.sh
+```
+
+Usage:
+
+```yaml
+provisions:
+  - name: user:docker/setup
+    enabled: true
+
+triggers:
+  - name: user:system/cleanup
+    enabled: true
+```
+
+### User Templates
+
+Create custom templates in `~/.config/radp-vagrant/templates/`:
+
+```
+~/.config/radp-vagrant/templates/
+└── my-template/
+    ├── template.yaml              # Metadata and variables
+    └── files/                     # Files to copy
+        ├── config/
+        │   ├── vagrant.yaml
+        │   └── vagrant-{{env}}.yaml
+        ├── provisions/
+        └── triggers/
+```
+
+See [Advanced Topics](docs/advanced.md) for detailed template creation guide.
+
 ## Documentation
 
 - [Installation Guide](docs/installation.md) - Full installation options, upgrade, shell completion

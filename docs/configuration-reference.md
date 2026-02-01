@@ -1071,6 +1071,63 @@ triggers:
     enabled: true
 ```
 
+### User Triggers
+
+Define reusable triggers with `user:` prefix in your project.
+
+**Directory structure:**
+
+```
+myproject/
+└── config/
+    └── triggers/
+        ├── definitions/
+        │   ├── example.yaml          # -> user:example
+        │   └── system/
+        │       └── cleanup.yaml      # -> user:system/cleanup
+        └── scripts/
+            ├── example.sh
+            └── system/
+                └── cleanup.sh
+```
+
+**Definition format:**
+
+```yaml
+# config/triggers/definitions/system/cleanup.yaml
+desc: Cleanup temporary files after VM start
+defaults:
+  "on": after
+  action:
+    - up
+    - reload
+  type: action
+  on-error: continue
+  run:
+    script: cleanup.sh
+```
+
+For triggers that run on the guest (instead of host):
+
+```yaml
+# config/triggers/definitions/guest-cleanup.yaml
+desc: Cleanup inside guest VM
+defaults:
+  "on": after
+  action:
+    - up
+  run-remote:
+    script: guest-cleanup.sh
+```
+
+**Usage:**
+
+```yaml
+triggers:
+  - name: user:system/cleanup
+    enabled: true
+```
+
 ## Plugins
 
 Plugins are configured in the `plugins` array:

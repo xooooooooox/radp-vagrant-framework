@@ -229,6 +229,33 @@ To add a new builtin trigger:
 2. Create `scripts/my-trigger.sh` (or `scripts/category/my-trigger.sh` for subdirectory)
 3. Registry auto-discovers from YAML files recursively (no code changes needed)
 
+### User Triggers System
+User triggers are project-defined triggers under `{config_dir}/triggers/` or `{project_root}/triggers/`:
+- `user_registry.rb` - Registry for user triggers with two-level path lookup
+- User triggers use `user:` prefix (e.g., `user:cleanup` or `user:system/cleanup`)
+- Supports subdirectories with path naming: `definitions/system/cleanup.yaml` → `user:system/cleanup`
+- Scripts mirror definitions structure: `scripts/system/cleanup.sh`
+
+Path resolution (consistent with provisions):
+1. `{config_dir}/triggers/definitions/xxx.yaml`
+2. `{project_root}/triggers/definitions/xxx.yaml`
+If found in both, config_dir takes precedence with a warning.
+
+User trigger definition format (same as builtin):
+```yaml
+desc: Human-readable description
+defaults:
+  "on": after
+  action:
+    - up
+    - reload
+  type: action
+  on-error: continue
+  run:                  # execute on host
+    script: script-name.sh
+  # or run-remote for guest execution
+```
+
 ### Template System
 Templates allow users to initialize projects from predefined configurations with variable substitution.
 
@@ -245,7 +272,10 @@ templates/
 │       ├── config/
 │       │   ├── vagrant.yaml
 │       │   └── vagrant-{{env}}.yaml
-│       └── provisions/
+│       ├── provisions/
+│       │   ├── definitions/
+│       │   └── scripts/
+│       └── triggers/
 │           ├── definitions/
 │           └── scripts/
 ```
@@ -349,6 +379,7 @@ src/main/ruby/
         │   └── scripts/            # Shell scripts
         └── triggers/               # Builtin triggers
             ├── registry.rb         # Builtin triggers registry
+            ├── user_registry.rb    # User triggers registry
             ├── definitions/        # YAML definitions
             └── scripts/            # Shell scripts
 ```

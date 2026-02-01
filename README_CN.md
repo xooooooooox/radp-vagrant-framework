@@ -213,6 +213,55 @@ triggers:
 
 可用：`radp:system/disable-swap`、`radp:system/disable-selinux`、`radp:system/disable-firewalld`
 
+### 用户自定义 Provisions 和 Triggers
+
+在项目中使用 `user:` 前缀定义可复用的组件：
+
+```
+myproject/
+└── config/
+    ├── provisions/
+    │   ├── definitions/
+    │   │   └── docker/setup.yaml    # -> user:docker/setup
+    │   └── scripts/
+    │       └── docker/setup.sh
+    └── triggers/
+        ├── definitions/
+        │   └── system/cleanup.yaml  # -> user:system/cleanup
+        └── scripts/
+            └── system/cleanup.sh
+```
+
+使用方法：
+
+```yaml
+provisions:
+  - name: user:docker/setup
+    enabled: true
+
+triggers:
+  - name: user:system/cleanup
+    enabled: true
+```
+
+### 用户模板
+
+在 `~/.config/radp-vagrant/templates/` 创建自定义模板：
+
+```
+~/.config/radp-vagrant/templates/
+└── my-template/
+    ├── template.yaml              # 元数据和变量
+    └── files/                     # 要复制的文件
+        ├── config/
+        │   ├── vagrant.yaml
+        │   └── vagrant-{{env}}.yaml
+        ├── provisions/
+        └── triggers/
+```
+
+详细模板创建指南请参阅[高级主题](docs/advanced.md)。
+
 ## 文档
 
 - [安装指南](docs/installation.md) - 完整安装选项、升级、Shell 补全

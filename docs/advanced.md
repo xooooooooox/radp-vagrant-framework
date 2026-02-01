@@ -43,13 +43,110 @@ User templates with the same name override builtin templates.
 
 ### Creating Custom Templates
 
-1. Create a directory under `~/.config/radp-vagrant/templates/my-template/`
+User templates allow you to create reusable project scaffolds with variable substitution.
 
-2. Create `template.yaml` with metadata:
+#### Template Location
+
+User templates are stored in `~/.config/radp-vagrant/templates/`. Each template is a directory containing:
+
+```
+~/.config/radp-vagrant/templates/
+└── my-template/
+    ├── template.yaml              # Required: metadata and variables
+    └── files/                     # Required: files to copy
+        ├── config/
+        │   ├── vagrant.yaml
+        │   └── vagrant-{{env}}.yaml
+        ├── provisions/
+        │   ├── definitions/
+        │   │   └── setup.yaml
+        │   └── scripts/
+        │       └── setup.sh
+        └── triggers/
+            ├── definitions/
+            │   └── example.yaml
+            └── scripts/
+                └── example.sh
+```
+
+#### Template Metadata (template.yaml)
 
 ```yaml
 name: my-template
-desc: My custom template
+desc: My custom template for development environments
+version: 1.0.0
+variables:
+  - name: env
+    desc: Environment name (used for config file naming)
+    default: dev
+    required: true
+  - name: cluster_name
+    desc: Name of the cluster
+    default: example
+  - name: box_name
+    desc: Vagrant box to use
+    default: generic/ubuntu2204
+  - name: mem
+    desc: Memory allocation in MB
+    default: 2048
+    type: integer
+  - name: cpus
+    desc: Number of CPUs
+    default: 2
+    type: integer
+```
+
+**Variable types:**
+- `string` (default): Text values
+- `integer`: Numeric values (validated during init)
+
+**Variable properties:**
+- `name`: Variable identifier (used in `{{name}}` placeholders)
+- `desc`: Human-readable description
+- `default`: Default value if not specified via `--set`
+- `required`: If true, must have a value (either default or user-provided)
+- `type`: Variable type for validation
+
+#### Variable Substitution
+
+Use `{{variable}}` syntax in both file contents and filenames:
+
+**In filenames:**
+```
+files/config/vagrant-{{env}}.yaml  →  vagrant-dev.yaml (when env=dev)
+```
+
+**In file contents:**
+```yaml
+# files/config/vagrant.yaml
+radp:
+  env: {{env}}
+  extend:
+    vagrant:
+      config:
+        common:
+          box:
+            name: {{box_name}}
+          provider:
+            mem: {{mem}}
+            cpus: {{cpus}}
+```
+
+#### Complete Example
+
+1. Create the template directory:
+
+```bash
+mkdir -p ~/.config/radp-vagrant/templates/my-dev-template/files/config
+mkdir -p ~/.config/radp-vagrant/templates/my-dev-template/files/provisions/{definitions,scripts}
+mkdir -p ~/.config/radp-vagrant/templates/my-dev-template/files/triggers/{definitions,scripts}
+```
+
+2. Create `template.yaml`:
+
+```yaml
+name: my-dev-template
+desc: Development environment with Docker and common tools
 version: 1.0.0
 variables:
   - name: env
@@ -58,18 +155,30 @@ variables:
     required: true
   - name: cluster_name
     desc: Cluster name
-    default: example
+    default: devbox
   - name: mem
     desc: Memory in MB
-    default: 2048
+    default: 4096
     type: integer
 ```
 
-3. Create `files/` directory with template files
+3. Create template files in `files/` directory
 
-4. Use `{{variable}}` placeholders in files and filenames
+4. Verify discovery:
 
-Example: `files/config/vagrant-{{env}}.yaml` becomes `vagrant-dev.yaml` when `env=dev`.
+```bash
+radp-vf template list
+```
+
+5. Use the template:
+
+```bash
+radp-vf init myproject --template my-dev-template --set mem=8192
+```
+
+#### Template Priority
+
+When a user template has the same name as a builtin template, the user template takes precedence. This allows you to override builtin templates with customized versions.
 
 ## Extending the Framework
 

@@ -1,15 +1,15 @@
 # CHANGELOG
 
-## v0.2.11
-
-- feat: Add support for `config.yaml` as alternative base configuration filename
-- docs: update readme
-- docs: update changelog
-
-## v0.2.11
+## v0.2.12
 
 ### feat
 
+- Add user triggers support with `user:` prefix
+    - User triggers are project-defined triggers under `{config_dir}/triggers/` or `{project_root}/triggers/`
+    - Supports subdirectory paths (e.g., `user:system/cleanup`)
+    - Uses same definition format as builtin triggers
+- Add triggers directory to project templates (base, single-node, k8s-cluster)
+- Update `radp-vf init` output to show available triggers
 - Add support for `config.yaml` as alternative base configuration filename
   - Auto-detection: `vagrant.yaml` (preferred) > `config.yaml`
   - New env var `RADP_VAGRANT_CONFIG_BASE_FILENAME` supports any custom filename
@@ -44,6 +44,15 @@
 - Fix install script
 - Add post-install message
 - Update installation and uninstall scripts
+
+### docs
+
+- Add "User-Defined Provisions & Triggers" section to README.md and README_CN.md
+- Add "User Templates" section to README.md and README_CN.md
+- Add "User Triggers" section to docs/configuration-reference.md
+- Expand "Creating Custom Templates" section in docs/advanced.md with detailed guide
+- Add "User Triggers System" section to CLAUDE.md
+- Update directory structure in CLAUDE.md to include triggers
 
 ## v0.1.11
 
