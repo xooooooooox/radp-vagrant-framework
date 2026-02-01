@@ -1,0 +1,15 @@
+# Example user trigger definition
+# Usage in vagrant.yaml or vagrant-{env}.yaml:
+#   triggers:
+#     - name: user:example
+#       enabled: true
+desc: Example user trigger - demonstrates user-defined triggers
+defaults:
+  "on": after
+  action:
+    - up
+    - reload
+  type: action
+  on-error: continue
+  run:
+    script: example.sh
