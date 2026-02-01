@@ -201,7 +201,7 @@ module RadpVagrant
         Configurators::SyncedFolder.configure(vm_config, guest)
         Configurators::Provision.configure(vm_config, guest)
         Configurators::Plugins::Hostmanager.configure_provisioner(vm_config)
-        Configurators::Trigger.configure(vagrant_config, guest, all_machine_names: all_machine_names)
+        Configurators::Trigger.configure(vagrant_config, guest, all_machine_names: all_machine_names, config_dir: guest['_config_dir'])
       end
     end
 

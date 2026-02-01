@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require_relative '../triggers/registry'
+require_relative '../triggers/user_registry'
 
 module RadpVagrant
   module Configurators
@@ -8,33 +9,42 @@ module RadpVagrant
     # Reference: https://developer.hashicorp.com/vagrant/docs/triggers/configuration
     module Trigger
       class << self
-        def configure(vagrant_config, guest, all_machine_names: [])
+        def configure(vagrant_config, guest, all_machine_names: [], config_dir: nil)
           triggers = guest['triggers']
           return unless triggers
 
           # Use machine name (provider.name) for trigger matching
           machine_name = guest.dig('provider', 'name') || guest['id']
 
+          # Get config_dir from guest if not provided
+          config_dir ||= guest['_config_dir']
+
           triggers.each do |trigger|
             next unless trigger['enabled']
 
-            # Resolve builtin triggers
-            resolved_trigger = resolve_trigger(trigger)
+            # Resolve builtin or user triggers
+            resolved_trigger = resolve_trigger(trigger, config_dir)
             configure_trigger(vagrant_config, resolved_trigger, machine_name, all_machine_names)
           end
         end
 
         private
 
-        # Resolve trigger by checking builtin (radp:) prefix
+        # Resolve trigger by checking builtin (radp:) or user (user:) prefix
         # @param trigger [Hash] The trigger configuration
+        # @param config_dir [String] Configuration directory for user triggers
         # @return [Hash] The resolved trigger with defaults merged
-        def resolve_trigger(trigger)
+        def resolve_trigger(trigger, config_dir = nil)
           name = trigger['name']
 
           # Check for builtin trigger (radp:)
           if Triggers::Registry.builtin?(name)
             return resolve_builtin(trigger)
+          end
+
+          # Check for user trigger (user:)
+          if Triggers::UserRegistry.user_trigger?(name)
+            return resolve_user_trigger(trigger, config_dir)
           end
 
           # Regular trigger, no resolution needed
@@ -51,6 +61,19 @@ module RadpVagrant
           resolved = merge_with_defaults(trigger, definition)
           resolved['_builtin'] = true
           resolved['_script_path'] = Triggers::Registry.script_path(name)
+          resolved
+        end
+
+        # Resolve user trigger by merging definition defaults with user config
+        # User config takes precedence over definition defaults
+        def resolve_user_trigger(trigger, config_dir)
+          name = trigger['name']
+          definition = Triggers::UserRegistry.get(name, config_dir)
+          return trigger unless definition
+
+          resolved = merge_with_defaults(trigger, definition)
+          resolved['_user'] = true
+          resolved['_script_path'] = Triggers::UserRegistry.script_path(name, config_dir)
           resolved
         end
 
