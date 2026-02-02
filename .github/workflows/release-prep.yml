@@ -163,6 +163,26 @@ jobs:
               version_sh_path.write_text(version_sh_text)
               print(f"Updated version.sh to {version}")
 
+          # Update spec files
+          version_no_prefix = version[1:]
+          for spec_path in [
+            Path("packaging/copr/radp-vagrant-framework.spec"),
+            Path("packaging/obs/radp-vagrant-framework.spec"),
+          ]:
+            if not spec_path.exists():
+              raise SystemExit(f"Missing spec file: {spec_path}")
+            spec_text = spec_path.read_text()
+            spec_text, count = re.subn(
+              r"^Version:\s*.*$",
+              f"Version:        {version_no_prefix}",
+              spec_text,
+              flags=re.M,
+            )
+            if count == 0:
+              raise SystemExit(f"Failed to update Version in {spec_path}")
+            spec_path.write_text(spec_text)
+            print(f"Updated {spec_path} to {version_no_prefix}")
+
           # Update CHANGELOG.md
           changelog_path = Path("CHANGELOG.md")
           version_no_prefix = version[1:]
@@ -290,6 +310,8 @@ jobs:
           git add \
             src/main/ruby/lib/radp_vagrant/version.rb \
             src/main/shell/commands/version.sh \
+            packaging/copr/radp-vagrant-framework.spec \
+            packaging/obs/radp-vagrant-framework.spec \
             completions/radp-vf.bash \
             completions/radp-vf.zsh \
             CHANGELOG.md
@@ -314,6 +336,7 @@ jobs:
 
           - Update VERSION in version.rb
           - Update gr_app_version in version.sh
+          - Sync spec versions
           - Regenerate completion scripts
           - Add changelog entry (please review and edit)
 

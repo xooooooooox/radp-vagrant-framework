@@ -9,7 +9,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   update-spec-version:
@@ -49,39 +49,38 @@ jobs:
             exit 1
           fi
           echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "Resolved version: $version"
 
-      - name: Update spec version
+      - name: Verify spec versions
         run: |
           set -euo pipefail
           version="${{ steps.version.outputs.version }}"
           version_no_prefix="${version#v}"
+
+          # Check COPR spec
           copr_spec_file="packaging/copr/radp-vagrant-framework.spec"
           if [[ -f "$copr_spec_file" ]]; then
-            sed -i "s/^Version:.*/Version:        ${version_no_prefix}/" "$copr_spec_file"
+            copr_version="$(grep -E '^Version:' "$copr_spec_file" | awk '{print $2}')"
+            if [[ "$copr_version" == "$version_no_prefix" ]]; then
+              echo "COPR spec version is correct: $copr_version"
+            else
+              echo "WARNING: COPR spec version mismatch: expected $version_no_prefix, got $copr_version" >&2
+            fi
           else
             echo "COPR spec file not found: $copr_spec_file" >&2
-            exit 1
-          fi
-          obs_spec_file="packaging/obs/radp-vagrant-framework.spec"
-          if [[ -f "$obs_spec_file" ]]; then
-            sed -i "s/^Version:.*/Version:        ${version_no_prefix}/" "$obs_spec_file"
-          else
-            echo "OBS spec file not found: $obs_spec_file" >&2
-            exit 1
           fi
 
-      - name: Commit and push
-        run: |
-          set -euo pipefail
-          if git diff --quiet; then
-            echo "No changes to commit."
-            exit 0
+          # Check OBS spec
+          obs_spec_file="packaging/obs/radp-vagrant-framework.spec"
+          if [[ -f "$obs_spec_file" ]]; then
+            obs_version="$(grep -E '^Version:' "$obs_spec_file" | awk '{print $2}')"
+            if [[ "$obs_version" == "$version_no_prefix" ]]; then
+              echo "OBS spec version is correct: $obs_version"
+            else
+              echo "WARNING: OBS spec version mismatch: expected $version_no_prefix, got $obs_version" >&2
+            fi
+          else
+            echo "OBS spec file not found: $obs_spec_file" >&2
           fi
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add packaging/copr/radp-vagrant-framework.spec
-          if [[ -f "packaging/obs/radp-vagrant-framework.spec" ]]; then
-            git add packaging/obs/radp-vagrant-framework.spec
-          fi
-          git commit -m "Update spec version to ${{ steps.version.outputs.version }}"
-          git push
+
+          echo "Spec version verification complete."
