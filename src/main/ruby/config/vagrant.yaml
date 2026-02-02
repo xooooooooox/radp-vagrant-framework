@@ -95,3 +95,9 @@ radp:
               # support inline, path
               inline: |
                 inline script
+            - name: radp:nfs/external-nfs-mount
+              enabled: true
+              env:
+                NFS_SERVER: "192.168.10.14"
+                NFS_MOUNT: "/volume1/nfs"
+
