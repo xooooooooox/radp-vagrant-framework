@@ -1,6 +1,6 @@
 # CHANGELOG
 
-## v0.2.14
+## v0.2.15
 
 ### feat
 
@@ -42,6 +42,7 @@
 - Fix banner version
 - Fix radp:yadm/clone
 - Fix if hostname is empty, default to `<guest-id>.<cluster-name>.<env>`
+- Fix `list -v` show the wrong value
 
 ### chore
 
