@@ -1,5 +1,8 @@
 # frozen_string_literal: true
 
+require_relative '../provisions/registry'
+require_relative '../provisions/user_registry'
+
 module RadpVagrant
   module CLI
     # Base class for CLI commands
@@ -66,18 +69,53 @@ module RadpVagrant
         return [] unless provisions.is_a?(Array) && !provisions.empty?
 
         provisions.select { |p| p.is_a?(Hash) && p['enabled'] != false }.map do |p|
-          phase = p['phase'] ? "[#{p['phase'].to_s.ljust(4)}]" : '[    ]'
+          # Resolve builtin/user provision defaults
+          resolved = resolve_provision_defaults(p)
+          phase = resolved['phase'] ? "[#{resolved['phase'].to_s.ljust(4)}]" : '[    ]'
           {
             phase: phase,
-            name: p['name'] || 'unnamed',
-            type: p['type'] || 'shell',
-            run: p['run'] || 'once',
-            privileged: p['privileged'] ? 'privileged' : ''
+            name: resolved['name'] || 'unnamed',
+            type: resolved['type'] || 'shell',
+            run: resolved['run'] || 'once',
+            privileged: resolved['privileged'] ? 'privileged' : ''
           }
         end
       rescue StandardError => e
         warn "Warning: Error parsing provisions: #{e.message}"
         []
+      end
+
+      # Resolve provision defaults from builtin or user provision definitions
+      # @param provision [Hash] The provision configuration
+      # @return [Hash] The provision with defaults applied
+      def resolve_provision_defaults(provision)
+        name = provision['name']
+        return provision unless name
+
+        definition = nil
+
+        # Check for builtin provision (radp:)
+        if Provisions::Registry.builtin?(name)
+          definition = Provisions::Registry.get(name)
+        # Check for user provision (user:)
+        elsif Provisions::UserRegistry.user_provision?(name)
+          definition = Provisions::UserRegistry.get(name, config_dir)
+        end
+
+        return provision unless definition
+
+        # Merge definition defaults with user config (user values take precedence)
+        defaults = definition['defaults'] || {}
+        resolved = {}
+
+        # Apply defaults first
+        resolved['privileged'] = defaults['privileged'] if defaults.key?('privileged')
+        resolved['run'] = defaults['run'] if defaults.key?('run')
+
+        # Then apply user config (overrides defaults)
+        provision.each { |key, value| resolved[key] = value }
+
+        resolved
       end
 
       # Format synced folders for display
