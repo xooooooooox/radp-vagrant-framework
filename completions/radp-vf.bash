@@ -70,7 +70,7 @@ _radp_vf() {
             COMPREPLY=($(compgen -W "--help" -- "$cur"))
             ;;
         'vg')
-            COMPREPLY=($(compgen -W "--help" -- "$cur"))
+            COMPREPLY=($(compgen -W "--help -c --config -e --env" -- "$cur"))
             ;;
         *)
             COMPREPLY=()
