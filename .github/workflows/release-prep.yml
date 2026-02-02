@@ -44,12 +44,12 @@ jobs:
           bump_type="${{ inputs.bump_type }}"
           manual_version="${{ inputs.version }}"
           latest_tag="$(git tag --list 'v*' --sort=-v:refname | head -n 1)"
-          
+
           # If no tags exist, start from v0.0.0
           if [[ -z "${latest_tag}" ]]; then
             latest_tag="v0.0.0"
           fi
-          
+
           if [[ ! "${latest_tag}" =~ ^v([0-9]+)\.([0-9]+)\.([0-9]+)$ ]]; then
             echo "Latest tag '${latest_tag}' does not match vX.Y.Z" >&2
             exit 1
@@ -166,11 +166,11 @@ jobs:
           # Update CHANGELOG.md
           changelog_path = Path("CHANGELOG.md")
           version_no_prefix = version[1:]
-          
+
           last_tag = try_git("describe", "--tags", "--abbrev=0", "--match", "v*")
           log_range = f"{last_tag}..HEAD" if last_tag else "HEAD"
           log_output = try_git("log", "--no-merges", "--pretty=%h %s", log_range)
-          
+
           # Build changelog entry
           entry_lines = [f"## {version}", ""]
           if log_output.strip():
@@ -182,7 +182,7 @@ jobs:
           else:
             entry_lines.append("- Initial release")
           entry_lines.append("")
-          
+
           if changelog_path.exists():
             old_content = changelog_path.read_text()
             # Insert after first line if it's a header
@@ -193,7 +193,7 @@ jobs:
               new_content = "\n".join(entry_lines) + old_content
           else:
             new_content = "# CHANGELOG\n\n" + "\n".join(entry_lines)
-          
+
           changelog_path.write_text(new_content)
           print(f"Updated version to {version}")
           PY
@@ -201,7 +201,7 @@ jobs:
       - name: Install radp-bash-framework
         run: |
           set -euo pipefail
-          curl -fsSL https://raw.githubusercontent.com/xooooooooox/radp-bash-framework/main/install.sh | bash -s -- --yes
+          curl -fsSL https://raw.githubusercontent.com/xooooooooox/radp-bash-framework/main/install.sh | bash
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
 
       - name: Regenerate completion scripts
