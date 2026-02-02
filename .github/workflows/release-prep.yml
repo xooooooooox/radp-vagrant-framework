@@ -167,35 +167,98 @@ jobs:
           changelog_path = Path("CHANGELOG.md")
           version_no_prefix = version[1:]
 
+          if not changelog_path.exists():
+            raise SystemExit("CHANGELOG.md not found.")
+          changelog_text = changelog_path.read_text()
+          header_pattern = re.compile(rf"^##\s+v?{re.escape(version_no_prefix)}(\s|$)")
+
           last_tag = try_git("describe", "--tags", "--abbrev=0", "--match", "v*")
           log_range = f"{last_tag}..HEAD" if last_tag else "HEAD"
           log_output = try_git("log", "--no-merges", "--pretty=%h %s", log_range)
 
-          # Build changelog entry
-          entry_lines = [f"## {version}", ""]
-          if log_output.strip():
-            for line in log_output.strip().splitlines():
-              # Remove commit hash prefix (first word)
-              parts = line.split(" ", 1)
-              desc = parts[1] if len(parts) > 1 else parts[0]
-              entry_lines.append(f"- {desc}")
-          else:
-            entry_lines.append("- Initial release")
-          entry_lines.append("")
+          # Group commits by conventional commit type
+          base_types = ["feat", "fix", "chore"]
+          standard_types = base_types + ["docs", "refactor", "perf", "test", "build", "ci"]
+          other_key = "other"
+          entries_by_type = {t: [] for t in standard_types}
+          entries_by_type[other_key] = []
+          type_pattern = re.compile(r"^(?P<type>[A-Za-z][A-Za-z0-9_-]*)(\([^\)]*\))?:\s+(?P<desc>.+)$")
 
-          if changelog_path.exists():
-            old_content = changelog_path.read_text()
-            # Insert after first line if it's a header
-            lines = old_content.splitlines()
-            if lines and lines[0].startswith("# "):
-              new_content = lines[0] + "\n\n" + "\n".join(entry_lines) + "\n".join(lines[1:])
+          for line in log_output.splitlines():
+            line = line.strip()
+            if not line:
+              continue
+            parts = line.split(" ", 1)
+            sha = parts[0]
+            subject = parts[1] if len(parts) > 1 else ""
+            subject_ascii = subject.encode("ascii", "ignore").decode("ascii").strip()
+            if not subject_ascii:
+              subject_ascii = "<non-ascii subject>"
+            match = type_pattern.match(subject_ascii)
+            if match:
+              commit_type = match.group("type").lower()
+              desc = match.group("desc").strip() or subject_ascii
             else:
-              new_content = "\n".join(entry_lines) + old_content
-          else:
-            new_content = "# CHANGELOG\n\n" + "\n".join(entry_lines)
+              commit_type = other_key
+              desc = subject_ascii
+            if commit_type not in entries_by_type:
+              commit_type = other_key
+            entries_by_type[commit_type].append(desc)
 
-          changelog_path.write_text(new_content)
-          print(f"Updated version to {version}")
+          default_header = f"## {version}"
+          include_types = [t for t in standard_types if entries_by_type[t]]
+          if entries_by_type[other_key]:
+            include_types.append(other_key)
+
+          def build_section_lines(header_line: str, leading_blank: bool) -> list[str]:
+            section = []
+            if leading_blank:
+              section.append("")
+            section.append(header_line)
+            section.append("")
+            if not include_types:
+              section.append("- TODO: no commits found; add summary manually.")
+              return section
+            for commit_type in include_types:
+              section.append(f"### {commit_type}")
+              section.append("")
+              for entry in entries_by_type.get(commit_type, []):
+                section.append(f"- {entry}")
+              section.append("")
+            while section and section[-1] == "":
+              section.pop()
+            return section
+
+          lines = changelog_text.splitlines()
+          start = None
+          for idx, line in enumerate(lines):
+            if header_pattern.match(line):
+              start = idx
+              break
+          if start is not None:
+            end = len(lines)
+            for idx in range(start + 1, len(lines)):
+              if lines[idx].startswith("## "):
+                end = idx
+                break
+            existing_section = "\n".join(lines[start:end])
+            todo_markers = (
+              "TODO: curate and rewrite this list before release.",
+              "TODO: no commits found; add summary manually.",
+            )
+            if any(marker in existing_section for marker in todo_markers):
+              header_line = lines[start]
+              new_lines = build_section_lines(header_line, leading_blank=False)
+              lines = lines[:start] + new_lines + lines[end:]
+            else:
+              print("CHANGELOG entry exists and appears edited; leaving it unchanged.")
+          else:
+            insert_at = 1 if lines and lines[0].strip() == "# CHANGELOG" else 0
+            new_lines = build_section_lines(default_header, leading_blank=True)
+            lines = lines[:insert_at] + new_lines + lines[insert_at:]
+
+          changelog_path.write_text("\n".join(lines).rstrip() + "\n")
+          print(f"Updated version to {version} (last tag: {last_tag or 'none'})")
           PY
 
       - name: Install radp-bash-framework
@@ -238,26 +301,36 @@ jobs:
 
       - name: Create pull request
         env:
-          GH_TOKEN: ${{ secrets.RELEASE_PREP_TOKEN }}
-          GITHUB_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ secrets.RELEASE_PREP_TOKEN || github.token }}
+          HAS_RELEASE_PREP_TOKEN: ${{ secrets.RELEASE_PREP_TOKEN != '' }}
         run: |
           set -euo pipefail
           version="${{ steps.version.outputs.version }}"
           branch="${{ steps.branch.outputs.branch }}"
           title="Release ${version}"
-          body="Release prep for ${version}. When merged, create-version-tag will run automatically."
+          body_file="$(mktemp)"
+          cat > "${body_file}" <<EOF
+          Release prep for ${version}.
 
-          # Use RELEASE_PREP_TOKEN if set, otherwise fall back to GITHUB_TOKEN
-          if [[ -z "${GH_TOKEN}" ]]; then
-            export GH_TOKEN="${GITHUB_TOKEN}"
-          fi
+          - Update VERSION in version.rb
+          - Update gr_app_version in version.sh
+          - Regenerate completion scripts
+          - Add changelog entry (please review and edit)
 
-          if gh pr create --base main --head "${branch}" --title "${title}" --body "${body}"; then
+          When this PR is merged, create-version-tag will run automatically to validate and tag the release.
+          EOF
+
+          if gh pr create --base main --head "${branch}" --title "${title}" --body-file "${body_file}"; then
             exit 0
           fi
           if gh pr view --head "${branch}" >/dev/null 2>&1; then
             echo "PR already exists for ${branch}."
             exit 0
           fi
-          echo "PR creation failed. Create manually:" >&2
+          if [[ "${HAS_RELEASE_PREP_TOKEN}" == "true" ]]; then
+            echo "PR creation failed even with RELEASE_PREP_TOKEN; check token scopes and repo settings." >&2
+            exit 1
+          fi
+          echo "PR creation not permitted for GitHub Actions token." >&2
+          echo "Enable 'Allow GitHub Actions to create and approve pull requests' or create the PR manually:" >&2
           echo "  gh pr create --base main --head \"${branch}\" --title \"${title}\"" >&2
