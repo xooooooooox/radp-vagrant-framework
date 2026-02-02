@@ -110,7 +110,11 @@ _radp_vf_version() {
 }
 
 _radp_vf_vg() {
-    _arguments '(-h --help)'{-h,--help}'[Show help]' '*:args:'
+    _arguments -s \
+        '(-h --help)'{-h,--help}'[Show help]' \
+        '(-c --config)'{-c,--config}'[Configuration directory]:dir:' \
+        '(-e --env)'{-e,--env}'[Override environment name]:name:' \
+        '*:args~:_files'
 }
 
 _radp_vf() {

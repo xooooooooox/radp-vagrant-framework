@@ -2,6 +2,12 @@
 
 ## v0.2.16
 
+- test: fix workflow release-prep.yml
+- test: fix workflow release-prep.yml
+- refactor: Refactor CLI to use radp-bash-framework (radp-bf) architecture
+
+## v0.2.16
+
 ### refactor
 
 - Refactor CLI to use radp-bash-framework (radp-bf) architecture
