@@ -1,6 +1,6 @@
 # CHANGELOG
 
-## v0.2.17
+## v0.2.18
 
 ### refactor
 
