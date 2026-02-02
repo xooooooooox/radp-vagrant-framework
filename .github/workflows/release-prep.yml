@@ -149,6 +149,20 @@ jobs:
             raise SystemExit("Failed to update VERSION in version.rb")
           version_path.write_text(version_text)
 
+          # Update version.sh (keep in sync with Ruby for --config and banner)
+          version_sh_path = Path("src/main/shell/commands/version.sh")
+          if version_sh_path.exists():
+            version_sh_text = version_sh_path.read_text()
+            version_sh_text, count = re.subn(
+              r'^declare -gr gr_app_version="[^"]*"',
+              f'declare -gr gr_app_version="{version}"',
+              version_sh_text,
+              flags=re.M,
+            )
+            if count > 0:
+              version_sh_path.write_text(version_sh_text)
+              print(f"Updated version.sh to {version}")
+
           # Update CHANGELOG.md
           changelog_path = Path("CHANGELOG.md")
           version_no_prefix = version[1:]
@@ -184,6 +198,12 @@ jobs:
           print(f"Updated version to {version}")
           PY
 
+      - name: Install radp-bash-framework
+        run: |
+          set -euo pipefail
+          curl -fsSL https://raw.githubusercontent.com/xooooooooox/radp-bash-framework/main/install.sh | bash -s -- --yes
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
       - name: Regenerate completion scripts
         run: |
           set -euo pipefail
@@ -206,6 +226,7 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add \
             src/main/ruby/lib/radp_vagrant/version.rb \
+            src/main/shell/commands/version.sh \
             completions/radp-vf.bash \
             completions/radp-vf.zsh \
             CHANGELOG.md
