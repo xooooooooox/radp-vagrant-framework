@@ -1,0 +1,724 @@
+name: Attach release packages
+
+on:
+  workflow_run:
+    workflows:
+      - Build COPR package
+      - Build OBS package
+      - Update Homebrew Tap
+    types:
+      - completed
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  attach-release-packages:
+    if: >-
+      ${{
+        github.event_name != 'workflow_run' ||
+        (github.event.workflow_run.conclusion == 'success' &&
+        (github.event.workflow_run.head_branch == 'main' ||
+         startsWith(github.event.workflow_run.head_branch, 'workflow/')))
+      }}
+    runs-on: ubuntu-latest
+    env:
+      COPR_PROJECT: ${{ secrets.COPR_PROJECT }}
+      OBS_PROJECT: ${{ secrets.OBS_PROJECT }}
+      OBS_PACKAGE: ${{ secrets.OBS_PACKAGE }}
+      OBS_API_URL: ${{ secrets.OBS_API_URL }}
+      OBS_USERNAME: ${{ secrets.OBS_USERNAME }}
+      OBS_PASSWORD: ${{ secrets.OBS_PASSWORD }}
+      TAP_FORMULA_URL: https://raw.githubusercontent.com/xooooooooox/homebrew-radp/HEAD/Formula/radp-vagrant-framework.rb
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Fetch tags
+        run: git fetch --tags --force
+
+      - name: Resolve tag and package
+        id: release
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ "${GITHUB_EVENT_NAME}" == "workflow_run" ]]; then
+            head_sha="${{ github.event.workflow_run.head_sha }}"
+            tag_name="$(git tag --points-at "${head_sha}" --list 'v*' | sort -V | tail -n 1)"
+          else
+            tag_name="${GITHUB_REF_NAME}"
+          fi
+
+          version_file="src/main/ruby/lib/radp_vagrant/version.rb"
+          if [[ -z "${tag_name}" && "${GITHUB_EVENT_NAME}" == "workflow_run" ]]; then
+            version_from_commit="$(git show "${head_sha}:${version_file}" | grep -oE "VERSION = 'v[0-9]+\.[0-9]+\.[0-9]+'" | grep -oE "v[0-9]+\.[0-9]+\.[0-9]+" | head -n 1)"
+            if [[ -z "${version_from_commit}" ]]; then
+              echo "Failed to read VERSION from ${version_file} at ${head_sha}" >&2
+              exit 1
+            fi
+            tag_name="${version_from_commit}"
+          fi
+
+          if [[ -z "${tag_name}" ]]; then
+            echo "Failed to resolve version tag for event ${GITHUB_EVENT_NAME}" >&2
+            exit 1
+          fi
+
+          if [[ ! "${tag_name}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Resolved tag '${tag_name}' does not match vx.y.z" >&2
+            exit 1
+          fi
+
+          should_upload=true
+          if ! git rev-parse "${tag_name}" >/dev/null 2>&1; then
+            echo "Tag ${tag_name} does not exist yet; skipping release attachment."
+            should_upload=false
+          elif [[ "${GITHUB_EVENT_NAME}" == "workflow_run" ]]; then
+            tag_sha="$(git rev-parse "${tag_name}^{commit}")"
+            if [[ -n "${head_sha}" && "${tag_sha}" != "${head_sha}" ]]; then
+              echo "Tag ${tag_name} points to ${tag_sha}, workflow head is ${head_sha}; skipping release attachment."
+              should_upload=false
+            fi
+          fi
+
+          version="${tag_name#v}"
+          package_name="$(awk -F': *' '/^Name:/{print $2; exit}' packaging/copr/radp-vagrant-framework.spec)"
+          if [[ -z "${package_name}" ]]; then
+            echo "Failed to read package name from packaging/copr/radp-vagrant-framework.spec" >&2
+            exit 1
+          fi
+
+          echo "tag_name=${tag_name}" >> "$GITHUB_OUTPUT"
+          echo "version=${version}" >> "$GITHUB_OUTPUT"
+          echo "package_name=${package_name}" >> "$GITHUB_OUTPUT"
+          echo "should_upload=${should_upload}" >> "$GITHUB_OUTPUT"
+
+      - name: Download COPR packages
+        if: >-
+          ${{
+            steps.release.outputs.should_upload == 'true' &&
+            (github.event_name != 'workflow_run' ||
+            github.event.workflow_run.name == 'Build COPR package')
+          }}
+        env:
+          VERSION: ${{ steps.release.outputs.version }}
+          PACKAGE_NAME: ${{ steps.release.outputs.package_name }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -z "${COPR_PROJECT:-}" ]]; then
+            echo "COPR_PROJECT not set; skipping COPR download."
+            exit 0
+          fi
+          python - <<'PY'
+          import json
+          import os
+          import re
+          import sys
+          import urllib.parse
+          import urllib.request
+          from pathlib import Path
+
+          copr_project = os.environ["COPR_PROJECT"].strip()
+          version = os.environ["VERSION"].strip()
+          package_name = os.environ["PACKAGE_NAME"].strip()
+
+          if "/" not in copr_project:
+            print(f"Invalid COPR_PROJECT: {copr_project}", file=sys.stderr)
+            sys.exit(0)
+
+          owner, project = copr_project.split("/", 1)
+
+          def request(url: str) -> urllib.request.Request:
+            return urllib.request.Request(
+              url,
+              headers={
+                "User-Agent": "radp-release-bot/1.0",
+                "Accept": "application/json,text/html;q=0.9,*/*;q=0.8",
+              },
+            )
+
+          def fetch(url: str) -> tuple[bytes, int, str]:
+            req = request(url)
+            with urllib.request.urlopen(req) as resp:
+              data = resp.read()
+              status = getattr(resp, "status", None) or resp.getcode()
+              content_type = resp.headers.get("Content-Type", "")
+              return data, int(status), content_type
+
+          def api_json(url: str) -> dict:
+            data, status, content_type = fetch(url)
+            print(
+              f"COPR api GET {url} status={status} content-type={content_type} bytes={len(data)}",
+              file=sys.stderr,
+            )
+            if not data:
+              raise ValueError(f"Empty response from {url}")
+            try:
+              return json.loads(data.decode("utf-8"))
+            except json.JSONDecodeError as exc:
+              snippet = data[:200].decode("utf-8", "ignore")
+              raise ValueError(f"Invalid JSON from {url}: {snippet}") from exc
+
+          def download(url: str, dest: Path) -> None:
+            dest.parent.mkdir(parents=True, exist_ok=True)
+            data, status, content_type = fetch(url)
+            if status >= 400:
+              raise ValueError(f"Download failed: {url} status={status} content-type={content_type}")
+            with open(dest, "wb") as fh:
+              fh.write(data)
+
+          print(
+            f"COPR lookup owner={owner} project={project} package={package_name} version={version}",
+            file=sys.stderr,
+          )
+          params = {
+            "ownername": owner,
+            "projectname": project,
+            "limit": "50",
+          }
+          builds_url = "https://copr.fedorainfracloud.org/api_3/build/list?" + urllib.parse.urlencode(params)
+          use_fallback = False
+          try:
+            build_data = api_json(builds_url)
+            builds = build_data.get("builds") or build_data.get("items") or []
+            print(
+              f"COPR build list keys={list(build_data.keys())} count={len(builds)}",
+              file=sys.stderr,
+            )
+          except Exception as exc:
+            print(f"Failed to read COPR build list: {exc}", file=sys.stderr)
+            builds = []
+            use_fallback = True
+
+          candidates = []
+          match_package = 0
+          match_version = 0
+          for build in builds:
+            if build.get("state") != "succeeded":
+              continue
+            source_pkg = build.get("source_package") or {}
+            source_name = source_pkg.get("name") or build.get("package_name")
+            if source_name and source_name != package_name:
+              continue
+            if source_name:
+              match_package += 1
+            src_version = source_pkg.get("version")
+            if src_version and not (src_version == version or src_version.startswith(version + "-")):
+              continue
+            if src_version:
+              match_version += 1
+            candidates.append(build)
+
+          if not candidates:
+            print(f"No COPR builds found for {package_name} {version}; falling back to result crawl.", file=sys.stderr)
+            candidates = []
+            use_fallback = True
+          else:
+            print(
+              f"COPR build list size={len(builds)} package_matches={match_package} version_matches={match_version} candidates={len(candidates)}",
+              file=sys.stderr,
+            )
+
+          urls = []
+          build_id = None
+          chroots = []
+          if candidates:
+            selected = max(candidates, key=lambda b: b.get("id", 0))
+            build_id = selected.get("id")
+            repo_url = (selected.get("repo_url") or "").rstrip("/")
+            chroots = selected.get("chroots") or []
+            if repo_url:
+              if chroots:
+                for chroot in chroots:
+                  urls.append((f"{repo_url}/{chroot}/", "chroot"))
+              else:
+                urls.append((repo_url + "/", "project"))
+              print(
+                f"COPR selected build_id={build_id} repo_url={repo_url} chroots={len(chroots)}",
+                file=sys.stderr,
+              )
+            else:
+              use_fallback = True
+
+          if candidates and (not urls or use_fallback):
+            build_id = max(candidates, key=lambda b: b.get("id", 0)).get("id")
+            try:
+              build_info = api_json(f"https://copr.fedorainfracloud.org/api_3/build/get?build_id={build_id}")
+            except Exception as exc:
+              print(f"Failed to read COPR build info: {exc}", file=sys.stderr)
+              build_info = {}
+              use_fallback = True
+            build = build_info.get("build", {})
+            result_url = (build.get("result_url") or "").rstrip("/")
+            chroots = build.get("chroots") or []
+            if result_url:
+              if chroots:
+                for chroot in chroots:
+                  urls.append((f"{result_url}/{chroot}/", "chroot"))
+              else:
+                urls.append((result_url + "/", "project"))
+            else:
+              use_fallback = True
+
+          if use_fallback or not urls:
+            urls = [(f"https://download.copr.fedorainfracloud.org/results/{owner}/{project}/", "project")]
+            print(f"COPR fallback crawl roots: {[u for u, _ in urls]}", file=sys.stderr)
+
+          def fetch_listing(url: str) -> str:
+            data, status, content_type = fetch(url)
+            if status >= 400:
+              raise ValueError(f"Listing failed: {url} status={status} content-type={content_type}")
+            return data.decode("utf-8", "ignore")
+
+          def download_rpms_from_listing(base_url: str) -> int:
+            try:
+              listing = fetch_listing(base_url)
+            except Exception as exc:
+              print(f"COPR listing fetch failed url={base_url}: {exc}", file=sys.stderr)
+              return 0
+            hrefs = re.findall(r'href=["\']([^"\']+)["\']', listing)
+            count = 0
+            for href in hrefs:
+              if href in ("../", "./"):
+                continue
+              href_clean = href.split("?", 1)[0].split("#", 1)[0]
+              if not href_clean.endswith(".rpm"):
+                continue
+              filename = href_clean.split("/")[-1]
+              if filename.endswith(".src.rpm"):
+                continue
+              if package_name not in filename or version not in filename:
+                continue
+              if filename in downloaded:
+                continue
+              full_url = urllib.parse.urljoin(base_url, href_clean)
+              try:
+                download(full_url, dest_dir / f"copr-{filename}")
+              except Exception as exc:
+                print(f"Failed to download COPR RPM {filename}: {exc}", file=sys.stderr)
+                continue
+              downloaded.add(filename)
+              count += 1
+            return count
+
+          dest_dir = Path("release-assets/copr")
+          downloaded = set()
+          visited = set()
+          queue = [(url, 0, scope) for url, scope in urls]
+          max_depth = 3
+          max_pages = 120
+          matched_rpms = 0
+          href_log_budget = 6
+          build_id_markers = []
+          if build_id:
+            build_id_str = str(build_id)
+            build_id_markers = [build_id_str, build_id_str.zfill(8)]
+          chroots_set = set(chroots)
+          build_dir_matches = 0
+          package_dir_matches = 0
+          build_page_downloaded = 0
+          direct_downloaded = 0
+
+          chroot_urls = [u for u, scope in urls if scope == "chroot"]
+          if build_id and package_name and chroot_urls:
+            build_dir_candidates = [f"{int(build_id):08d}-{package_name}", f"{build_id}-{package_name}"]
+            for chroot_url in chroot_urls:
+              if not chroot_url.endswith("/"):
+                chroot_url = chroot_url + "/"
+              for build_dir in build_dir_candidates:
+                direct_url = f"{chroot_url}{build_dir}/"
+                downloaded_now = download_rpms_from_listing(direct_url)
+                if downloaded_now:
+                  direct_downloaded += downloaded_now
+            if direct_downloaded:
+              print(f"Downloaded {direct_downloaded} COPR RPMs from direct build dirs", file=sys.stderr)
+
+          while queue and max_pages > 0:
+            base_url, depth, scope = queue.pop(0)
+            visit_key = f"{base_url}|{scope}"
+            if visit_key in visited:
+              continue
+            visited.add(visit_key)
+            max_pages -= 1
+            print(f"COPR crawl url={base_url} depth={depth}", file=sys.stderr)
+            try:
+              listing = fetch_listing(base_url)
+            except Exception:
+              continue
+            hrefs = re.findall(r'href=["\']([^"\']+)["\']', listing)
+            if href_log_budget > 0 and hrefs:
+              sample = ", ".join(hrefs[:5])
+              print(f"COPR href sample: {sample}", file=sys.stderr)
+              href_log_budget -= 1
+            for href in hrefs:
+              if href in ("../", "./"):
+                continue
+              href_clean = href.split("?", 1)[0].split("#", 1)[0]
+              full_url = urllib.parse.urljoin(base_url, href_clean)
+              is_dir = href_clean.endswith("/")
+              if not is_dir:
+                has_ext = "." in href_clean.rsplit("/", 1)[-1]
+                if not has_ext and not href_clean.endswith(".rpm"):
+                  is_dir = True
+              if is_dir:
+                next_depth = depth + 1
+                if scope == "project":
+                  if next_depth == 1 and chroots_set:
+                    href_dir = href_clean.rstrip("/")
+                    if href_dir not in chroots_set:
+                      continue
+                  build_depth = 2
+                  package_depth = 3
+                else:
+                  build_depth = 1
+                  package_depth = 2
+
+                if build_id_markers and next_depth == build_depth:
+                  if not any(marker in href_clean for marker in build_id_markers):
+                    continue
+                  build_dir_matches += 1
+                if package_name and next_depth == package_depth:
+                  if package_name not in href_clean:
+                    continue
+                  package_dir_matches += 1
+                if not full_url.endswith("/"):
+                  full_url += "/"
+                if depth < max_depth:
+                  queue.append((full_url, depth + 1, scope))
+                continue
+              if not href_clean.endswith(".rpm"):
+                continue
+              filename = href_clean.split("/")[-1]
+              if filename.endswith(".src.rpm"):
+                continue
+              if package_name not in filename or version not in filename:
+                continue
+              matched_rpms += 1
+              if filename in downloaded:
+                continue
+              download(full_url, dest_dir / f"copr-{filename}")
+              downloaded.add(filename)
+
+          def supplement_from_build_page() -> int:
+            if not build_id:
+              return 0
+            build_url = f"https://copr.fedorainfracloud.org/coprs/{owner}/{project}/build/{build_id}/"
+            print(f"COPR build page crawl url={build_url}", file=sys.stderr)
+            try:
+              listing = fetch_listing(build_url)
+            except Exception as exc:
+              print(f"COPR build page fetch failed: {exc}", file=sys.stderr)
+              return 0
+            hrefs = re.findall(r'href=["\']([^"\']+)["\']', listing)
+            downloaded_count = 0
+            for href in hrefs:
+              href_clean = href.split("?", 1)[0].split("#", 1)[0]
+              if not href_clean.endswith(".rpm"):
+                continue
+              filename = href_clean.split("/")[-1]
+              if filename.endswith(".src.rpm"):
+                continue
+              if package_name not in filename or version not in filename:
+                continue
+              if filename in downloaded:
+                continue
+              full_url = urllib.parse.urljoin(build_url, href_clean)
+              try:
+                download(full_url, dest_dir / f"copr-{filename}")
+              except Exception as exc:
+                print(f"Failed to download COPR RPM {filename}: {exc}", file=sys.stderr)
+                continue
+              downloaded.add(filename)
+              downloaded_count += 1
+            return downloaded_count
+
+          if build_id and ((not downloaded and not chroots_set) or (chroots_set and len(downloaded) < len(chroots_set))):
+            build_page_downloaded = supplement_from_build_page()
+
+          if not downloaded:
+            print(f"No COPR RPMs downloaded for {package_name} {version}", file=sys.stderr)
+          else:
+            print(
+              f"Downloaded {len(downloaded)} COPR RPMs (matched={matched_rpms} visited={len(visited)} pages)",
+              file=sys.stderr,
+            )
+          if build_page_downloaded:
+            print(f"Downloaded {build_page_downloaded} COPR RPMs from build page", file=sys.stderr)
+          if build_id_markers and build_dir_matches == 0:
+            print(f"No COPR build dirs matched build_id {build_id_markers[0]}", file=sys.stderr)
+          if not downloaded and package_name and build_dir_matches > 0 and package_dir_matches == 0:
+            print(f"No COPR package dirs matched {package_name}", file=sys.stderr)
+          PY
+
+      - name: Download OBS packages
+        if: >-
+          ${{
+            steps.release.outputs.should_upload == 'true' &&
+            (github.event_name != 'workflow_run' ||
+            github.event.workflow_run.name == 'Build OBS package')
+          }}
+        env:
+          VERSION: ${{ steps.release.outputs.version }}
+          PACKAGE_NAME: ${{ steps.release.outputs.package_name }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -z "${OBS_PROJECT:-}" ]]; then
+            echo "OBS_PROJECT not set; skipping OBS download."
+            exit 0
+          fi
+          python - <<'PY'
+          import os
+          import sys
+          import base64
+          import urllib.error
+          import urllib.parse
+          import urllib.request
+          import xml.etree.ElementTree as ET
+          from pathlib import Path
+          import time
+
+          project = os.environ["OBS_PROJECT"].strip()
+          package = (os.environ.get("OBS_PACKAGE") or os.environ.get("PACKAGE_NAME") or "").strip()
+          version = os.environ["VERSION"].strip()
+          api_url = (os.environ.get("OBS_API_URL") or "https://api.opensuse.org").rstrip("/")
+          username = (os.environ.get("OBS_USERNAME") or "").strip()
+          password = (os.environ.get("OBS_PASSWORD") or "").strip()
+          max_wait_seconds = int(os.environ.get("OBS_WAIT_SECONDS", "1200"))
+          poll_interval = int(os.environ.get("OBS_POLL_INTERVAL", "30"))
+
+          if not package:
+            print("OBS package name is missing", file=sys.stderr)
+            sys.exit(0)
+
+          print(
+            "OBS download config "
+            f"api_url={api_url} project={project} package={package} version={version} "
+            f"wait={max_wait_seconds}s poll={poll_interval}s auth={'yes' if username and password else 'no'}",
+            file=sys.stderr,
+          )
+
+          def quote(segment: str) -> str:
+            return urllib.parse.quote(segment, safe="")
+
+          def request(url: str) -> urllib.request.Request:
+            req = urllib.request.Request(
+              url,
+              headers={
+                "User-Agent": "radp-release-bot/1.0",
+                "Accept": "application/xml,text/xml;q=0.9,*/*;q=0.8",
+              },
+            )
+            if username and password:
+              token = base64.b64encode(f"{username}:{password}".encode("utf-8")).decode("ascii")
+              req.add_header("Authorization", f"Basic {token}")
+            return req
+
+          def fetch(url: str) -> tuple[bytes, int, str]:
+            req = request(url)
+            try:
+              with urllib.request.urlopen(req) as resp:
+                data = resp.read()
+                status = getattr(resp, "status", None) or resp.getcode()
+                content_type = resp.headers.get("Content-Type", "")
+                return data, int(status), content_type
+            except urllib.error.HTTPError as exc:
+              data = exc.read() if exc.fp else b""
+              status = exc.code or 0
+              content_type = exc.headers.get("Content-Type", "") if exc.headers else ""
+              snippet = data[:200].decode("utf-8", "ignore")
+              raise ValueError(
+                f"HTTP {status} for {url} content-type={content_type} body={snippet}"
+              ) from exc
+            except urllib.error.URLError as exc:
+              raise ValueError(f"Failed to reach {url}: {exc}") from exc
+
+          def fetch_xml(url: str) -> ET.Element:
+            data, status, content_type = fetch(url)
+            if not data:
+              raise ValueError(f"Empty response from {url} status={status} content-type={content_type}")
+            try:
+              return ET.fromstring(data)
+            except ET.ParseError as exc:
+              snippet = data[:200].decode("utf-8", "ignore")
+              raise ValueError(
+                f"Invalid XML from {url} status={status} content-type={content_type} body={snippet}"
+              ) from exc
+
+          def download(url: str, dest: Path) -> None:
+            dest.parent.mkdir(parents=True, exist_ok=True)
+            with urllib.request.urlopen(request(url)) as resp, open(dest, "wb") as fh:
+              fh.write(resp.read())
+
+          project_q = quote(project)
+          package_q = quote(package)
+          result_url = f"{api_url}/build/{project_q}/_result?package={package_q}"
+          print(f"OBS result URL: {result_url}", file=sys.stderr)
+          def gather_candidates(attempt: int) -> list[tuple[str, str]]:
+            root = fetch_xml(result_url)
+            candidates_local = []
+            total_results = 0
+            package_results = 0
+            for result in root.findall(".//result"):
+              total_results += 1
+              repo = result.get("repository")
+              arch = result.get("arch")
+              if not repo or not arch:
+                continue
+              status_nodes = result.findall(f"./status[@package='{package}']")
+              if not status_nodes:
+                continue
+              package_results += 1
+              status = status_nodes[0]
+              code = (status.get("code") or status.get("state") or "").lower()
+              if code not in {"succeeded", "published", "finished", "unchanged"}:
+                continue
+              candidates_local.append((repo, arch))
+            if attempt == 1:
+              print(
+                f"OBS result summary total={total_results} package_results={package_results} "
+                f"candidates={len(candidates_local)}",
+                file=sys.stderr,
+              )
+            return candidates_local
+
+          def fetch_binaries(candidates_list: list[tuple[str, str]], downloaded_set: set[str]) -> None:
+            for repo, arch in candidates_list:
+              repo_q = quote(repo)
+              arch_q = quote(arch)
+              base_url = f"{api_url}/build/{project_q}/{repo_q}/{arch_q}/{package_q}"
+              binarylist_url = f"{base_url}?view=binarylist"
+              binaries_root = None
+              try:
+                binaries_root = fetch_xml(base_url)
+              except Exception as exc:
+                print(
+                  f"Failed to query OBS binary list repo={repo} arch={arch} url={base_url}: {exc}",
+                  file=sys.stderr,
+                )
+                try:
+                  binaries_root = fetch_xml(binarylist_url)
+                  print(
+                    f"OBS binary list fallback succeeded repo={repo} arch={arch} url={binarylist_url}",
+                    file=sys.stderr,
+                  )
+                except Exception as fallback_exc:
+                  print(
+                    f"OBS binary list fallback failed repo={repo} arch={arch} url={binarylist_url}: {fallback_exc}",
+                    file=sys.stderr,
+                  )
+              if binaries_root is None:
+                continue
+              for binary in binaries_root.findall(".//binary"):
+                filename = binary.get("filename")
+                if not filename:
+                  continue
+                lower = filename.lower()
+                if lower.endswith((".src.rpm", ".nosrc.rpm", ".ddeb")):
+                  non_installable_count.append(filename)
+                  continue
+                if not (lower.endswith(".rpm") or lower.endswith(".deb")):
+                  non_installable_count.append(filename)
+                  continue
+                if version not in filename:
+                  continue
+                if filename in downloaded_set:
+                  continue
+                file_url = (
+                  f"{api_url}/build/{project_q}/{repo_q}/{arch_q}/{package_q}/"
+                  f"{urllib.parse.quote(filename, safe='')}"
+                )
+                try:
+                  download(file_url, dest_dir / f"obs-{filename}")
+                except Exception as exc:
+                  print(f"Failed to download OBS binary {filename}: {exc}", file=sys.stderr)
+                  continue
+                downloaded_set.add(filename)
+
+          dest_dir = Path("release-assets/obs")
+          downloaded: set[str] = set()
+          non_installable_count: list[str] = []
+          deadline = time.time() + max_wait_seconds
+          attempt = 0
+
+          while True:
+            attempt += 1
+            try:
+              candidates = gather_candidates(attempt)
+            except Exception as exc:
+              print(f"Failed to query OBS results: {exc}", file=sys.stderr)
+              candidates = []
+
+            if candidates:
+              if attempt == 1:
+                summary = ", ".join([f"{repo}/{arch}" for repo, arch in candidates])
+                print(f"OBS candidates: {summary}", file=sys.stderr)
+              fetch_binaries(candidates, downloaded)
+            else:
+              print(f"No successful OBS results for {package}", file=sys.stderr)
+
+            if downloaded:
+              break
+
+            if time.time() + poll_interval > deadline:
+              break
+
+            print(
+              f"OBS binaries not ready; retrying in {poll_interval}s (attempt {attempt})",
+              file=sys.stderr,
+            )
+            time.sleep(poll_interval)
+
+          if not downloaded:
+            print(f"No OBS binaries downloaded for {package} {version}", file=sys.stderr)
+          else:
+            print(f"Downloaded {len(downloaded)} OBS binaries")
+          if non_installable_count:
+            print(
+              f"Skipped {len(non_installable_count)} non-installable OBS artifacts",
+              file=sys.stderr,
+            )
+          PY
+
+      - name: Download Homebrew formula
+        if: >-
+          ${{
+            steps.release.outputs.should_upload == 'true' &&
+            (github.event_name != 'workflow_run' ||
+            github.event.workflow_run.name == 'Update Homebrew Tap')
+          }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -z "${TAP_FORMULA_URL:-}" ]]; then
+            echo "TAP_FORMULA_URL not set; skipping formula download."
+            exit 0
+          fi
+          mkdir -p release-assets/homebrew
+          curl -L --fail --show-error -o release-assets/homebrew/homebrew-radp-vagrant-framework.rb "${TAP_FORMULA_URL}"
+
+      - name: Upload assets to release
+        if: steps.release.outputs.should_upload == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          tag="${{ steps.release.outputs.tag_name }}"
+          if ! gh release view "$tag" >/dev/null 2>&1; then
+            gh release create "$tag" --title "$tag" --generate-notes
+          fi
+          if [[ ! -d release-assets ]]; then
+            echo "No assets directory to upload."
+            exit 0
+          fi
+          mapfile -t assets < <(find release-assets -maxdepth 3 -type f | sort)
+          if [[ ${#assets[@]} -eq 0 ]]; then
+            echo "No assets to upload."
+            exit 0
+          fi
+          gh release upload "$tag" "${assets[@]}" --clobber
