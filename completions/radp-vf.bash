@@ -4,10 +4,21 @@
 _radp_vf() {
     local cur prev words cword
 
-    # 兼容模式：如果 _init_completion 不存在，使用手动初始化
-    if type _init_completion &>/dev/null; then
-        _init_completion || return
+    # Support delegation from other completion functions (e.g., homelabctl vf)
+    # When _RADP_VF_DELEGATED is set, skip _init_completion and use pre-set COMP_* variables
+    if [[ -z "${_RADP_VF_DELEGATED:-}" ]]; then
+        # Direct invocation: use _init_completion if available
+        if type _init_completion &>/dev/null; then
+            _init_completion || return
+        else
+            COMPREPLY=()
+            cur="${COMP_WORDS[COMP_CWORD]}"
+            prev="${COMP_WORDS[COMP_CWORD-1]}"
+            words=("${COMP_WORDS[@]}")
+            cword="$COMP_CWORD"
+        fi
     else
+        # Delegated invocation: use pre-set COMP_* variables
         COMPREPLY=()
         cur="${COMP_WORDS[COMP_CWORD]}"
         prev="${COMP_WORDS[COMP_CWORD-1]}"
