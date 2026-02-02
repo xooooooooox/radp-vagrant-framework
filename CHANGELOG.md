@@ -1,5 +1,10 @@
 # CHANGELOG
 
+## v0.2.15
+
+- fix:  list -v show the run value
+- chore: update vagrant config yaml example
+
 ## v0.2.14
 
 ### feat
