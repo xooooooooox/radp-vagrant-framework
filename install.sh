@@ -5,6 +5,9 @@ REPO_OWNER="${RADP_VF_REPO_OWNER:-xooooooooox}"
 REPO_NAME="radp-vagrant-framework"
 tmp_dir=""
 
+# radp-bash-framework is required for CLI functionality
+RADP_BF_REQUIRED=true
+
 # Defaults (overridable by CLI args, then env vars)
 OPT_MODE="${RADP_VF_INSTALL_MODE:-auto}"
 OPT_REF="${RADP_VF_REF:-}"
@@ -564,8 +567,35 @@ install_cli() {
   ln -sf "${target_script}" "${bin_dir}/radp-vagrant-framework"
 }
 
+check_radp_bf_dependency() {
+  if [[ "${RADP_BF_REQUIRED}" != "true" ]]; then
+    return 0
+  fi
+
+  if command -v radp-bf &>/dev/null; then
+    log "Found radp-bash-framework: $(command -v radp-bf)"
+    return 0
+  fi
+
+  log ""
+  log "WARNING: radp-bash-framework is required but not found."
+  log ""
+  log "Install it first:"
+  log "  Homebrew: brew tap xooooooooox/radp && brew install radp-bash-framework"
+  log "  Script:   curl -fsSL https://raw.githubusercontent.com/xooooooooox/radp-bash-framework/main/install.sh | bash"
+  log ""
+  log "See: https://github.com/xooooooooox/radp-bash-framework"
+  log ""
+
+  # Continue with installation but warn user
+  return 0
+}
+
 install_manual() {
   FETCH_TOOL="$(detect_fetcher)" || die "Requires curl, wget, or fetch."
+
+  # Check for radp-bash-framework dependency
+  check_radp_bf_dependency
 
   local install_dir="${OPT_INSTALL_DIR:-$HOME/.local/lib/${REPO_NAME}}"
   local bin_dir="${OPT_BIN_DIR:-$HOME/.local/bin}"
@@ -603,26 +633,24 @@ install_manual() {
   if [[ ! -d "${src_root}/src/main/ruby/lib" ]]; then
     die "Archive layout unexpected; missing src/main/ruby/lib."
   fi
+  if [[ ! -d "${src_root}/src/main/shell" ]]; then
+    die "Archive layout unexpected; missing src/main/shell."
+  fi
 
   rm -rf "${install_dir}"
   mkdir -p "${install_dir}"
 
-  # Copy Ruby framework files
-  cp -R "${src_root}/src/main/ruby/lib" "${install_dir}/"
-  cp -R "${src_root}/src/main/ruby/Vagrantfile" "${install_dir}/" 2>/dev/null || true
+  # Copy entire src directory (shell CLI layer + Ruby framework)
+  cp -R "${src_root}/src" "${install_dir}/"
 
   # Copy project templates
   if [[ -d "${src_root}/templates" ]]; then
     cp -R "${src_root}/templates" "${install_dir}/"
   fi
 
-  # Copy sample config if exists
-  if [[ -d "${src_root}/src/main/ruby/config" ]]; then
-    cp -R "${src_root}/src/main/ruby/config" "${install_dir}/"
-  fi
-
   # Set permissions
   find "${install_dir}" -type f -name "*.rb" -exec chmod 0644 {} \;
+  find "${install_dir}/src/main/shell" -type f -name "*.sh" -exec chmod 0755 {} \; 2>/dev/null || true
 
   # Write install method marker for uninstall.sh
   echo "manual" >"${install_dir}/.install-method"
@@ -637,7 +665,7 @@ install_manual() {
     # ref is branch/SHA, append to base version from source
     local base_version
     base_version=$(grep -oE "VERSION = 'v[0-9]+\.[0-9]+\.[0-9]+'" \
-      "${install_dir}/lib/radp_vagrant/version.rb" 2>/dev/null \
+      "${install_dir}/src/main/ruby/lib/radp_vagrant/version.rb" 2>/dev/null \
       | grep -oE 'v[0-9]+\.[0-9]+\.[0-9]+' || echo "v0.0.0")
     installed_version="${base_version}+${ref}"
   fi

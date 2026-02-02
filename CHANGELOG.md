@@ -1,5 +1,51 @@
 # CHANGELOG
 
+## v0.2.16
+
+### refactor
+
+- Refactor CLI to use radp-bash-framework (radp-bf) architecture
+  - Entry script reduced from ~1000 lines to ~15 lines
+  - Commands auto-discovered from `src/main/shell/commands/`
+  - Libraries auto-loaded from `src/main/shell/libs/`
+  - Help text auto-generated from command annotations
+  - Requires radp-bash-framework as dependency
+- Add new directory structure: `src/main/shell/` with commands/, config/, libs/
+- Preserve full backward compatibility for all command interfaces
+- Backup legacy script as `bin/radp-vf.legacy`
+- Remove backward compatibility constraints
+  - Delete `bin/radp-vf.legacy` (legacy monolithic script)
+  - Simplify `commands/completion.sh` from ~330 lines to ~17 lines using framework completion generation
+- Regenerate shell completions using new CLI structure
+
+### breaking
+
+- Command options now come AFTER the command name (radp-bf framework convention)
+  - Old: `radp-vf -c /path/to/config list -v`
+  - New: `radp-vf list -c /path/to/config -a`
+- Change `list -v, --verbose` to `list -a, --all` to avoid conflict with framework's global `-v` verbose option
+- Add explicit short options for list command: `-p` (provisions), `-s` (synced-folders), `-t` (triggers)
+
+### feat
+
+- Add COPR packaging support (`packaging/copr/radp-vagrant-framework.spec`)
+- Add OBS packaging support (`packaging/obs/`) with Debian files
+- Add GitHub workflows for COPR and OBS package builds
+  - `update-spec-version.yml` - Auto-update spec version after tag creation
+  - `build-copr-package.yml` - Trigger COPR build
+  - `build-obs-package.yml` - Sync to OBS and trigger build
+
+### chore
+
+- Update Homebrew formula to add radp-bash-framework dependency
+- Update install.sh to check for radp-bash-framework and copy shell CLI layer
+
+### docs
+
+- Update README.md and README_CN.md with radp-bash-framework dependency info
+- Update CLAUDE.md with new CLI architecture documentation
+- Document radp-bf framework integration and command annotation patterns
+
 ## v0.2.15
 
 ### feat

@@ -1,0 +1,5 @@
+bin usr/lib/radp-vagrant-framework
+src usr/lib/radp-vagrant-framework
+templates usr/lib/radp-vagrant-framework
+completions/radp-vf.bash usr/share/bash-completion/completions
+completions/radp-vf.zsh usr/share/zsh/vendor-completions

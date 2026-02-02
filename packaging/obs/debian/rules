@@ -1,0 +1,20 @@
+#!/usr/bin/make -f
+
+%:
+	dh $@
+
+override_dh_auto_configure:
+	:
+
+override_dh_auto_build:
+	:
+
+override_dh_auto_install:
+	:
+
+override_dh_fixperms:
+	dh_fixperms
+	chmod 0755 debian/radp-vagrant-framework/usr/lib/radp-vagrant-framework/bin/radp-vf
+	find debian/radp-vagrant-framework/usr/lib/radp-vagrant-framework/src/main/shell -type f -name '*.sh' -exec chmod 0755 {} \;
+	# Remove IDE support files (development only)
+	find debian/radp-vagrant-framework/usr/lib/radp-vagrant-framework/src -name '_ide*.sh' -delete

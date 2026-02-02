@@ -21,9 +21,15 @@ class RadpVagrantFramework < Formula
   # Use system ruby on macOS instead of forcing Homebrew's ruby
   uses_from_macos "ruby"
 
+  # Requires radp-bash-framework for CLI
+  depends_on "xooooooooox/radp/radp-bash-framework"
+
   def install
     # Install Ruby framework files
     libexec.install Dir["src/main/ruby/*"]
+
+    # Install shell CLI layer
+    (libexec/"src/main/shell").install Dir["src/main/shell/*"]
 
     # Install project templates
     libexec.install "templates"

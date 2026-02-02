@@ -1,0 +1,87 @@
+name: Update spec version
+
+on:
+  workflow_run:
+    workflows:
+      - Create version tag
+    types:
+      - completed
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  update-spec-version:
+    if: >-
+      ${{
+        github.event_name != 'workflow_run' ||
+        (github.event.workflow_run.conclusion == 'success' &&
+        (github.event.workflow_run.head_branch == 'main' ||
+         startsWith(github.event.workflow_run.head_branch, 'workflow/')))
+      }}
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: main
+
+      - name: Fetch tags
+        run: git fetch --tags --force
+
+      - name: Read and validate version
+        id: version
+        run: |
+          set -euo pipefail
+          version_file="src/main/ruby/lib/radp_vagrant/version.rb"
+          version="$(grep -oE "VERSION = 'v[0-9]+\.[0-9]+\.[0-9]+'" "${version_file}" | grep -oE "v[0-9]+\.[0-9]+\.[0-9]+" | head -n 1)"
+          if [[ -z "$version" ]]; then
+            echo "Failed to read VERSION from $version_file" >&2
+            exit 1
+          fi
+          if [[ ! "$version" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Version '$version' does not match vx.y.z" >&2
+            exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+      - name: Update spec version
+        run: |
+          set -euo pipefail
+          version="${{ steps.version.outputs.version }}"
+          version_no_prefix="${version#v}"
+          copr_spec_file="packaging/copr/radp-vagrant-framework.spec"
+          if [[ -f "$copr_spec_file" ]]; then
+            sed -i "s/^Version:.*/Version:        ${version_no_prefix}/" "$copr_spec_file"
+          else
+            echo "COPR spec file not found: $copr_spec_file" >&2
+            exit 1
+          fi
+          obs_spec_file="packaging/obs/radp-vagrant-framework.spec"
+          if [[ -f "$obs_spec_file" ]]; then
+            sed -i "s/^Version:.*/Version:        ${version_no_prefix}/" "$obs_spec_file"
+          else
+            echo "OBS spec file not found: $obs_spec_file" >&2
+            exit 1
+          fi
+
+      - name: Commit and push
+        run: |
+          set -euo pipefail
+          if git diff --quiet; then
+            echo "No changes to commit."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add packaging/copr/radp-vagrant-framework.spec
+          if [[ -f "packaging/obs/radp-vagrant-framework.spec" ]]; then
+            git add packaging/obs/radp-vagrant-framework.spec
+          fi
+          git commit -m "Update spec version to ${{ steps.version.outputs.version }}"
+          git push

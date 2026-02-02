@@ -1,5 +1,5 @@
 src/main/shell/config/config.sh
-src/main/shell/config/completion.sh
+src/main/shell/config/_idecomp.sh
 src/main/ruby/config/vagrant-local.yaml
 .claude
 

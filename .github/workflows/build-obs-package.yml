@@ -1,0 +1,222 @@
+name: Build OBS package
+
+on:
+  workflow_run:
+    workflows:
+      - Update spec version
+    types:
+      - completed
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-obs-package:
+    if: >-
+      ${{
+        github.event_name != 'workflow_run' ||
+        (github.event.workflow_run.conclusion == 'success' &&
+        (github.event.workflow_run.head_branch == 'main' ||
+         startsWith(github.event.workflow_run.head_branch, 'workflow/')))
+      }}
+    runs-on: ubuntu-latest
+    env:
+      OBS_USERNAME: ${{ secrets.OBS_USERNAME }}
+      OBS_PASSWORD: ${{ secrets.OBS_PASSWORD }}
+      OBS_PROJECT: ${{ secrets.OBS_PROJECT }}
+      OBS_PACKAGE: ${{ secrets.OBS_PACKAGE }}
+      OBS_API_URL: ${{ secrets.OBS_API_URL }}
+    steps:
+      - name: Validate OBS secrets
+        run: |
+          set -euo pipefail
+          for value in OBS_USERNAME OBS_PASSWORD OBS_PROJECT OBS_PACKAGE; do
+            if [[ -z "${!value:-}" ]]; then
+              echo "Missing required secret: ${value}" >&2
+              exit 1
+            fi
+          done
+
+          default_api_url="https://api.opensuse.org"
+          if [[ -z "${OBS_API_URL:-}" ]]; then
+            echo "OBS_API_URL not set; using default ${default_api_url}"
+            echo "OBS_API_URL=${default_api_url}" >> "$GITHUB_ENV"
+          else
+            echo "OBS_API_URL=${OBS_API_URL}" >> "$GITHUB_ENV"
+          fi
+
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Fetch tags
+        run: git fetch --tags --force
+
+      - name: Read version
+        id: version
+        run: |
+          set -euo pipefail
+          version_file="src/main/ruby/lib/radp_vagrant/version.rb"
+          version="$(grep -oE "VERSION = 'v[0-9]+\.[0-9]+\.[0-9]+'" "${version_file}" | grep -oE "v[0-9]+\.[0-9]+\.[0-9]+" | head -n 1)"
+          if [[ -z "$version" ]]; then
+            echo "Failed to read VERSION from $version_file" >&2
+            exit 1
+          fi
+          if [[ ! "$version" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Version '$version' does not match vx.y.z" >&2
+            exit 1
+          fi
+          version_no_prefix="${version#v}"
+          echo "version=${version}" >> "$GITHUB_OUTPUT"
+          echo "version_no_prefix=${version_no_prefix}" >> "$GITHUB_OUTPUT"
+
+      - name: Check tag exists
+        id: tag
+        run: |
+          set -euo pipefail
+          version="${{ steps.version.outputs.version }}"
+          if ! git rev-parse "$version" >/dev/null 2>&1; then
+            echo "Tag $version does not exist. Skipping OBS build."
+            echo "should_build=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          tag_sha="$(git rev-parse "$version^{commit}")"
+          if [[ "${GITHUB_EVENT_NAME}" == "workflow_run" ]]; then
+            run_sha="${{ github.event.workflow_run.head_sha }}"
+            if [[ -n "${run_sha}" && "${tag_sha}" != "${run_sha}" ]]; then
+              echo "Tag ${version} points to ${tag_sha}, workflow head is ${run_sha}; skipping OBS build."
+              echo "should_build=false" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+          fi
+          echo "should_build=true" >> "$GITHUB_OUTPUT"
+          echo "tag_sha=${tag_sha}" >> "$GITHUB_OUTPUT"
+
+      - name: Install osc
+        if: steps.tag.outputs.should_build == 'true'
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y osc dpkg-dev debhelper
+
+      - name: Configure osc
+        if: steps.tag.outputs.should_build == 'true'
+        run: |
+          set -euo pipefail
+          cat > ~/.oscrc <<EOF
+          [general]
+          apiurl = ${OBS_API_URL}
+
+          [${OBS_API_URL}]
+          user = ${OBS_USERNAME}
+          pass = ${OBS_PASSWORD}
+          EOF
+          chmod 600 ~/.oscrc
+
+      - name: Verify OBS authentication
+        if: steps.tag.outputs.should_build == 'true'
+        run: |
+          set -euo pipefail
+          osc -A "${OBS_API_URL}" ls "${OBS_PROJECT}" >/dev/null
+          osc -A "${OBS_API_URL}" ls "${OBS_PROJECT}" "${OBS_PACKAGE}" >/dev/null
+
+      - name: Sync sources to OBS
+        if: steps.tag.outputs.should_build == 'true'
+        run: |
+          set -euo pipefail
+          version="${{ steps.version.outputs.version }}"
+          version_no_prefix="${{ steps.version.outputs.version_no_prefix }}"
+          checkout_root="${{ runner.temp }}/obs"
+          mkdir -p "$checkout_root"
+          pushd "$checkout_root" >/dev/null
+
+          osc -A "${OBS_API_URL}" checkout "${OBS_PROJECT}" "${OBS_PACKAGE}"
+          pkg_dir="${OBS_PROJECT}/${OBS_PACKAGE}"
+
+          if [[ ! -d "$pkg_dir/.osc" ]]; then
+            echo "OBS checkout missing .osc directory at $pkg_dir" >&2
+            exit 1
+          fi
+
+          shopt -s dotglob
+          for entry in "$pkg_dir"/*; do
+            [[ "$(basename "$entry")" == ".osc" ]] && continue
+            rm -rf "$entry"
+          done
+          shopt -u dotglob
+
+          spec_source="${GITHUB_WORKSPACE}/packaging/obs/radp-vagrant-framework.spec"
+          if [[ ! -f "$spec_source" ]]; then
+            echo "Spec file not found at $spec_source" >&2
+            exit 1
+          fi
+          cp "$spec_source" "$pkg_dir/"
+
+          tarball_url="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/archive/refs/tags/${version}.tar.gz"
+          tarball_name="v${version_no_prefix}.tar.gz"
+          tarball_path="$pkg_dir/${tarball_name}"
+          curl -L --fail --show-error -o "$tarball_path" "$tarball_url"
+          if [[ ! -s "$tarball_path" ]]; then
+            echo "Failed to download tarball from $tarball_url" >&2
+            exit 1
+          fi
+
+          if [[ -d "${GITHUB_WORKSPACE}/packaging/obs/debian" ]]; then
+            cp -a "${GITHUB_WORKSPACE}/packaging/obs/debian" "$pkg_dir/debian"
+          elif [[ -d "${GITHUB_WORKSPACE}/packaging/deb/debian" ]]; then
+            cp -a "${GITHUB_WORKSPACE}/packaging/deb/debian" "$pkg_dir/debian"
+          else
+            echo "No debian/ metadata found; skipping debian sync."
+          fi
+
+          if [[ -d "$pkg_dir/debian" ]]; then
+            deb_version="${version_no_prefix}-1"
+            changelog_path="$pkg_dir/debian/changelog"
+            {
+              printf 'radp-vagrant-framework (%s) unstable; urgency=medium\n\n' "$deb_version"
+              printf '  * Automated OBS build for version %s\n\n' "$deb_version"
+              printf ' -- xooooooooox <xozoz.sos@gmail.com>  %s\n' "$(date -R)"
+            } > "$changelog_path"
+            tmp_build="$(mktemp -d)"
+            orig_tarball="$tmp_build/radp-vagrant-framework_${version_no_prefix}.orig.tar.gz"
+            cp "$tarball_path" "$orig_tarball"
+            tar --force-local -xzf "$orig_tarball" -C "$tmp_build"
+            src_dir="$tmp_build/radp-vagrant-framework-${version_no_prefix}"
+            if [[ ! -d "$src_dir" ]]; then
+              echo "Expected source dir not found: $src_dir" >&2
+              exit 1
+            fi
+            cp -a "$pkg_dir/debian" "$src_dir/debian"
+            (cd "$src_dir" && dpkg-source -b .)
+            find "$tmp_build" -maxdepth 1 -type f -name 'radp-vagrant-framework_*.dsc' -print0 | xargs -0 -I {} mv {} "$pkg_dir/"
+            find "$tmp_build" -maxdepth 1 -type f -name 'radp-vagrant-framework_*.debian.tar.*' -print0 | xargs -0 -I {} mv {} "$pkg_dir/"
+            cp "$orig_tarball" "$pkg_dir/"
+            rm -rf "$tmp_build"
+          fi
+
+          pushd "$pkg_dir" >/dev/null
+          osc addremove
+          popd >/dev/null
+          popd >/dev/null
+
+      - name: Commit and trigger OBS build
+        if: steps.tag.outputs.should_build == 'true'
+        run: |
+          set -euo pipefail
+          pkg_dir="${{ runner.temp }}/obs/${OBS_PROJECT}/${OBS_PACKAGE}"
+          if [[ ! -d "$pkg_dir/.osc" ]]; then
+            echo "OBS package directory missing at $pkg_dir" >&2
+            exit 1
+          fi
+
+          pushd "$pkg_dir" >/dev/null
+          status_output="$(osc status)"
+          if [[ -z "$status_output" ]]; then
+            echo "No OBS changes to commit."
+            exit 0
+          fi
+
+          osc commit -m "Update radp-vagrant-framework to ${{ steps.version.outputs.version }}"
+          popd >/dev/null

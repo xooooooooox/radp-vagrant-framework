@@ -1,0 +1,17 @@
+Source: radp-vagrant-framework
+Section: utils
+Priority: optional
+Maintainer: xooooooooox <xozoz.sos@gmail.com>
+Build-Depends: debhelper-compat (= 13)
+Standards-Version: 4.6.2
+Homepage: https://github.com/xooooooooox/radp-vagrant-framework
+Rules-Requires-Root: no
+
+Package: radp-vagrant-framework
+Architecture: all
+Depends: ${misc:Depends}, bash, coreutils, ruby, radp-bash-framework
+Description: YAML-driven framework for managing multi-machine Vagrant environments.
+ radp-vagrant-framework provides declarative configuration for VM clusters,
+ networks, storage, and provisioning through a modular Ruby architecture.
+ It supports configuration inheritance, builtin provisions and triggers,
+ and plugin management for Vagrant environments.

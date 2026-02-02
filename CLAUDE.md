@@ -34,12 +34,12 @@ declarative configuration for VM clusters, networks, storage, and provisioning t
 
 # List clusters and guests
 ./bin/radp-vf list
-./bin/radp-vf -e prod list
-./bin/radp-vf list -v # Verbose mode (all details)
-./bin/radp-vf list -v node-1 # Verbose for specific guest
-./bin/radp-vf list --provisions # Show provisions only
-./bin/radp-vf list --synced-folders # Show synced folders only
-./bin/radp-vf list --triggers # Show triggers only
+./bin/radp-vf list -e prod
+./bin/radp-vf list -a # All details
+./bin/radp-vf list -a node-1 # All details for specific guest
+./bin/radp-vf list -p # Show provisions only
+./bin/radp-vf list -s # Show synced folders only
+./bin/radp-vf list -t # Show triggers only
 
 # Validate YAML configuration
 ./bin/radp-vf validate
@@ -57,14 +57,17 @@ declarative configuration for VM clusters, networks, storage, and provisioning t
 
 # Run vagrant commands
 ./bin/radp-vf vg status
-./bin/radp-vf -c /path/to/config -e prod vg up
+./bin/radp-vf vg -c /path/to/config -e prod up
 
-# Global options
-# -c, --config <dir>   Configuration directory
-# -e, --env <name>     Override environment
-# -v, --verbose        Enable verbose output
+# Framework global options (apply before command)
+# -v, --verbose        Enable verbose logging (framework level)
+# --debug              Enable debug logging
 # -h, --help           Show help
 # --version            Show version
+
+# Command options (apply after command)
+# -c, --config <dir>   Configuration directory
+# -e, --env <name>     Override environment
 ```
 
 ### Vagrant Commands
@@ -103,9 +106,47 @@ ruby -r ./lib/radp_vagrant -e "puts RadpVagrant.generate_vagrantfile('config')"
 
 ## Architecture
 
-### Entry Point
+### Entry Points
 
-- `src/main/ruby/Vagrantfile` - Vagrant entry point that loads RadpVagrant module
+**CLI Entry (`bin/radp-vf`)**:
+- Thin ~15-line entry script using radp-bash-framework
+- Checks for radp-bf dependency, sets RADP_APP_NAME and RADP_APP_ROOT
+- Delegates to `radp-bf path launcher` for command dispatch
+
+**Vagrant Entry (`src/main/ruby/Vagrantfile`)**:
+- Vagrant entry point that loads RadpVagrant module
+
+### CLI Architecture (radp-bf Framework)
+
+The CLI follows radp-bash-framework conventions:
+
+1. **Command Discovery**: Commands are auto-discovered from `src/main/shell/commands/`
+   - File `commands/list.sh` → command `radp-vf list`
+   - File `commands/template/list.sh` → command `radp-vf template list`
+   - Commands require `# @cmd` marker to be discovered
+
+2. **Library Auto-Loading**: Libraries in `src/main/shell/libs/` are auto-sourced
+   - `libs/vf/_common.sh` - Path resolution, config detection functions
+   - `libs/vf/ruby_bridge.sh` - Wrapper functions for Ruby CLI calls
+
+3. **Command Annotations**: Commands use comment-based metadata
+   ```bash
+   # @cmd
+   # @desc List clusters and guests from configuration
+   # @arg filter Guest ID or machine name filter
+   # @option -v, --verbose Show detailed info
+   # @option -c, --config <dir> Configuration directory
+   # @meta passthrough  # For vg.sh - passes all args to vagrant
+   ```
+
+4. **Option Access**: Parsed options available as `$opt_<name>` variables
+   - `-c, --config` → `$opt_config`
+   - `-e, --env` → `$opt_env`
+   - `--synced-folders` → `$opt_synced_folders`
+
+5. **Global Variables Set by _common.sh**:
+   - `$gr_vf_home` - RADP_VF_HOME path
+   - `$gr_vf_ruby_lib_dir` - Ruby lib directory path
 
 ### Configuration Flow
 
@@ -393,7 +434,7 @@ All relative paths use unified two-level resolution via `PathResolver`:
 
 ```
 bin/
-└── radp-vf                         # CLI entry point
+└── radp-vf                         # Thin CLI entry point (~15 lines)
 completions/
 ├── radp-vf.bash                    # Bash completion
 └── radp-vf.zsh                     # Zsh completion
@@ -404,6 +445,27 @@ templates/                          # Builtin project templates
 │   └── files/                      # Template files
 ├── single-node/                    # Enhanced single VM template
 └── k8s-cluster/                    # Kubernetes cluster template
+src/main/shell/                     # NEW: Bash CLI layer (radp-bf framework)
+├── commands/                       # Command auto-discovery
+│   ├── completion.sh               # radp-vf completion <shell>
+│   ├── dump-config.sh              # radp-vf dump-config
+│   ├── generate.sh                 # radp-vf generate
+│   ├── info.sh                     # radp-vf info
+│   ├── init.sh                     # radp-vf init
+│   ├── list.sh                     # radp-vf list
+│   ├── validate.sh                 # radp-vf validate
+│   ├── version.sh                  # radp-vf version
+│   ├── vg.sh                       # radp-vf vg (passthrough, @meta passthrough)
+│   └── template/                   # Subcommands
+│       ├── list.sh                 # radp-vf template list
+│       └── show.sh                 # radp-vf template show
+├── config/
+│   ├── config.yaml                 # Framework configuration
+│   └── _ide.sh                     # IDE code completion support
+└── libs/
+    └── vf/                         # Auto-loaded library functions
+        ├── _common.sh              # Path resolution, config detection
+        └── ruby_bridge.sh          # Ruby CLI call wrappers
 src/main/ruby/
 ├── Vagrantfile                     # Vagrant entry point
 ├── config/
@@ -416,10 +478,13 @@ src/main/ruby/
         ├── config_loader.rb        # Multi-file YAML loading
         ├── config_merger.rb        # Deep merge with array concatenation
         ├── path_resolver.rb        # Unified two-level path resolution
-        ├── cli/                    # CLI command implementations
+        ├── cli/                    # Ruby CLI implementations
         │   ├── base.rb             # Base class with common helpers
         │   ├── list.rb             # List command
         │   ├── validate.rb         # Validate command
+        │   ├── dump_config.rb      # Dump-config command
+        │   ├── generate.rb         # Generate command
+        │   ├── info.rb             # Info command
         │   └── template.rb         # Template list/show command
         ├── templates/              # Template system
         │   ├── registry.rb         # Template discovery
@@ -517,8 +582,9 @@ radp:
    `config-{env}.yaml`), not in base config
 9. **Flexible Config Filename**: Supports `vagrant.yaml` (default), `config.yaml`, or custom filename via
    `RADP_VAGRANT_CONFIG_BASE_FILENAME` env var
-10. **Hybrid Bash/Ruby Architecture**: CLI entry point (`bin/radp-vf`) is Bash for option parsing and environment setup;
-    complex logic is in Ruby modules (`lib/radp_vagrant/cli/`)
+10. **radp-bf Framework Architecture**: CLI uses radp-bash-framework for command discovery and option parsing;
+    complex logic is in Ruby modules (`lib/radp_vagrant/cli/`). Entry script is ~15 lines, commands are auto-discovered
+    from `src/main/shell/commands/`, libs are auto-loaded from `src/main/shell/libs/`
 
 ## Validation Rules
 

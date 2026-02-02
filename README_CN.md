@@ -32,6 +32,7 @@
 - Ruby 2.7+
 - Vagrant 2.0+
 - VirtualBox（或其他支持的 provider）
+- [radp-bash-framework](https://github.com/xooooooooox/radp-bash-framework)（必需，通过 Homebrew/包管理器自动安装）
 
 ## 安装
 
@@ -126,9 +127,9 @@ cd myproject
 radp-vf vg status
 radp-vf vg up
 
-# 或使用 -c 参数从任意位置运行
-radp-vf -c ~/myproject/config vg status
-radp-vf -c ~/myproject/config vg up
+# 或使用 -c 选项从任意位置运行（选项放在命令后面）
+radp-vf vg -c ~/myproject/config status
+radp-vf vg -c ~/myproject/config up
 
 # 或设置环境变量
 export RADP_VAGRANT_CONFIG_DIR="$HOME/myproject/config"
@@ -152,14 +153,26 @@ radp-vf vg destroy
 | `template list` | 列出可用模板              |
 | `template show` | 显示模板详情              |
 
-### 全局选项
+### 命令选项
+
+选项在命令名称之后指定：
 
 | 选项                   | 描述                  |
 |----------------------|---------------------|
 | `-c, --config <dir>` | 配置目录（默认：`./config`） |
 | `-e, --env <name>`   | 覆盖环境名称              |
-| `-h, --help`         | 显示帮助                |
-| `-v, --version`      | 显示版本                |
+| `-h, --help`         | 显示命令帮助              |
+
+### 框架选项
+
+框架选项在命令之前指定：
+
+| 选项           | 描述             |
+|--------------|----------------|
+| `-v`         | 启用详细日志         |
+| `--debug`    | 启用调试日志         |
+| `-h, --help` | 显示帮助           |
+| `--version`  | 显示版本           |
 
 ### 环境变量
 

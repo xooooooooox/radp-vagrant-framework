@@ -34,6 +34,7 @@ provisioning.
 - Ruby 2.7+
 - Vagrant 2.0+
 - VirtualBox (or other supported provider)
+- [radp-bash-framework](https://github.com/xooooooooox/radp-bash-framework) (required, installed automatically via Homebrew/package managers)
 
 ## Installation
 
@@ -128,9 +129,9 @@ cd myproject
 radp-vf vg status
 radp-vf vg up
 
-# Or run from anywhere with -c flag
-radp-vf -c ~/myproject/config vg status
-radp-vf -c ~/myproject/config vg up
+# Or run from anywhere with -c option (after command)
+radp-vf vg -c ~/myproject/config status
+radp-vf vg -c ~/myproject/config up
 
 # Or set environment variable
 export RADP_VAGRANT_CONFIG_DIR="$HOME/myproject/config"
@@ -154,14 +155,26 @@ radp-vf vg destroy
 | `template list` | List available templates                |
 | `template show` | Show template details                   |
 
-### Global Options
+### Command Options
+
+Options are specified after the command name:
 
 | Option               | Description                                   |
 |----------------------|-----------------------------------------------|
 | `-c, --config <dir>` | Configuration directory (default: `./config`) |
 | `-e, --env <name>`   | Override environment name                     |
-| `-h, --help`         | Show help                                     |
-| `-v, --version`      | Show version                                  |
+| `-h, --help`         | Show help for command                         |
+
+### Framework Options
+
+Framework options apply before the command:
+
+| Option         | Description                  |
+|----------------|------------------------------|
+| `-v`           | Enable verbose logging       |
+| `--debug`      | Enable debug logging         |
+| `-h, --help`   | Show help                    |
+| `--version`    | Show version                 |
 
 ### Environment Variables
 
