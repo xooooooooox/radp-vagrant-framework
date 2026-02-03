@@ -1,6 +1,6 @@
 # CHANGELOG
 
-## v0.2.19
+## v0.2.20
 
 ### refactor
 
@@ -34,6 +34,7 @@
   - `update-spec-version.yml` - Auto-update spec version after tag creation
   - `build-copr-package.yml` - Trigger COPR build
   - `build-obs-package.yml` - Sync to OBS and trigger build
+  - `build-portable.yml` - Build portable binary
 - Generates completion script with delegation support via `_RADP_VF_DELEGATED` flag
 
 ### chore

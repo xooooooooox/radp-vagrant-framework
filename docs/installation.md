@@ -54,6 +54,29 @@ Environment variables (`RADP_VF_REF`, `RADP_VF_VERSION`, `RADP_VF_INSTALL_MODE`,
 When `--ref` is used and a package-manager version is already installed, the script automatically removes it first to
 avoid conflicts.
 
+### Portable Binary
+
+Download a self-contained portable binary from [GitHub Releases](https://github.com/xooooooooox/radp-vagrant-framework/releases):
+
+| Platform            | Download                                                                                                                                         |
+|---------------------|--------------------------------------------------------------------------------------------------------------------------------------------------|
+| macOS Apple Silicon | [radp-vf-portable-darwin-arm64](https://github.com/xooooooooox/radp-vagrant-framework/releases/latest/download/radp-vf-portable-darwin-arm64)   |
+| macOS Intel         | [radp-vf-portable-darwin-amd64](https://github.com/xooooooooox/radp-vagrant-framework/releases/latest/download/radp-vf-portable-darwin-amd64)   |
+| Linux x86_64        | [radp-vf-portable-linux-amd64](https://github.com/xooooooooox/radp-vagrant-framework/releases/latest/download/radp-vf-portable-linux-amd64)     |
+| Linux ARM64         | [radp-vf-portable-linux-arm64](https://github.com/xooooooooox/radp-vagrant-framework/releases/latest/download/radp-vf-portable-linux-arm64)     |
+
+```shell
+# Example: macOS Apple Silicon
+curl -fsSL https://github.com/xooooooooox/radp-vagrant-framework/releases/latest/download/radp-vf-portable-darwin-arm64 -o radp-vf
+chmod +x radp-vf
+sudo mv radp-vf /usr/local/bin/
+
+# Verify installation
+radp-vf --help
+```
+
+> **Note**: The portable binary requires [radp-bash-framework](https://github.com/xooooooooox/radp-bash-framework) to be installed. You can use the radp-bf portable binary or install via Homebrew/package managers.
+
 ### Manual (Git Clone)
 
 First, install [radp-bash-framework](https://github.com/xooooooooox/radp-bash-framework):
@@ -143,9 +166,12 @@ echo 'fpath=(~/.zfunc $fpath)' >>~/.zshrc
 | `RADP_VAGRANT_CONFIG_DIR`           | Configuration directory path          | `./config` if exists            |
 | `RADP_VAGRANT_ENV`                  | Override environment name             | `radp.env` in config file       |
 | `RADP_VAGRANT_CONFIG_BASE_FILENAME` | Override base config filename         | Auto-detect: `vagrant.yaml` > `config.yaml` |
+| `RADP_VF_PORTABLE`                  | Set by portable binary (read-only)    | Not set                         |
+| `RADP_VF_PORTABLE_VERSION`          | Version of portable binary (read-only)| Not set                         |
 
 **RADP_VF_HOME defaults:**
 
+- Portable binary: `~/.cache/radp-vf/<version>`
 - Script install: `~/.local/lib/radp-vagrant-framework`
 - Homebrew install: `/opt/homebrew/Cellar/radp-vagrant-framework/<version>/libexec`
 - Git clone: Project root (auto-detected)

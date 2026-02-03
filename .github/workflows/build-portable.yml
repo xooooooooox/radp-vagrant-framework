@@ -1,0 +1,195 @@
+name: Build Portable Binary
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_run:
+    workflows:
+      - Create version tag
+    types:
+      - completed
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version tag (e.g., v0.2.19)"
+        required: false
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    if: >-
+      github.event_name != 'workflow_run' ||
+      (github.event.workflow_run.conclusion == 'success' &&
+      (github.event.workflow_run.head_branch == 'main' ||
+       startsWith(github.event.workflow_run.head_branch, 'workflow/')))
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Linux x86_64
+          - os: ubuntu-latest
+            platform: linux-amd64
+          # Linux ARM64 (using ARM64 runner)
+          - os: ubuntu-24.04-arm
+            platform: linux-arm64
+          # macOS Intel
+          - os: macos-15
+            platform: darwin-amd64
+          # macOS Apple Silicon
+          - os: macos-14
+            platform: darwin-arm64
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Determine version
+        id: version
+        shell: bash
+        run: |
+          if [[ -n "${{ github.event.inputs.version }}" ]]; then
+            version="${{ github.event.inputs.version }}"
+          elif [[ "$GITHUB_REF_TYPE" == "tag" ]]; then
+            version="${GITHUB_REF_NAME}"
+          else
+            # Read from version.rb
+            version=$(grep -E "VERSION = " src/main/ruby/lib/radp_vagrant/version.rb | \
+              sed "s/.*VERSION = '//" | sed "s/'.*//")
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "Building version: $version"
+
+      - name: Build portable
+        shell: bash
+        run: |
+          chmod +x packaging/binary/build-portable.sh
+          ./packaging/binary/build-portable.sh --platform "${{ matrix.platform }}"
+
+      - name: List artifacts
+        shell: bash
+        run: |
+          echo "Built artifacts:"
+          ls -la dist/
+
+      - name: Install dependencies for testing
+        if: startsWith(matrix.os, 'macos')
+        run: |
+          # macOS runners have bash 3.2 by default, install bash 5.x via Homebrew
+          brew install bash
+
+      - name: Install radp-bash-framework for testing
+        shell: bash
+        run: |
+          # Install radp-bash-framework for testing
+          if [[ "${{ matrix.os }}" == "macos"* ]]; then
+            brew tap xooooooooox/radp
+            brew install radp-bash-framework
+          else
+            curl -fsSL https://raw.githubusercontent.com/xooooooooox/radp-bash-framework/main/install.sh | bash
+            echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          fi
+
+      - name: Test portable binary
+        shell: bash
+        run: |
+          binary_name="radp-vf-portable-${{ matrix.platform }}"
+          echo "Testing $binary_name..."
+          chmod +x "dist/$binary_name"
+          "dist/$binary_name" --help
+          "dist/$binary_name" version
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: portable-${{ matrix.platform }}
+          path: dist/radp-vf-portable*
+          if-no-files-found: error
+          retention-days: 7
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    if: >-
+      (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')) ||
+      (github.event_name == 'workflow_run' &&
+       github.event.workflow_run.conclusion == 'success' &&
+       (github.event.workflow_run.head_branch == 'main' ||
+        startsWith(github.event.workflow_run.head_branch, 'workflow/')))
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Fetch tags
+        run: git fetch --tags --force
+
+      - name: Resolve tag
+        id: tag
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ "${GITHUB_EVENT_NAME}" == "workflow_run" ]]; then
+            head_sha="${{ github.event.workflow_run.head_sha }}"
+            tag_name="$(git tag --points-at "${head_sha}" --list 'v*' | sort -V | tail -n 1)"
+
+            # Fallback: read version from version.rb at that commit
+            if [[ -z "${tag_name}" ]]; then
+              version_file="src/main/ruby/lib/radp_vagrant/version.rb"
+              version_from_commit="$(git show "${head_sha}:${version_file}" | grep -oE "VERSION = 'v[0-9]+\.[0-9]+\.[0-9]+'" | grep -oE "v[0-9]+\.[0-9]+\.[0-9]+" | head -n 1)"
+              if [[ -n "${version_from_commit}" ]]; then
+                tag_name="${version_from_commit}"
+              fi
+            fi
+          else
+            tag_name="${GITHUB_REF_NAME}"
+          fi
+
+          if [[ -z "${tag_name}" ]]; then
+            echo "Failed to resolve tag name" >&2
+            exit 1
+          fi
+
+          echo "tag_name=${tag_name}" >> "$GITHUB_OUTPUT"
+          echo "Resolved tag: ${tag_name}"
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Prepare release assets
+        run: |
+          mkdir -p release-assets
+          find artifacts -type f -name 'radp-vf-portable*' -exec cp {} release-assets/ \;
+          echo "Release assets:"
+          ls -la release-assets/
+
+      - name: Upload to release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag="${{ steps.tag.outputs.tag_name }}"
+
+          # Create release if it doesn't exist
+          if ! gh release view "$tag" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release create "$tag" --repo "$GITHUB_REPOSITORY" \
+              --title "$tag" \
+              --generate-notes
+          fi
+
+          # Upload all assets
+          mapfile -t assets < <(find release-assets -type f | sort)
+          if [[ ${#assets[@]} -gt 0 ]]; then
+            gh release upload "$tag" "${assets[@]}" --repo "$GITHUB_REPOSITORY" --clobber
+            echo "Uploaded ${#assets[@]} portable binaries to release $tag"
+          fi

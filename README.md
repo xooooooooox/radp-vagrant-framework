@@ -48,8 +48,7 @@ brew install radp-vagrant-framework
 ### Script (curl)
 
 ```shell
-curl -fsSL https://raw.githubusercontent.com/xooooooooox/radp-vagrant-framework/main/install.sh
-| bash
+curl -fsSL https://raw.githubusercontent.com/xooooooooox/radp-vagrant-framework/main/install.sh | bash
 ```
 
 Install from a specific branch or tag:
@@ -58,6 +57,24 @@ Install from a specific branch or tag:
 bash install.sh --ref main
 bash install.sh --ref v1.0.0-rc1
 ```
+
+### Portable Binary
+
+Download a self-contained portable binary from [GitHub Releases](https://github.com/xooooooooox/radp-vagrant-framework/releases):
+
+```shell
+# macOS Apple Silicon
+curl -fsSL https://github.com/xooooooooox/radp-vagrant-framework/releases/latest/download/radp-vf-portable-darwin-arm64 -o radp-vf
+chmod +x radp-vf
+./radp-vf --help
+
+# Linux x86_64
+curl -fsSL https://github.com/xooooooooox/radp-vagrant-framework/releases/latest/download/radp-vf-portable-linux-amd64 -o radp-vf
+chmod +x radp-vf
+./radp-vf --help
+```
+
+> **Note**: Portable binary requires [radp-bash-framework](https://github.com/xooooooooox/radp-bash-framework) to be installed.
 
 See [Installation Guide](docs/installation.md) for more options (manual install, upgrade, shell completion).
 

@@ -50,14 +50,14 @@ release-prep (manual trigger)
        ▼
 create-version-tag
        │
-       ├─────────────────────────┬──────────────────────┐
-       ▼                         ▼                      ▼
-build-copr-package     build-obs-package     update-homebrew-tap
-       │                         │                      │
-       └─────────────────────────┴──────────────────────┘
-                                 │
-                                 ▼
-                    attach-release-packages
+       ├───────────────────┬───────────────────┬──────────────────┬──────────────────┐
+       ▼                   ▼                   ▼                  ▼                  ▼
+build-copr-package  build-obs-package  update-homebrew-tap  build-portable  cleanup-branches
+       │                   │                   │                  │
+       └───────────────────┴───────────────────┴──────────────────┘
+                                     │
+                                     ▼
+                        attach-release-packages
 ```
 
 ### Steps
@@ -76,6 +76,7 @@ build-copr-package     build-obs-package     update-homebrew-tap
     - `build-copr-package` → builds RPM for Fedora/RHEL
     - `build-obs-package` → builds for openSUSE/Debian
     - `update-homebrew-tap` → updates the Homebrew formula
+    - `build-portable` → builds portable binaries for all platforms
     - `attach-release-packages` → uploads built packages to GitHub Release
 
 ## GitHub Actions Reference
@@ -87,9 +88,11 @@ build-copr-package     build-obs-package     update-homebrew-tap
 | `create-version-tag.yml`       | Merge of `workflow/vX.Y.Z` PR           | Read version, validate changelog, create/push Git tag                         |
 | `build-copr-package.yml`       | After `create-version-tag`              | Build RPM package via COPR                                                    |
 | `build-obs-package.yml`        | After `create-version-tag`              | Build packages via openSUSE Build Service                                     |
+| `build-portable.yml`           | After `create-version-tag`              | Build portable binaries for all platforms (linux/darwin, amd64/arm64)         |
 | `update-homebrew-tap.yml`      | After `create-version-tag`              | Update Homebrew tap formula with new version and SHA256                       |
 | `attach-release-packages.yml`  | After build/homebrew workflows complete | Create GitHub Release and attach built packages                               |
 | `update-spec-version.yml`      | After `create-version-tag`              | Verify spec file versions match release tag                                   |
+| `cleanup-branches.yml`         | Weekly schedule or manual               | Delete stale workflow branches                                                |
 
 ## Required Secrets
 

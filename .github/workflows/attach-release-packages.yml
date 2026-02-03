@@ -6,6 +6,7 @@ on:
       - Build COPR package
       - Build OBS package
       - Update Homebrew Tap
+      - Build Portable Binary
     types:
       - completed
   workflow_dispatch:
@@ -700,6 +701,20 @@ jobs:
           fi
           mkdir -p release-assets/homebrew
           curl -L --fail --show-error -o release-assets/homebrew/homebrew-radp-vagrant-framework.rb "${TAP_FORMULA_URL}"
+
+      - name: Download portable binaries
+        if: >-
+          ${{
+            steps.release.outputs.should_upload == 'true' &&
+            (github.event_name != 'workflow_run' ||
+            github.event.workflow_run.name == 'Build Portable Binary')
+          }}
+        uses: actions/download-artifact@v4
+        with:
+          pattern: portable-*
+          path: release-assets/portable
+          merge-multiple: true
+        continue-on-error: true
 
       - name: Upload assets to release
         if: steps.release.outputs.should_upload == 'true'
