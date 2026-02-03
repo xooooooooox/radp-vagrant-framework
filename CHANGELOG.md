@@ -1,20 +1,6 @@
 # CHANGELOG
 
-## v0.2.24
-
-### fix
-
-- Fix shell completion pollution when config loading fails
-  - Completion now silently returns empty results for invalid config paths
-  - Changed error output from stdout to stderr in `base.rb` to prevent pollution
-  - Added `load_config_silent` method in `completion.rb` for silent config loading
-- Add dynamic completion support for zsh
-  - Previously zsh completion only had static options without Ruby integration
-  - Now supports cluster names, guest IDs, and machine names completion
-  - Works with both direct `radp-vf` and delegated `homelabctl vf` commands
-- Regenerate completion scripts
-
-## v0.2.23
+## v0.2.25
 
 ### feat
 
@@ -30,41 +16,6 @@
 - Add Ruby CLI modules for resolve and completion
   - `RadpVagrant::CLI::Resolve` - resolves cluster/guest-ids to machine names
   - `RadpVagrant::CLI::Completion` - provides completion data (machines, clusters, guests)
-
-### fix
-
-- Fix verbose mode not being passed to Vagrantfile
-  - `radp-vf -v vg status` now correctly displays both framework and Vagrantfile banners
-  - Changed detection from `opt_verbose` to `GX_RADP_FW_BANNER_MODE`
-
-## v0.2.21
-
-### refactor
-
-- Refactor CLI to use radp-bash-framework (radp-bf) architecture
-  - Entry script reduced from ~1000 lines to ~15 lines
-  - Commands auto-discovered from `src/main/shell/commands/`
-  - Libraries auto-loaded from `src/main/shell/libs/`
-  - Help text auto-generated from command annotations
-  - Requires radp-bash-framework as dependency
-- Add new directory structure: `src/main/shell/` with commands/, config/, libs/
-- Preserve full backward compatibility for all command interfaces
-- Backup legacy script as `bin/radp-vf.legacy`
-- Remove backward compatibility constraints
-  - Delete `bin/radp-vf.legacy` (legacy monolithic script)
-  - Simplify `commands/completion.sh` from ~330 lines to ~17 lines using framework completion generation
-- Regenerate shell completions using new CLI structure
-
-### breaking
-
-- Command options now come AFTER the command name (radp-bf framework convention)
-  - Old: `radp-vf -c /path/to/config list -v`
-  - New: `radp-vf list -c /path/to/config -a`
-- Change `list -v, --verbose` to `list -a, --all` to avoid conflict with framework's global `-v` verbose option
-- Add explicit short options for list command: `-p` (provisions), `-s` (synced-folders), `-t` (triggers)
-
-### feat
-
 - Add COPR packaging support (`packaging/copr/radp-vagrant-framework.spec`)
 - Add OBS packaging support (`packaging/obs/`) with Debian files
 - Add GitHub workflows for COPR and OBS package builds
@@ -73,23 +24,7 @@
   - `build-obs-package.yml` - Sync to OBS and trigger build
   - `build-portable.yml` - Build portable binary
 - Generates completion script with delegation support via `_RADP_VF_DELEGATED` flag
-- Support `privileged` on builtin or user trigger.
-
-### chore
-
-- Update Homebrew formula to add radp-bash-framework dependency
-- Update install.sh to check for radp-bash-framework and copy shell CLI layer
-
-### docs
-
-- Update README.md and README_CN.md with radp-bash-framework dependency info
-- Update CLAUDE.md with new CLI architecture documentation
-- Document radp-bf framework integration and command annotation patterns
-
-## v0.2.15
-
-### feat
-
+- Support `privileged` on builtin or user trigger
 - Add user triggers support with `user:` prefix
     - User triggers are project-defined triggers under `{config_dir}/triggers/` or `{project_root}/triggers/`
     - Supports subdirectory paths (e.g., `user:system/cleanup`)
@@ -125,19 +60,60 @@
 
 ### fix
 
+- Fix shell completion pollution when config loading fails
+    - Completion now silently returns empty results for invalid config paths
+    - Changed error output from stdout to stderr in `base.rb` to prevent pollution
+    - Added `load_config_silent` method in `completion.rb` for silent config loading
+- Add dynamic completion support for zsh
+    - Previously zsh completion only had static options without Ruby integration
+    - Now supports cluster names, guest IDs, and machine names completion
+    - Works with both direct `radp-vf` and delegated `homelabctl vf` commands
+- Regenerate completion scripts
+- Fix verbose mode not being passed to Vagrantfile
+    - `radp-vf -v vg status` now correctly displays both framework and Vagrantfile banners
+    - Changed detection from `opt_verbose` to `GX_RADP_FW_BANNER_MODE`
 - Fix banner version
 - Fix radp:yadm/clone
 - Fix if hostname is empty, default to `<guest-id>.<cluster-name>.<env>`
 - Fix `list -v` show the wrong value
 
+### refactor
+
+- Refactor CLI to use radp-bash-framework (radp-bf) architecture
+    - Entry script reduced from ~1000 lines to ~15 lines
+    - Commands auto-discovered from `src/main/shell/commands/`
+    - Libraries auto-loaded from `src/main/shell/libs/`
+    - Help text auto-generated from command annotations
+    - Requires radp-bash-framework as dependency
+- Add new directory structure: `src/main/shell/` with commands/, config/, libs/
+- Preserve full backward compatibility for all command interfaces
+- Backup legacy script as `bin/radp-vf.legacy`
+- Remove backward compatibility constraints
+    - Delete `bin/radp-vf.legacy` (legacy monolithic script)
+    - Simplify `commands/completion.sh` from ~330 lines to ~17 lines using framework completion generation
+- Regenerate shell completions using new CLI structure
+
+### breaking
+
+- Command options now come AFTER the command name (radp-bf framework convention)
+    - Old: `radp-vf -c /path/to/config list -v`
+    - New: `radp-vf list -c /path/to/config -a`
+- Change `list -v, --verbose` to `list -a, --all` to avoid conflict with framework's global `-v` verbose option
+- Add explicit short options for list command: `-p` (provisions), `-s` (synced-folders), `-t` (triggers)
+
 ### chore
 
+- Update Homebrew formula to add radp-bash-framework dependency
+- Update install.sh to check for radp-bash-framework and copy shell CLI layer
 - Fix install script
 - Add post-install message
 - Update installation and uninstall scripts
 
 ### docs
 
+- Update README.md and README_CN.md with radp-bash-framework dependency info
+- Update CLAUDE.md with new CLI architecture documentation
+- Document radp-bf framework integration and command annotation patterns
 - Add "User-Defined Provisions & Triggers" section to README.md and README_CN.md
 - Add "User Templates" section to README.md and README_CN.md
 - Add "User Triggers" section to docs/configuration-reference.md
