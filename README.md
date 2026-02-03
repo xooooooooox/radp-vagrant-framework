@@ -10,8 +10,16 @@
 ```
 
 [![GitHub Release](https://img.shields.io/github/v/release/xooooooooox/radp-vagrant-framework?label=Release)](https://github.com/xooooooooox/radp-vagrant-framework/releases)
-[![CI](https://img.shields.io/github/actions/workflow/status/xooooooooox/radp-vagrant-framework/ci.yml?label=CI)](https://github.com/xooooooooox/radp-vagrant-framework/actions/workflows/ci.yml)
+[![Copr build status](https://copr.fedorainfracloud.org/coprs/xooooooooox/radp/package/radp-vagrant-framework/status_image/last_build.png)](https://copr.fedorainfracloud.org/coprs/xooooooooox/radp/package/radp-vagrant-framework/)
+[![OBS package build status](https://build.opensuse.org/projects/home:xooooooooox:radp/packages/radp-vagrant-framework/badge.svg)](https://build.opensuse.org/package/show/home:xooooooooox:radp/radp-vagrant-framework)
+
+[![CI: Check](https://img.shields.io/github/actions/workflow/status/xooooooooox/radp-vagrant-framework/ci.yml?label=CI)](https://github.com/xooooooooox/radp-vagrant-framework/actions/workflows/ci.yml)
+[![CI: COPR](https://img.shields.io/github/actions/workflow/status/xooooooooox/radp-vagrant-framework/build-copr-package.yml?label=CI%3A%20COPR)](https://github.com/xooooooooox/radp-vagrant-framework/actions/workflows/build-copr-package.yml)
+[![CI: OBS](https://img.shields.io/github/actions/workflow/status/xooooooooox/radp-vagrant-framework/build-obs-package.yml?label=CI%3A%20OBS)](https://github.com/xooooooooox/radp-vagrant-framework/actions/workflows/build-obs-package.yml)
 [![CI: Homebrew](https://img.shields.io/github/actions/workflow/status/xooooooooox/radp-vagrant-framework/update-homebrew-tap.yml?label=Homebrew%20tap)](https://github.com/xooooooooox/radp-vagrant-framework/actions/workflows/update-homebrew-tap.yml)
+
+[![COPR packages](https://img.shields.io/badge/COPR-packages-4b8bbe)](https://download.copr.fedorainfracloud.org/results/xooooooooox/radp/)
+[![OBS packages](https://img.shields.io/badge/OBS-packages-4b8bbe)](https://software.opensuse.org//download.html?project=home%3Axooooooooox%3Aradp&package=radp-vagrant-framework)
 
 A YAML-driven framework for managing multi-machine Vagrant environments with configuration inheritance and modular
 provisioning.
