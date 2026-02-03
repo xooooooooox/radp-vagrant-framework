@@ -114,6 +114,14 @@ _vf_resolve_config_dir() {
     config_dir="$(pwd)/config"
   fi
 
+  # Convert to absolute path if relative
+  if [[ -n "$config_dir" && "$config_dir" != /* ]]; then
+    config_dir="$(cd "$config_dir" 2>/dev/null && pwd)" || {
+      echo "Error: Cannot resolve config directory: $config_dir" >&2
+      return 1
+    }
+  fi
+
   if [[ -z "$config_dir" ]]; then
     echo "Error: Cannot determine config directory." >&2
     echo "Use -c <dir>, set RADP_VAGRANT_CONFIG_DIR, or run from a directory containing config/vagrant.yaml or config/config.yaml" >&2

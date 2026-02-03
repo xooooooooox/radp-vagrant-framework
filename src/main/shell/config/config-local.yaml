@@ -1,0 +1,15 @@
+# radp-vf CLI configuration
+# This file follows radp-bash-framework's configuration structure
+# Priority: Environment variables (GX_*) > YAML values > defaults
+
+radp:
+  # Framework settings override
+  fw:
+    banner-mode: off
+    log:
+      debug: false
+      level: info
+      console:
+        enabled: true
+      file:
+        enabled: false

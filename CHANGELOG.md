@@ -1,5 +1,28 @@
 # CHANGELOG
 
+## v0.2.22
+
+### feat
+
+- Add `--cluster` (`-C`) and `--guest-ids` (`-G`) options to `vg` command
+  - Specify VMs by cluster name instead of full machine name: `radp-vf vg up -C gitlab-runner`
+  - Filter specific guests within a cluster: `radp-vf vg up -C gitlab-runner -G 1,2`
+  - Support multiple clusters: `radp-vf vg up -C cluster1,cluster2`
+  - Original machine name syntax still supported: `radp-vf vg up homelab-gitlab-runner-1`
+- Add shell completion support for cluster names and guest IDs
+  - `radp-vf vg up --cluster=<TAB>` completes cluster names
+  - `radp-vf vg up -C xxx --guest-ids=<TAB>` completes guest IDs for specified cluster
+  - `radp-vf vg up <TAB>` completes machine names
+- Add Ruby CLI modules for resolve and completion
+  - `RadpVagrant::CLI::Resolve` - resolves cluster/guest-ids to machine names
+  - `RadpVagrant::CLI::Completion` - provides completion data (machines, clusters, guests)
+
+### fix
+
+- Fix verbose mode not being passed to Vagrantfile
+  - `radp-vf -v vg status` now correctly displays both framework and Vagrantfile banners
+  - Changed detection from `opt_verbose` to `GX_RADP_FW_BANNER_MODE`
+
 ## v0.2.21
 
 ### refactor

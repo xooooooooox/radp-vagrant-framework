@@ -382,6 +382,7 @@ defaults:
 | `run-remote` | Guest VM           | Guest configuration, service management       |
 
 **Notes:**
+
 - Both `run` and `run-remote` support either `script` (external file) or `inline` (embedded script)
 - `run-remote` supports `privileged` option (default: `false`) to run as root
 - `only-on` filters by machine name (not guest ID), supports regex patterns `/pattern/`
@@ -462,6 +463,61 @@ src/main/ruby/
             ├── registry.rb
             └── renderer.rb
 ```
+
+## Targeting VMs by Cluster
+
+Instead of typing full machine names like `homelab-gitlab-runner-1`, you can target VMs by cluster name using the
+`--cluster` (`-C`) and `--guest-ids` (`-G`) options.
+
+### Basic Usage
+
+```bash
+# Start all VMs in a cluster
+radp-vf vg up --cluster=gitlab-runner
+radp-vf vg up -C gitlab-runner
+
+# Start specific guests in a cluster (comma-separated)
+radp-vf vg up --cluster=gitlab-runner --guest-ids=1,2
+radp-vf vg up -C gitlab-runner -G 1,2
+
+# Multiple clusters (comma-separated)
+radp-vf vg up --cluster=gitlab-runner,develop-centos9
+radp-vf vg up -C gitlab-runner,develop-centos9
+
+# Original machine name syntax still works
+radp-vf vg up homelab-gitlab-runner-1
+```
+
+### Shell Completion
+
+Completion is supported for all targeting options:
+
+```bash
+# Complete cluster names
+radp-vf vg up --cluster= <TAB>
+radp-vf vg up -C <TAB>
+
+# Complete guest IDs for a cluster
+radp-vf vg up -C gitlab-runner --guest-ids=<TAB>
+radp-vf vg up -C gitlab-runner -G <TAB>
+
+# Complete machine names (positional arguments)
+radp-vf vg up <TAB>
+```
+
+### How It Works
+
+1. The `--cluster` option accepts cluster names (as defined in your YAML config)
+2. The `--guest-ids` option filters guests within the specified cluster(s)
+3. The framework resolves these to full machine names (e.g., `homelab-gitlab-runner-1`)
+4. The resolved names are passed to Vagrant
+
+### Options Reference
+
+| Option              | Short | Description                                       |
+|---------------------|-------|---------------------------------------------------|
+| `--cluster <names>` | `-C`  | Cluster names (comma-separated for multiple)      |
+| `--guest-ids <ids>` | `-G`  | Guest IDs (comma-separated, requires `--cluster`) |
 
 ## Debugging
 

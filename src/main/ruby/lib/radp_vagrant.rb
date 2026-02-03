@@ -22,6 +22,8 @@ require_relative 'radp_vagrant/cli/dump_config'
 require_relative 'radp_vagrant/cli/generate'
 require_relative 'radp_vagrant/cli/info'
 require_relative 'radp_vagrant/cli/template'
+require_relative 'radp_vagrant/cli/resolve'
+require_relative 'radp_vagrant/cli/completion'
 require_relative 'radp_vagrant/templates/registry'
 require_relative 'radp_vagrant/templates/renderer'
 
@@ -36,12 +38,18 @@ module RadpVagrant
     "\e[36m#{content}\e[0m"
   end
 
+  # Check if verbose mode is enabled via environment variable
+  # @return [Boolean] true if RADP_VAGRANT_VERBOSE is set to '1' or 'true'
+  def self.verbose?
+    %w[1 true].include?(ENV['RADP_VAGRANT_VERBOSE']&.downcase)
+  end
+
   class << self
     # Main entry point for Vagrant configuration
     # @param vagrant_config [Vagrant::Config] Vagrant configuration object
     # @param config_dir [String] Directory containing config files
     def configure(vagrant_config, config_dir)
-      puts banner
+      puts banner if RadpVagrant.verbose?
 
       merged = build_merged_config(config_dir)
       return log_warn('No vagrant configuration found') unless merged
@@ -209,7 +217,7 @@ module RadpVagrant
     end
 
     def log_info(message)
-      puts "\e[32m[INFO]\e[0m #{message}"
+      puts "\e[32m[INFO]\e[0m #{message}" if RadpVagrant.verbose?
     end
 
     def log_warn(message)

@@ -184,3 +184,86 @@ _vf_ruby_init() {
     end
   " 2>&1
 }
+
+#######################################
+# Call Ruby CLI::Resolve command
+# Resolves cluster names and guest IDs to machine names
+# Arguments:
+#   1 - config_dir
+#   2 - env_override (can be empty)
+#   remaining args: --cluster=xxx --guest-ids=xxx
+# Output:
+#   One machine name per line
+#######################################
+_vf_ruby_resolve() {
+  local config_dir="$1"
+  local env_override="$2"
+  shift 2
+
+  # Parse cluster and guest-ids arguments
+  local clusters=()
+  local guest_ids=()
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --cluster=*) clusters+=("${1#*=}") ;;
+      --guest-ids=*) IFS=',' read -ra guest_ids <<< "${1#*=}" ;;
+    esac
+    shift
+  done
+
+  local clusters_ruby
+  if [[ ${#clusters[@]} -gt 0 ]]; then
+    clusters_ruby=$(printf "'%s'," "${clusters[@]}")
+    clusters_ruby="[${clusters_ruby%,}]"
+  else
+    clusters_ruby="[]"
+  fi
+
+  local guest_ids_ruby
+  if [[ ${#guest_ids[@]} -gt 0 ]]; then
+    guest_ids_ruby=$(printf "'%s'," "${guest_ids[@]}")
+    guest_ids_ruby="[${guest_ids_ruby%,}]"
+  else
+    guest_ids_ruby="[]"
+  fi
+
+  cd "${gr_vf_ruby_lib_dir}"
+  ruby -r ./lib/radp_vagrant -e "
+    cmd = RadpVagrant::CLI::Resolve.new(
+      '${config_dir}',
+      env_override: '${env_override}'.empty? ? nil : '${env_override}',
+      clusters: ${clusters_ruby},
+      guest_ids: ${guest_ids_ruby}
+    )
+    cmd.execute
+  " 2>/dev/null
+}
+
+#######################################
+# Call Ruby CLI::Completion command
+# Provides completion data for shell completion
+# Arguments:
+#   1 - config_dir
+#   2 - env_override (can be empty)
+#   3 - type (machines/clusters/guests)
+#   4 - cluster (required for type=guests, can be empty otherwise)
+# Output:
+#   One item per line
+#######################################
+_vf_ruby_completion() {
+  local config_dir="$1"
+  local env_override="${2:-}"
+  local type="${3:-machines}"
+  local cluster="${4:-}"
+
+  cd "${gr_vf_ruby_lib_dir}"
+  ruby -r ./lib/radp_vagrant -e "
+    cmd = RadpVagrant::CLI::Completion.new(
+      '${config_dir}',
+      env_override: '${env_override}'.empty? ? nil : '${env_override}',
+      type: '${type}',
+      cluster: '${cluster}'.empty? ? nil : '${cluster}'
+    )
+    cmd.execute
+  " 2>/dev/null
+}

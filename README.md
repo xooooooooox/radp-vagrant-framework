@@ -34,7 +34,8 @@ provisioning.
 - Ruby 2.7+
 - Vagrant 2.0+
 - VirtualBox (or other supported provider)
-- [radp-bash-framework](https://github.com/xooooooooox/radp-bash-framework) (required, installed automatically via Homebrew/package managers)
+- [radp-bash-framework](https://github.com/xooooooooox/radp-bash-framework) (required, installed automatically via
+  Homebrew/package managers)
 
 ## Installation
 
@@ -48,7 +49,8 @@ brew install radp-vagrant-framework
 ### Script (curl)
 
 ```shell
-curl -fsSL https://raw.githubusercontent.com/xooooooooox/radp-vagrant-framework/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/xooooooooox/radp-vagrant-framework/main/install.sh
+  | bash
 ```
 
 Install from a specific branch or tag:
@@ -60,7 +62,8 @@ bash install.sh --ref v1.0.0-rc1
 
 ### Portable Binary
 
-Download a self-contained portable binary from [GitHub Releases](https://github.com/xooooooooox/radp-vagrant-framework/releases):
+Download a self-contained portable binary
+from [GitHub Releases](https://github.com/xooooooooox/radp-vagrant-framework/releases):
 
 ```shell
 # macOS Apple Silicon
@@ -74,7 +77,8 @@ chmod +x radp-vf
 ./radp-vf --help
 ```
 
-> **Note**: Portable binary requires [radp-bash-framework](https://github.com/xooooooooox/radp-bash-framework) to be installed.
+> **Note**: Portable binary requires [radp-bash-framework](https://github.com/xooooooooox/radp-bash-framework) to be
+> installed.
 
 See [Installation Guide](docs/installation.md) for more options (manual install, upgrade, shell completion).
 
@@ -158,6 +162,26 @@ radp-vf vg halt
 radp-vf vg destroy
 ```
 
+### 4. Target VMs by Cluster
+
+Instead of typing full machine names, use `--cluster` (`-C`) to target VMs by cluster:
+
+```shell
+# Start all VMs in a cluster
+radp-vf vg up -C gitlab-runner
+
+# Start specific guests in a cluster
+radp-vf vg up -C gitlab-runner -G 1,2
+
+# Multiple clusters
+radp-vf vg up -C gitlab-runner,develop-centos9
+
+# Original syntax still works
+radp-vf vg up homelab-gitlab-runner-1
+```
+
+Shell completion is supported for cluster names, guest IDs, and machine names.
+
 ## Commands
 
 | Command         | Description                             |
@@ -180,12 +204,12 @@ radp-vf [framework-options] <command> [command-options] [arguments]
 
 **Framework options** (before command):
 
-| Option         | Description            |
-|----------------|------------------------|
-| `-v`           | Enable verbose logging |
-| `--debug`      | Enable debug logging   |
-| `-h, --help`   | Show help              |
-| `--version`    | Show version           |
+| Option       | Description            |
+|--------------|------------------------|
+| `-v`         | Enable verbose logging |
+| `--debug`    | Enable debug logging   |
+| `-h, --help` | Show help              |
+| `--version`  | Show version           |
 
 **Command options** (after command, before arguments):
 
@@ -194,6 +218,13 @@ radp-vf [framework-options] <command> [command-options] [arguments]
 | `-c, --config <dir>` | Configuration directory (default: `./config`) |
 | `-e, --env <name>`   | Override environment name                     |
 | `-h, --help`         | Show help for command                         |
+
+**`vg` command specific options:**
+
+| Option                  | Description                                       |
+|-------------------------|---------------------------------------------------|
+| `-C, --cluster <names>` | Cluster names (comma-separated for multiple)      |
+| `-G, --guest-ids <ids>` | Guest IDs (comma-separated, requires `--cluster`) |
 
 **Examples:**
 
@@ -205,6 +236,11 @@ radp-vf -v list
 radp-vf list -c ./config -e prod
 radp-vf vg -c ./config status
 radp-vf dump-config -f yaml -o config.yaml
+
+# Target VMs by cluster (vg command)
+radp-vf vg status -C my-cluster
+radp-vf vg up -C gitlab-runner -G 1,2
+radp-vf vg halt -C cluster1,cluster2
 ```
 
 ### Environment Variables

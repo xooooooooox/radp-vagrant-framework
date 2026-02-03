@@ -156,6 +156,26 @@ radp-vf vg halt
 radp-vf vg destroy
 ```
 
+### 4. 通过集群指定虚拟机
+
+无需输入完整的 machine name，使用 `--cluster`（`-C`）按集群指定虚拟机：
+
+```shell
+# 启动指定集群的所有虚拟机
+radp-vf vg up -C gitlab-runner
+
+# 启动集群中的特定 guest
+radp-vf vg up -C gitlab-runner -G 1,2
+
+# 多个集群
+radp-vf vg up -C gitlab-runner,develop-centos9
+
+# 原有语法仍然支持
+radp-vf vg up homelab-gitlab-runner-1
+```
+
+支持集群名称、guest ID 和 machine name 的 Shell 补全。
+
 ## 命令
 
 | 命令              | 描述                  |
@@ -193,6 +213,13 @@ radp-vf [框架选项] <命令> [命令选项] [参数]
 | `-e, --env <name>`   | 覆盖环境名称              |
 | `-h, --help`         | 显示命令帮助              |
 
+**`vg` 命令特定选项：**
+
+| 选项                       | 描述                              |
+|--------------------------|---------------------------------|
+| `-C, --cluster <names>`  | 集群名称（多个用逗号分隔）                   |
+| `-G, --guest-ids <ids>`  | Guest ID（逗号分隔，需配合 `--cluster` 使用）|
+
 **示例：**
 
 ```shell
@@ -203,6 +230,11 @@ radp-vf -v list
 radp-vf list -c ./config -e prod
 radp-vf vg -c ./config status
 radp-vf dump-config -f yaml -o config.yaml
+
+# 通过集群指定虚拟机（vg 命令）
+radp-vf vg status -C my-cluster
+radp-vf vg up -C gitlab-runner -G 1,2
+radp-vf vg halt -C cluster1,cluster2
 ```
 
 ### 环境变量

@@ -114,6 +114,8 @@ _radp_vf_vg() {
         '(-h --help)'{-h,--help}'[Show help]' \
         '(-c --config)'{-c,--config}'[Configuration directory]:dir:' \
         '(-e --env)'{-e,--env}'[Override environment name]:name:' \
+        '(-C --cluster)'{-C,--cluster}'[Cluster names (comma-separated for multiple)]:names:' \
+        '(-G --guest-ids)'{-G,--guest-ids}'[Guest IDs (comma-separated, requires --cluster)]:ids:' \
         '*:args~:_files'
 }
 
