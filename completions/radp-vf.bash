@@ -73,11 +73,15 @@ _radp_vf_ruby_completion() {
     
     # Auto-detect radp-vf location
     if [[ -z "$radp_vf_home" ]]; then
-        local script_dir
-        script_dir="$(command -v radp-vf 2>/dev/null)"
-        if [[ -n "$script_dir" ]]; then
-            script_dir="$(dirname "$(readlink -f "$script_dir" 2>/dev/null || echo "$script_dir")")"
-            radp_vf_home="$(dirname "$script_dir")"
+        local script_path
+        script_path="$(command -v radp-vf 2>/dev/null)"
+        if [[ -n "$script_path" ]]; then
+            # Resolve symlinks: try realpath, readlink -f, or fallback to basic readlink
+            local resolved
+            resolved="$(realpath "$script_path" 2>/dev/null)" ||
+            resolved="$(readlink -f "$script_path" 2>/dev/null)" ||
+            resolved="$script_path"
+            radp_vf_home="$(cd "$(dirname "$resolved")/.." 2>/dev/null && pwd)"
         fi
     fi
     
@@ -191,7 +195,7 @@ _radp_vf() {
             config_dir="$(_radp_vf_comp_config_dir)"
             env_override="$(_radp_vf_comp_env)"
             
-            # Check if completing option value
+            # Check if completing option value (space-separated form: -C xxx)
             case "$prev" in
                 -C|--cluster)
                     if [[ -n "$config_dir" ]]; then
@@ -212,6 +216,32 @@ _radp_vf() {
                     return
                     ;;
                 -c|--config|-e|--env)
+                    return
+                    ;;
+            esac
+            
+            # Check if completing option value (equals form: --cluster=xxx)
+            case "$cur" in
+                -C=*|--cluster=*)
+                    if [[ -n "$config_dir" ]]; then
+                        local prefix="${cur%%=*}="
+                        local typed="${cur#*=}"
+                        local clusters
+                        clusters="$(_radp_vf_ruby_completion "$config_dir" "$env_override" "clusters")"
+                        COMPREPLY=($(compgen -P "$prefix" -W "$clusters" -- "$typed"))
+                    fi
+                    return
+                    ;;
+                -G=*|--guest-ids=*)
+                    cluster_val="$(_radp_vf_comp_cluster)"
+                    if [[ -n "$config_dir" && -n "$cluster_val" ]]; then
+                        local prefix="${cur%%=*}="
+                        local typed="${cur#*=}"
+                        cluster_val="${cluster_val%%,*}"
+                        local guest_ids
+                        guest_ids="$(_radp_vf_ruby_completion "$config_dir" "$env_override" "guests" "$cluster_val")"
+                        COMPREPLY=($(compgen -P "$prefix" -W "$guest_ids" -- "$typed"))
+                    fi
                     return
                     ;;
             esac
