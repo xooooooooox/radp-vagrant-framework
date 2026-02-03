@@ -218,6 +218,8 @@ module RadpVagrant
               opts[:path] = run_remote_config['path']
             end
             opts[:args] = run_remote_config['args'] if run_remote_config['args']
+            # Default privileged to false (unlike Vagrant's default of true)
+            opts[:privileged] = run_remote_config.fetch('privileged', false)
             trigger.run_remote = opts unless opts.empty?
           elsif config['ruby']
             trigger.ruby do |env, machine|

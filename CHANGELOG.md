@@ -1,6 +1,6 @@
 # CHANGELOG
 
-## v0.2.20
+## v0.2.21
 
 ### refactor
 
@@ -36,6 +36,7 @@
   - `build-obs-package.yml` - Sync to OBS and trigger build
   - `build-portable.yml` - Build portable binary
 - Generates completion script with delegation support via `_RADP_VF_DELEGATED` flag
+- Support `privileged` on builtin or user trigger.
 
 ### chore
 

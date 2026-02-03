@@ -4,11 +4,11 @@
 
 The framework applies sensible defaults based on context:
 
-| Field | Default Value | Example |
-|-------|---------------|---------|
-| `hostname` | `{guest-id}.{cluster}.{env}` | `node-1.my-cluster.dev` |
-| `provider.name` | `{env}-{cluster}-{guest-id}` | `dev-my-cluster-node-1` |
-| `provider.group-id` | `{env}/{cluster}` | `dev/my-cluster` |
+| Field               | Default Value                | Example                 |
+|---------------------|------------------------------|-------------------------|
+| `hostname`          | `{guest-id}.{cluster}.{env}` | `node-1.my-cluster.dev` |
+| `provider.name`     | `{env}-{cluster}-{guest-id}` | `dev-my-cluster-node-1` |
+| `provider.group-id` | `{env}/{cluster}`            | `dev/my-cluster`        |
 
 ## Validation Rules
 
@@ -20,7 +20,8 @@ The framework validates configurations and will raise errors for:
 
 ## Machine Naming
 
-Vagrant machine names use `provider.name` (default: `{env}-{cluster}-{guest-id}`) to ensure uniqueness in `$VAGRANT_DOTFILE_PATH/machines/<name>`. This prevents conflicts when multiple clusters have guests with the same ID.
+Vagrant machine names use `provider.name` (default: `{env}-{cluster}-{guest-id}`) to ensure uniqueness in
+`$VAGRANT_DOTFILE_PATH/machines/<name>`. This prevents conflicts when multiple clusters have guests with the same ID.
 
 ## Template System
 
@@ -28,11 +29,11 @@ Templates allow you to initialize projects from predefined configurations with v
 
 ### Available Templates
 
-| Template | Description |
-|----------|-------------|
-| `base` | Minimal template for getting started (default) |
+| Template      | Description                                              |
+|---------------|----------------------------------------------------------|
+| `base`        | Minimal template for getting started (default)           |
 | `single-node` | Enhanced single VM with common provisions pre-configured |
-| `k8s-cluster` | Multi-node Kubernetes cluster with master and workers |
+| `k8s-cluster` | Multi-node Kubernetes cluster with master and workers    |
 
 ### Template Locations
 
@@ -97,10 +98,12 @@ variables:
 ```
 
 **Variable types:**
+
 - `string` (default): Text values
 - `integer`: Numeric values (validated during init)
 
 **Variable properties:**
+
 - `name`: Variable identifier (used in `{{name}}` placeholders)
 - `desc`: Human-readable description
 - `default`: Default value if not specified via `--set`
@@ -112,11 +115,13 @@ variables:
 Use `{{variable}}` syntax in both file contents and filenames:
 
 **In filenames:**
+
 ```
 files/config/vagrant-{{env}}.yaml  →  vagrant-dev.yaml (when env=dev)
 ```
 
 **In file contents:**
+
 ```yaml
 # files/config/vagrant.yaml
 radp:
@@ -178,7 +183,8 @@ radp-vf init myproject --template my-dev-template --set mem=8192
 
 #### Template Priority
 
-When a user template has the same name as a builtin template, the user template takes precedence. This allows you to override builtin templates with customized versions.
+When a user template has the same name as a builtin template, the user template takes precedence. This allows you to
+override builtin templates with customized versions.
 
 ## Extending the Framework
 
@@ -244,6 +250,8 @@ RadpVagrant::Configurators::Provider::CONFIGURATORS['vmware_desktop'] = lambda {
 
 1. Create `lib/radp_vagrant/provisions/definitions/my-provision.yaml`:
 
+**Using external script file:**
+
 ```yaml
 desc: Human-readable description
 defaults:
@@ -260,13 +268,41 @@ defaults:
   script: my-provision.sh
 ```
 
-2. Create `lib/radp_vagrant/provisions/scripts/my-provision.sh`
+**Using inline script:**
+
+```yaml
+desc: Simple inline provision
+defaults:
+  privileged: true
+  run: once
+  inline: |
+    #!/bin/bash
+    set -euo pipefail
+    echo "Running inline provision..."
+    echo "REQ_VAR: ${REQ_VAR}"
+    echo "OPT_VAR: ${OPT_VAR:-default}"
+  env:
+    required:
+      - name: REQ_VAR
+        desc: Required variable
+    optional:
+      - name: OPT_VAR
+        value: "default_value"
+        desc: Optional variable
+```
+
+2. If using `script`, create `lib/radp_vagrant/provisions/scripts/my-provision.sh`
 
 3. Registry auto-discovers from YAML files (no code changes needed)
+
+**Note:** Use `script` for complex logic or when you need syntax highlighting/linting. Use `inline` for simple,
+self-contained scripts.
 
 ### Add Builtin Trigger
 
 1. Create `lib/radp_vagrant/triggers/definitions/my-trigger.yaml`:
+
+**Using external script file (run on guest):**
 
 ```yaml
 desc: Human-readable description
@@ -281,9 +317,74 @@ defaults:
     script: my-trigger.sh
 ```
 
-2. Create `lib/radp_vagrant/triggers/scripts/my-trigger.sh`
+**Using inline script (run on guest):**
+
+```yaml
+desc: Inline trigger that runs on guest
+defaults:
+  "on": after
+  action:
+    - up
+    - reload
+  type: action
+  on-error: continue
+  run-remote:
+    inline: |
+      #!/bin/bash
+      set -euo pipefail
+      echo "Running on guest after VM start..."
+      # Add your commands here
+    privileged: true    # Run as root (default: false)
+```
+
+**Using inline script (run on host):**
+
+```yaml
+desc: Inline trigger that runs on host
+defaults:
+  "on": after
+  action:
+    - up
+  type: action
+  run:
+    inline: |
+      echo "VM started at $(date)"
+      # Notification or host-side operations
+```
+
+**Using only-on to filter guests:**
+
+```yaml
+desc: Trigger only for specific guests
+defaults:
+  "on": after
+  action:
+    - up
+  type: action
+  only-on:
+    - '/.*-master/'       # Regex: match all master nodes
+    - dev-cluster-node-1  # Exact machine name
+  run-remote:
+    inline: |
+      echo "Running only on master nodes..."
+    privileged: true
+```
+
+2. If using `script`, create `lib/radp_vagrant/triggers/scripts/my-trigger.sh`
 
 3. Registry auto-discovers from YAML files (no code changes needed)
+
+**Trigger execution location:**
+
+| Option       | Execution Location | Use Case                                      |
+|--------------|--------------------|-----------------------------------------------|
+| `run`        | Host machine       | Notifications, local scripts, host-side setup |
+| `run-remote` | Guest VM           | Guest configuration, service management       |
+
+**Notes:**
+- Both `run` and `run-remote` support either `script` (external file) or `inline` (embedded script)
+- `run-remote` supports `privileged` option (default: `false`) to run as root
+- `only-on` filters by machine name (not guest ID), supports regex patterns `/pattern/`
 
 ## Directory Structure
 

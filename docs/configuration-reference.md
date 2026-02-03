@@ -531,7 +531,8 @@ Execution order: `global-pre → cluster-pre → guest → cluster-post → glob
 
 ### Builtin Provisions
 
-Builtin provisions use `radp:` prefix and come with sensible defaults.
+Builtin provisions use `radp:` prefix and come with sensible defaults. They support both external script files and
+inline scripts in their definitions.
 
 | Name                                | Description                                        | Defaults                        |
 |-------------------------------------|----------------------------------------------------|---------------------------------|
@@ -1092,13 +1093,17 @@ triggers:
 
 **Run-remote options (guest execution):**
 
-| Option   | Type         | Description                             |
-|----------|--------------|-----------------------------------------|
-| `inline` | string       | Inline script to run on guest           |
-| `path`   | string       | Script path on host (uploaded to guest) |
-| `args`   | string/array | Arguments to pass to script             |
+| Option       | Type         | Default | Description                             |
+|--------------|--------------|---------|---------------------------------------|
+| `inline`     | string       | -       | Inline script to run on guest           |
+| `path`       | string       | -       | Script path on host (uploaded to guest) |
+| `args`       | string/array | -       | Arguments to pass to script             |
+| `privileged` | boolean      | `false` | Run as root (sudo)                      |
 
 ### Builtin Triggers
+
+Builtin triggers use `radp:` prefix and come with sensible defaults. They support both external script files and inline
+scripts.
 
 | Name                            | Description                               | Default Timing  |
 |---------------------------------|-------------------------------------------|-----------------|
@@ -1119,6 +1124,56 @@ triggers:
   - name: radp:system/disable-firewalld
     enabled: true
 ```
+
+**Builtin trigger definition format:**
+
+Builtin triggers are defined in `lib/radp_vagrant/triggers/definitions/`. They support two script formats:
+
+```yaml
+# Using external script file
+desc: Trigger description
+defaults:
+  "on": after
+  action:
+    - up
+    - reload
+  type: action
+  on-error: continue
+  run-remote:
+    script: my-script.sh    # Located in triggers/scripts/
+```
+
+```yaml
+# Using inline script (no external file needed)
+desc: Trigger description
+defaults:
+  "on": after
+  action:
+    - up
+  type: action
+  run-remote:
+    inline: |
+      #!/bin/bash
+      echo "Running inline script on guest"
+    privileged: true    # Run as root (default: false)
+```
+
+```yaml
+# Using only-on to filter guests (by machine name)
+desc: Trigger only for master nodes
+defaults:
+  "on": after
+  action:
+    - up
+  type: action
+  only-on:
+    - '/.*-master/'       # Regex pattern
+  run-remote:
+    script: master-setup.sh
+    privileged: true
+```
+
+For creating custom builtin triggers, see [Advanced Topics](advanced.md#add-builtin-trigger).
 
 ### User Triggers
 
@@ -1183,9 +1238,29 @@ defaults:
     - up
   run-remote:
     script: guest-cleanup.sh
+    privileged: true    # Run as root (default: false)
     # OR use inline:
     # inline: |
     #   rm -rf /tmp/*
+```
+
+**Definition format (using only-on filter):**
+
+```yaml
+# config/triggers/definitions/worker-setup.yaml
+desc: Setup worker nodes only
+defaults:
+  "on": after
+  action:
+    - up
+  type: action
+  only-on:
+    - '/.*-worker-.*/'    # Regex: match worker nodes
+  run-remote:
+    inline: |
+      #!/bin/bash
+      echo "Configuring worker node..."
+    privileged: true
 ```
 
 **Script path resolution:**

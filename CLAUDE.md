@@ -109,11 +109,13 @@ ruby -r ./lib/radp_vagrant -e "puts RadpVagrant.generate_vagrantfile('config')"
 ### Entry Points
 
 **CLI Entry (`bin/radp-vf`)**:
+
 - Thin ~15-line entry script using radp-bash-framework
 - Checks for radp-bf dependency, sets RADP_APP_NAME and RADP_APP_ROOT
 - Delegates to `radp-bf path launcher` for command dispatch
 
 **Vagrant Entry (`src/main/ruby/Vagrantfile`)**:
+
 - Vagrant entry point that loads RadpVagrant module
 
 ### CLI Architecture (radp-bf Framework)
@@ -121,13 +123,13 @@ ruby -r ./lib/radp_vagrant -e "puts RadpVagrant.generate_vagrantfile('config')"
 The CLI follows radp-bash-framework conventions:
 
 1. **Command Discovery**: Commands are auto-discovered from `src/main/shell/commands/`
-   - File `commands/list.sh` → command `radp-vf list`
-   - File `commands/template/list.sh` → command `radp-vf template list`
-   - Commands require `# @cmd` marker to be discovered
+    - File `commands/list.sh` → command `radp-vf list`
+    - File `commands/template/list.sh` → command `radp-vf template list`
+    - Commands require `# @cmd` marker to be discovered
 
 2. **Library Auto-Loading**: Libraries in `src/main/shell/libs/` are auto-sourced
-   - `libs/vf/_common.sh` - Path resolution, config detection functions
-   - `libs/vf/ruby_bridge.sh` - Wrapper functions for Ruby CLI calls
+    - `libs/vf/_common.sh` - Path resolution, config detection functions
+    - `libs/vf/ruby_bridge.sh` - Wrapper functions for Ruby CLI calls
 
 3. **Command Annotations**: Commands use comment-based metadata
    ```bash
@@ -140,13 +142,13 @@ The CLI follows radp-bash-framework conventions:
    ```
 
 4. **Option Access**: Parsed options available as `$opt_<name>` variables
-   - `-c, --config` → `$opt_config`
-   - `-e, --env` → `$opt_env`
-   - `--synced-folders` → `$opt_synced_folders`
+    - `-c, --config` → `$opt_config`
+    - `-e, --env` → `$opt_env`
+    - `--synced-folders` → `$opt_synced_folders`
 
 5. **Global Variables Set by _common.sh**:
-   - `$gr_vf_home` - RADP_VF_HOME path
-   - `$gr_vf_ruby_lib_dir` - Ruby lib directory path
+    - `$gr_vf_home` - RADP_VF_HOME path
+    - `$gr_vf_ruby_lib_dir` - Ruby lib directory path
 
 ### Configuration Flow
 
@@ -298,8 +300,11 @@ defaults:
     - reload
   type: action          # trigger type: action/command/hook
   on-error: continue    # error handling: continue/halt
+  only-on: # filter by machine name (supports regex)
+    - '/.*-master/'
   run-remote: # execute on guest (or use 'run' for host)
     script: script-name.sh
+    privileged: true    # run as root (default: false)
 ```
 
 Builtin triggers use `radp:` prefix (e.g., `radp:system/disable-swap`). User config merges with definition defaults (
@@ -343,12 +348,17 @@ defaults:
     - reload
   type: action
   on-error: continue
+  only-on: # filter by machine name (supports regex)
+    - '/.*-worker-.*/'
   run: # execute on host
     script: script-name.sh
     # OR use inline:
     # inline: |
     #   echo "Hello"
-  # or run-remote for guest execution
+  # or run-remote for guest execution:
+  # run-remote:
+  #   script: guest-script.sh
+  #   privileged: true    # run as root (default: false)
 ```
 
 Script path resolution:
