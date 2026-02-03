@@ -187,6 +187,39 @@ The CLI follows radp-bash-framework conventions:
     - `generate.rb` - Generate command for standalone Vagrantfile generation
     - `info.rb` - Info command for displaying environment and configuration information
     - `template.rb` - Template command for listing and showing templates
+    - `completion.rb` - Completion command for shell completion data (clusters, guests, machines)
+    - `resolve.rb` - Resolve command for cluster/guest-ids to machine names resolution
+
+### Shell Completion System
+
+Shell completion is provided for both bash and zsh via generated scripts in `completions/`:
+
+**Architecture:**
+- `src/main/shell/commands/completion.sh` - Generates completion scripts with dynamic Ruby integration
+- `completions/radp-vf.bash` - Bash completion with dynamic cluster/guest/machine completion
+- `completions/radp-vf.zsh` - Zsh completion with dynamic cluster/guest/machine completion
+- `lib/radp_vagrant/cli/completion.rb` - Ruby CLI for completion data (silent failure for invalid configs)
+
+**Dynamic completion for `vg` command:**
+- `--cluster` / `-C` - Completes cluster names from config
+- `--guest-ids` / `-G` - Completes guest IDs for the specified cluster
+- Positional args - Completes vagrant commands + machine names
+
+**Config resolution for completion:**
+1. `-c` / `--config` from command line (highest priority)
+2. `RADP_VAGRANT_CONFIG_DIR` environment variable
+3. `./config` directory (if exists)
+
+**Delegation support:**
+- Completion can be delegated from other tools (e.g., `homelabctl vf`)
+- Set `_RADP_VF_DELEGATED=1` before calling `_radp_vf` to skip `_init_completion`
+- Delegating tool should set `RADP_VAGRANT_CONFIG_DIR` if config comes from its own config
+
+**Regenerating completions:**
+```bash
+./bin/radp-vf completion bash > completions/radp-vf.bash
+./bin/radp-vf completion zsh > completions/radp-vf.zsh
+```
 
 ### Modular Plugin System
 

@@ -188,7 +188,23 @@ radp-vf vg up -C gitlab-runner,develop-centos9
 radp-vf vg up homelab-gitlab-runner-1
 ```
 
-Shell completion is supported for cluster names, guest IDs, and machine names.
+Shell completion is supported for cluster names, guest IDs, and machine names:
+
+```bash
+# Complete cluster names
+radp-vf vg -c /path/to/config --cluster <tab>
+
+# Complete guest IDs (requires --cluster)
+radp-vf vg -c /path/to/config --cluster develop --guest-ids <tab>
+
+# Complete machine names (positional args)
+radp-vf vg -c /path/to/config status <tab>
+```
+
+Config resolution for completion (in order):
+1. `-c` / `--config` from command line
+2. `RADP_VAGRANT_CONFIG_DIR` environment variable
+3. `./config` directory (if exists)
 
 ## Commands
 

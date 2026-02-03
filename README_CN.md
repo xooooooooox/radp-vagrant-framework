@@ -182,7 +182,23 @@ radp-vf vg up -C gitlab-runner,develop-centos9
 radp-vf vg up homelab-gitlab-runner-1
 ```
 
-支持集群名称、guest ID 和 machine name 的 Shell 补全。
+支持集群名称、guest ID 和 machine name 的 Shell 补全：
+
+```bash
+# 补全集群名称
+radp-vf vg -c /path/to/config --cluster <tab>
+
+# 补全 guest ID（需要先指定 --cluster）
+radp-vf vg -c /path/to/config --cluster develop --guest-ids <tab>
+
+# 补全 machine name（位置参数）
+radp-vf vg -c /path/to/config status <tab>
+```
+
+补全时配置目录的解析顺序：
+1. 命令行的 `-c` / `--config` 参数
+2. `RADP_VAGRANT_CONFIG_DIR` 环境变量
+3. `./config` 目录（如果存在）
 
 ## 命令
 
