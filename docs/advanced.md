@@ -289,7 +289,7 @@ defaults:
 
 ```
 bin/
-└── radp-vf                         # CLI entry point
+└── radp-vf                         # Thin CLI entry point
 completions/
 ├── radp-vf.bash                    # Bash completion
 └── radp-vf.zsh                     # Zsh completion
@@ -298,6 +298,27 @@ templates/                          # Builtin project templates
 ├── base/
 ├── single-node/
 └── k8s-cluster/
+src/main/shell/                     # Bash CLI layer
+├── commands/                       # Command auto-discovery
+│   ├── completion.sh               # radp-vf completion <shell>
+│   ├── dump-config.sh              # radp-vf dump-config
+│   ├── generate.sh                 # radp-vf generate
+│   ├── info.sh                     # radp-vf info
+│   ├── init.sh                     # radp-vf init
+│   ├── list.sh                     # radp-vf list
+│   ├── validate.sh                 # radp-vf validate
+│   ├── version.sh                  # radp-vf version
+│   ├── vg.sh                       # radp-vf vg (passthrough to vagrant)
+│   └── template/                   # Subcommands
+│       ├── list.sh                 # radp-vf template list
+│       └── show.sh                 # radp-vf template show
+├── config/
+│   ├── config.yaml                 # Framework configuration
+│   └── _ide.sh                     # IDE code completion support
+└── libs/
+    └── vf/                         # Auto-loaded library functions
+        ├── _common.sh              # Path resolution, config detection
+        └── ruby_bridge.sh          # Ruby CLI call wrappers
 src/main/ruby/
 ├── Vagrantfile                     # Vagrant entry point
 ├── config/

@@ -129,7 +129,7 @@ cd myproject
 radp-vf vg status
 radp-vf vg up
 
-# Or run from anywhere with -c option (after command)
+# Or run from anywhere with -c option
 radp-vf vg -c ~/myproject/config status
 radp-vf vg -c ~/myproject/config up
 
@@ -155,9 +155,22 @@ radp-vf vg destroy
 | `template list` | List available templates                |
 | `template show` | Show template details                   |
 
-### Command Options
+### Option Placement
 
-Options are specified after the command name:
+```
+radp-vf [framework-options] <command> [command-options] [arguments]
+```
+
+**Framework options** (before command):
+
+| Option         | Description            |
+|----------------|------------------------|
+| `-v`           | Enable verbose logging |
+| `--debug`      | Enable debug logging   |
+| `-h, --help`   | Show help              |
+| `--version`    | Show version           |
+
+**Command options** (after command, before arguments):
 
 | Option               | Description                                   |
 |----------------------|-----------------------------------------------|
@@ -165,16 +178,17 @@ Options are specified after the command name:
 | `-e, --env <name>`   | Override environment name                     |
 | `-h, --help`         | Show help for command                         |
 
-### Framework Options
+**Examples:**
 
-Framework options apply before the command:
+```shell
+# Framework option before command
+radp-vf -v list
 
-| Option         | Description                  |
-|----------------|------------------------------|
-| `-v`           | Enable verbose logging       |
-| `--debug`      | Enable debug logging         |
-| `-h, --help`   | Show help                    |
-| `--version`    | Show version                 |
+# Command options after command name
+radp-vf list -c ./config -e prod
+radp-vf vg -c ./config status
+radp-vf dump-config -f yaml -o config.yaml
+```
 
 ### Environment Variables
 

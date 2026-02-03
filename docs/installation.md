@@ -5,6 +5,7 @@
 - Ruby 2.7+ ([Installation](https://www.ruby-lang.org/en/documentation/installation/))
 - Vagrant 2.0+ ([Installation](https://developer.hashicorp.com/vagrant/install))
 - VirtualBox (or other supported provider)
+- [radp-bash-framework](https://github.com/xooooooooox/radp-bash-framework) (required, automatically installed via Homebrew/package managers)
 
 ## Installation Methods
 
@@ -55,9 +56,17 @@ avoid conflicts.
 
 ### Manual (Git Clone)
 
+First, install [radp-bash-framework](https://github.com/xooooooooox/radp-bash-framework):
+
+```shell
+curl -fsSL https://raw.githubusercontent.com/xooooooooox/radp-bash-framework/main/install.sh | bash
+```
+
+Then clone radp-vagrant-framework:
+
 ```shell
 git clone https://github.com/xooooooooox/radp-vagrant-framework.git
-cd radp-vagrant-framework/src/main/ruby
+cd radp-vagrant-framework
 ```
 
 Or download from [Releases](https://github.com/xooooooooox/radp-vagrant-framework/releases/latest).
