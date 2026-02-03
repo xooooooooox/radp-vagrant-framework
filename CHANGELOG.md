@@ -2,12 +2,6 @@
 
 ## v0.2.23
 
-### fix
-
-- completion
-
-## v0.2.22
-
 ### feat
 
 - Add `--cluster` (`-C`) and `--guest-ids` (`-G`) options to `vg` command
