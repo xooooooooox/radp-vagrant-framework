@@ -28,7 +28,7 @@ module RadpVagrant
 
         @merged_config = RadpVagrant.build_merged_config(config_dir)
         unless @merged_config
-          puts 'No vagrant configuration found'
+          warn 'No vagrant configuration found'
           return false
         end
         true

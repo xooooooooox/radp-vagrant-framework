@@ -13,7 +13,8 @@ module RadpVagrant
       end
 
       def execute
-        return 1 unless load_config
+        # Use silent config loading for completion - no output on failure
+        return 0 unless load_config_silent
 
         case @type
         when 'machines'
@@ -27,6 +28,16 @@ module RadpVagrant
       end
 
       private
+
+      # Silent version of load_config - no output on failure
+      # Used for completion to avoid polluting stdout
+      def load_config_silent
+        ENV['RADP_VAGRANT_ENV'] = env_override if env_override
+        @merged_config = RadpVagrant.build_merged_config(config_dir)
+        @merged_config ? true : false
+      rescue StandardError
+        false
+      end
 
       def all_machine_names
         clusters.flat_map do |cluster|

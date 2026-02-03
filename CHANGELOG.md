@@ -1,5 +1,19 @@
 # CHANGELOG
 
+## v0.2.24
+
+### fix
+
+- Fix shell completion pollution when config loading fails
+  - Completion now silently returns empty results for invalid config paths
+  - Changed error output from stdout to stderr in `base.rb` to prevent pollution
+  - Added `load_config_silent` method in `completion.rb` for silent config loading
+- Add dynamic completion support for zsh
+  - Previously zsh completion only had static options without Ruby integration
+  - Now supports cluster names, guest IDs, and machine names completion
+  - Works with both direct `radp-vf` and delegated `homelabctl vf` commands
+- Regenerate completion scripts
+
 ## v0.2.23
 
 ### feat
