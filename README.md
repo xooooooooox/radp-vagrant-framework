@@ -367,13 +367,21 @@ Create custom templates in `~/.config/radp-vagrant/templates/`:
         └── triggers/
 ```
 
-See [Advanced Topics](docs/advanced.md) for detailed template creation guide.
+See [Templates Guide](docs/user-guide/templates.md) for detailed template creation guide.
 
 ## Documentation
 
+- [Getting Started](docs/getting-started.md) - Quick start guide
 - [Installation Guide](docs/installation.md) - Full installation options, upgrade, shell completion
-- [Configuration Reference](docs/configuration-reference.md) - Box, provider, network, provisions, triggers, plugins
-- [Advanced Topics](docs/advanced.md) - Convention defaults, validation, extending the framework
+- [Configuration Reference](docs/configuration.md) - Box, provider, network, provisions, triggers, plugins
+- [User Guide](docs/user-guide/) - Provisions, triggers, plugins, templates
+- [Developer Guide](docs/developer/) - Architecture, extending the framework
+- [CLI Reference](docs/reference/cli-reference.md) - Complete CLI command reference
+
+## Related Projects
+
+- [radp-bash-framework](https://github.com/xooooooooox/radp-bash-framework) - Bash CLI framework (dependency)
+- [homelabctl](https://github.com/xooooooooox/homelabctl) - Homelab infrastructure CLI (uses this framework)
 
 ## Contributing
 
