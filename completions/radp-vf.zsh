@@ -95,6 +95,10 @@ _radp_vf_ruby_completion() {
         return 1
     fi
     
+    # Expand tilde before processing
+    if [[ "$config_dir" == ~* ]]; then
+        config_dir="${config_dir/#\~/$HOME}"
+    fi
     # Convert relative config_dir to absolute
     if [[ -n "$config_dir" && "$config_dir" != /* ]]; then
         config_dir="$(cd "$config_dir" 2>/dev/null && pwd)" || return 1
@@ -215,6 +219,8 @@ _radp_vf_init() {
 _radp_vf_list() {
     _arguments -s \
         '(-h --help)'{-h,--help}'[Show help]' \
+        '(-c --config)'{-c,--config}'[Configuration directory]:dir:_files -/' \
+        '(-e --env)'{-e,--env}'[Override environment name]:name:' \
         '(-a --all)'{-a,--all}'[Show all detailed info]' \
         '(-p --provisions)'{-p,--provisions}'[Show provisions only]' \
         '(-s --synced-folders)'{-s,--synced-folders}'[Show synced folders only]' \
