@@ -2,12 +2,6 @@
 
 ## v0.2.28
 
-### fix
-
-- fix completion
-
-## v0.2.27
-
 ### feat
 
 - Add application-level global options via `commands/_globals.sh`
