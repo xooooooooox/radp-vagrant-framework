@@ -12,6 +12,7 @@
 # @example list -p
 # @example list -s node-1
 # @example list -t
+# @example list -c /path/to/config
 
 cmd_list() {
   _vf_resolve_paths || return 1

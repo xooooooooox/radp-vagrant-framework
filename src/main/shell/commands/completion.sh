@@ -176,6 +176,10 @@ _completion_add_vg_dynamic() {
       print "        return 1"
       print "    fi"
       print "    "
+      print "    # Expand tilde before processing"
+      print "    if [[ \"$config_dir\" == ~* ]]; then"
+      print "        config_dir=\"${config_dir/#\\~/$HOME}\""
+      print "    fi"
       print "    # Convert relative config_dir to absolute"
       print "    if [[ -n \"$config_dir\" && \"$config_dir\" != /* ]]; then"
       print "        config_dir=\"$(cd \"$config_dir\" 2>/dev/null && pwd)\" || return 1"
@@ -384,6 +388,10 @@ _completion_add_vg_dynamic_zsh() {
       print "        return 1"
       print "    fi"
       print "    "
+      print "    # Expand tilde before processing"
+      print "    if [[ \"$config_dir\" == ~* ]]; then"
+      print "        config_dir=\"${config_dir/#\\~/$HOME}\""
+      print "    fi"
       print "    # Convert relative config_dir to absolute"
       print "    if [[ -n \"$config_dir\" && \"$config_dir\" != /* ]]; then"
       print "        config_dir=\"$(cd \"$config_dir\" 2>/dev/null && pwd)\" || return 1"
@@ -470,10 +478,14 @@ _completion_add_vg_dynamic_zsh() {
     }
 
     # Replace _radp_vf_list function for dynamic completion
+    # Note: -c/--config and -e/--env are app global options that must be recognized
+    # for _radp_vf_comp_config_dir() to extract the config path for dynamic completion
     /^_radp_vf_list\(\) \{$/ {
       print "_radp_vf_list() {"
       print "    _arguments -s \\"
       print "        \047(-h --help)\047{-h,--help}\047[Show help]\047 \\"
+      print "        \047(-c --config)\047{-c,--config}\047[Configuration directory]:dir:_files -/\047 \\"
+      print "        \047(-e --env)\047{-e,--env}\047[Override environment name]:name:\047 \\"
       print "        \047(-a --all)\047{-a,--all}\047[Show all detailed info]\047 \\"
       print "        \047(-p --provisions)\047{-p,--provisions}\047[Show provisions only]\047 \\"
       print "        \047(-s --synced-folders)\047{-s,--synced-folders}\047[Show synced folders only]\047 \\"
