@@ -22,8 +22,8 @@ _radp_vf_comp_config_dir() {
     if [[ -z "$config_dir" ]]; then
         config_dir="${RADP_VAGRANT_CONFIG_DIR:-}"
     fi
-    if [[ -z "$config_dir" && -d "./config" ]]; then
-        config_dir="./config"
+    if [[ -z "$config_dir" && -f "./vagrant.yaml" ]]; then
+        config_dir="."
     fi
     [[ -n "$config_dir" ]] && echo "$config_dir"
 }
@@ -163,10 +163,25 @@ _radp_vf_vg_args() {
     _describe "command" vagrant_cmds
 }
 
+# Completion function for machine names (used by list command)
+_radp_vf_machines() {
+    local config_dir env_override machines
+    config_dir="$(_radp_vf_comp_config_dir)"
+    env_override="$(_radp_vf_comp_env)"
+    if [[ -n "$config_dir" ]]; then
+        machines="$(_radp_vf_ruby_completion "$config_dir" "$env_override" "machines")"
+        if [[ -n "$machines" ]]; then
+            local -a machine_array
+            machine_array=(${(f)machines})
+            _describe "filter" machine_array
+        fi
+    fi
+}
+
 _radp_vf_completion() {
     _arguments -s \
         '(-h --help)'{-h,--help}'[Show help]' \
-        '1:shell:_files'
+        '1:shell:(bash zsh)'
 }
 
 _radp_vf_dump_config() {
@@ -204,7 +219,7 @@ _radp_vf_list() {
         '(-p --provisions)'{-p,--provisions}'[Show provisions only]' \
         '(-s --synced-folders)'{-s,--synced-folders}'[Show synced folders only]' \
         '(-t --triggers)'{-t,--triggers}'[Show triggers only]' \
-        '1:filter:_files'
+        '*:filter:_radp_vf_machines'
 }
 
 _radp_vf_template() {
@@ -272,6 +287,25 @@ _radp_vf_vg() {
 _radp_vf() {
     local context state state_descr line
     typeset -A opt_args
+
+    # Workaround: Handle option prefix completion explicitly
+    # Without this, -<TAB> may fall through to command completion
+    # because _arguments -C doesn't trigger option completion for
+    # incomplete option prefixes when positional args are specified
+    if [[ $CURRENT -eq 2 && "${words[CURRENT]}" == -* ]]; then
+        _arguments -s \
+            '(-h --help)'{-h,--help}'[Show help]' \
+            '--version[Show version]' \
+        '(-q --quiet)'{-q,--quiet}'[Enable quiet mode]' \
+        '(-v --verbose)'{-v,--verbose}'[Enable verbose output]' \
+        '--debug[Enable debug output]' \
+        '--show-config[Show configuration]' \
+        '--all[Show all (with --show-config)]' \
+        '--json[Output as JSON (with --show-config)]' \
+        '(-c --config)'{-c,--config}'[Configuration directory]:dir:' \
+        '(-e --env)'{-e,--env}'[Override environment name]:name:' \
+        && return
+    fi
 
     _arguments -C -s \
         '(-h --help)'{-h,--help}'[Show help]' \
