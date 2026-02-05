@@ -2,6 +2,7 @@
 # @cmd
 # @desc Generate shell completion script
 # @arg shell! Shell type: bash or zsh
+# @arg-values shell bash zsh
 # @example completion bash
 # @example completion zsh
 # @example completion bash >> ~/.bashrc
