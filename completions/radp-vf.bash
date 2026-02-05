@@ -20,8 +20,8 @@ _radp_vf_comp_config_dir() {
     if [[ -z "$config_dir" ]]; then
         config_dir="${RADP_VAGRANT_CONFIG_DIR:-}"
     fi
-    if [[ -z "$config_dir" && -d "./config" ]]; then
-        config_dir="./config"
+    if [[ -z "$config_dir" && -f "./vagrant.yaml" ]]; then
+        config_dir="."
     fi
     [[ -n "$config_dir" ]] && echo "$config_dir"
 }
@@ -157,6 +157,22 @@ _radp_vf() {
             COMPREPLY=($(compgen -W "completion dump-config generate info init list template validate version vg  -q --quiet -v --verbose --debug --show-config --all --json -c --config -e --env --help --version" -- "$cur"))
             ;;
         'completion')
+            # 计算参数位置（减去命令路径深度）
+            local arg_idx=0
+            for ((i = 1; i < cword; i++)); do
+                case "${words[i]}" in
+                    -*) ;;
+                    *) ((arg_idx++)) ;;
+                esac
+            done
+            ((arg_idx -= 1)) || true
+            # 根据参数位置补全
+            case "$arg_idx" in
+                0)
+                    COMPREPLY=($(compgen -W "bash zsh" -- "$cur"))
+                    return
+                    ;;
+            esac
             COMPREPLY=($(compgen -W "--help -c --config -e --env" -- "$cur"))
             ;;
         'dump-config')
