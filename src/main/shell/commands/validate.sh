@@ -1,8 +1,6 @@
 #!/usr/bin/env bash
 # @cmd
 # @desc Validate YAML configuration files
-# @option -c, --config <dir> Configuration directory
-# @option -e, --env <name> Override environment name
 # @example validate
 # @example validate -c ./config
 # @example validate -e prod
@@ -17,5 +15,5 @@ cmd_validate() {
   echo "Config Dir: ${config_dir}" >&2
   echo "" >&2
 
-  _vf_ruby_validate "$config_dir" "${opt_env:-}"
+_vf_ruby_validate "$config_dir" "${gopt_env:-}"
 }

@@ -1,0 +1,22 @@
+radp:
+  extend:
+    vagrant:
+      config:
+        clusters:
+          - name: {{cluster_name}}
+            common:
+              box:
+                name: {{box_name}}
+            guests:
+              - id: {{guest_id}}
+                provider:
+                  mem: {{mem}}
+                  cpus: {{cpus}}
+                network:
+                  private-network:
+                    enabled: true
+                    type: dhcp
+                # SSH trust from host to guest
+                provisions:
+                  - name: radp:ssh/host-trust
+                    enabled: true

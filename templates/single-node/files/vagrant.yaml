@@ -1,0 +1,19 @@
+radp:
+  env: {{env}}
+  extend:
+    vagrant:
+      plugins:
+        - name: vagrant-hostmanager
+          required: true
+          options:
+            enabled: true
+            manage_host: true
+            manage_guest: true
+      config:
+        common:
+          # Global settings inherited by all guests
+          # Time synchronization for consistent time across host/guest
+          provisions:
+            - name: radp:time/chrony-sync
+              enabled: true
+              phase: pre

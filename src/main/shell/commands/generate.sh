@@ -2,8 +2,6 @@
 # @cmd
 # @desc Generate standalone Vagrantfile
 # @arg output Output file path
-# @option -c, --config <dir> Configuration directory
-# @option -e, --env <name> Override environment name
 # @example generate
 # @example generate Vagrantfile.standalone
 # @example generate -c ./config Vagrantfile.standalone
@@ -21,5 +19,5 @@ cmd_generate() {
     output="$(pwd)/${output}"
   fi
 
-  _vf_ruby_generate "$config_dir" "${opt_env:-}" "$output"
+_vf_ruby_generate "$config_dir" "${gopt_env:-}" "$output"
 }

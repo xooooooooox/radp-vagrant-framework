@@ -91,9 +91,9 @@ _vf_has_config_file() {
 
 #######################################
 # Resolve config directory
-# Priority: -c flag > RADP_VAGRANT_CONFIG_DIR > ./config (if exists)
+# Priority: gopt_config > RADP_VAGRANT_CONFIG_DIR > ./config (if exists)
 # Globals:
-#   opt_config - config option from CLI parsing
+#   gopt_config - global config option from CLI parsing
 # Arguments:
 #   1 - (optional) command name for showing help on failure
 # Returns:
@@ -103,9 +103,9 @@ _vf_resolve_config_dir() {
   local cmd_name="${1:-}"
   local config_dir=""
 
-  # Priority 1: -c/--config option
-  if [[ -n "${opt_config:-}" ]]; then
-    config_dir="$opt_config"
+  # Priority 1: -c/--config global option
+  if [[ -n "${gopt_config:-}" ]]; then
+    config_dir="$gopt_config"
   # Priority 2: Environment variable
   elif [[ -n "${RADP_VAGRANT_CONFIG_DIR:-}" ]]; then
     config_dir="$RADP_VAGRANT_CONFIG_DIR"

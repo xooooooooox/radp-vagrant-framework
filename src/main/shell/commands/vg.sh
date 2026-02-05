@@ -2,8 +2,6 @@
 # @cmd
 # @desc Run vagrant command with framework
 # @arg args~ Vagrant command and arguments
-# @option -c, --config <dir> Configuration directory
-# @option -e, --env <name> Override environment name
 # @option -C, --cluster <names> Cluster names (comma-separated for multiple)
 # @option -G, --guest-ids <ids> Guest IDs (comma-separated, requires --cluster)
 # @example vg status
@@ -32,8 +30,8 @@ cmd_vg() {
   config_dir="$(_vf_resolve_config_dir "vg")" || return 1
 
   # Set environment override if specified
-  if [[ -n "${opt_env:-}" ]]; then
-    export RADP_VAGRANT_ENV="${opt_env}"
+  if [[ -n "${gopt_env:-}" ]]; then
+    export RADP_VAGRANT_ENV="${gopt_env}"
   fi
 
   # Use framework's Vagrantfile via VAGRANT_VAGRANTFILE
@@ -64,7 +62,7 @@ cmd_vg() {
       cluster_args+=("--cluster=${cluster}")
     done
 
-    mapfile -t resolved_machines < <(_vf_ruby_resolve "$config_dir" "${opt_env:-}" "${cluster_args[@]}" $guest_ids_arg)
+    mapfile -t resolved_machines < <(_vf_ruby_resolve "$config_dir" "${gopt_env:-}" "${cluster_args[@]}" $guest_ids_arg)
 
     if [[ ${#resolved_machines[@]} -eq 0 ]]; then
       radp_log_error "No machines found for specified cluster(s)"

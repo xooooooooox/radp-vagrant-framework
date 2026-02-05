@@ -4,8 +4,6 @@
 # @arg filter Guest ID or machine name filter
 # @option -f, --format <type> Output format: json or yaml (default: json)
 # @option -o, --output <file> Output file path
-# @option -c, --config <dir> Configuration directory
-# @option -e, --env <name> Override environment name
 # @example dump-config
 # @example dump-config -f yaml
 # @example dump-config -o config.json
@@ -32,5 +30,5 @@ cmd_dump_config() {
     output="$(pwd)/${output}"
   fi
 
-  _vf_ruby_dump_config "$config_dir" "${opt_env:-}" "${1:-}" "$format" "$output"
+_vf_ruby_dump_config "$config_dir" "${gopt_env:-}" "${1:-}" "$format" "$output"
 }
