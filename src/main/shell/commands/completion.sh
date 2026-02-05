@@ -17,19 +17,19 @@ cmd_completion() {
   fi
 
   case "$shell" in
-  bash)
-    # Generate base completion, add delegation support, then add vg dynamic completion
-    radp_cli_completion_generate "$shell" \
-      | _completion_add_delegation_support \
-      | _completion_add_vg_dynamic
-    ;;
-  zsh)
-    radp_cli_completion_generate "$shell" | _completion_add_vg_dynamic_zsh
-    ;;
-  *)
-    radp_log_error "Unsupported shell: $shell (supported: bash, zsh)"
-    return 1
-    ;;
+    bash)
+      # Generate base completion, add delegation support, then add vg dynamic completion
+      radp_cli_completion_generate "$shell" \
+        | _completion_add_delegation_support \
+        | _completion_add_vg_dynamic
+      ;;
+    zsh)
+      radp_cli_completion_generate "$shell" | _completion_add_vg_dynamic_zsh
+      ;;
+    *)
+      radp_log_error "Unsupported shell: $shell (supported: bash, zsh)"
+      return 1
+      ;;
   esac
 }
 
