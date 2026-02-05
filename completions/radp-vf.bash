@@ -154,13 +154,13 @@ _radp_vf() {
     # Command completions
     case "$cmd_path" in
         '')
-            COMPREPLY=($(compgen -W "completion dump-config generate info init list template validate version vg  -q --quiet -v --verbose --debug --config --all --json --help --version" -- "$cur"))
+            COMPREPLY=($(compgen -W "completion dump-config generate info init list template validate version vg  -q --quiet -v --verbose --debug --show-config --all --json -c --config -e --env --help --version" -- "$cur"))
             ;;
         'completion')
-            COMPREPLY=($(compgen -W "--help" -- "$cur"))
+            COMPREPLY=($(compgen -W "--help -c --config -e --env" -- "$cur"))
             ;;
         'dump-config')
-            COMPREPLY=($(compgen -W "--help -f --format -o --output -c --config -e --env" -- "$cur"))
+            COMPREPLY=($(compgen -W "--help -c --config -e --env -f --format -o --output" -- "$cur"))
             ;;
         'generate')
             COMPREPLY=($(compgen -W "--help -c --config -e --env" -- "$cur"))
@@ -169,25 +169,25 @@ _radp_vf() {
             COMPREPLY=($(compgen -W "--help -c --config -e --env" -- "$cur"))
             ;;
         'init')
-            COMPREPLY=($(compgen -W "--help -t --template -s --set" -- "$cur"))
+            COMPREPLY=($(compgen -W "--help -c --config -e --env -t --template --set" -- "$cur"))
             ;;
         'list')
-            COMPREPLY=($(compgen -W "--help -a --all -p --provisions -s --synced-folders -t --triggers -c --config -e --env" -- "$cur"))
+            COMPREPLY=($(compgen -W "--help -c --config -e --env -a --all -p --provisions -s --synced-folders -t --triggers" -- "$cur"))
             ;;
         'template')
             COMPREPLY=($(compgen -W "list show  --help" -- "$cur"))
             ;;
         'template list')
-            COMPREPLY=($(compgen -W "--help" -- "$cur"))
+            COMPREPLY=($(compgen -W "--help -c --config -e --env" -- "$cur"))
             ;;
         'template show')
-            COMPREPLY=($(compgen -W "--help" -- "$cur"))
+            COMPREPLY=($(compgen -W "--help -c --config -e --env" -- "$cur"))
             ;;
         'validate')
             COMPREPLY=($(compgen -W "--help -c --config -e --env" -- "$cur"))
             ;;
         'version')
-            COMPREPLY=($(compgen -W "--help" -- "$cur"))
+            COMPREPLY=($(compgen -W "--help -c --config -e --env" -- "$cur"))
             ;;
         'vg'*)
             # Dynamic completion for vg command

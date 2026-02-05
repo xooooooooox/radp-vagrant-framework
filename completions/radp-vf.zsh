@@ -174,24 +174,18 @@ _radp_vf_dump_config() {
         '(-h --help)'{-h,--help}'[Show help]' \
         '(-f --format)'{-f,--format}'[Output format: json or yaml (default: json)]:type:' \
         '(-o --output)'{-o,--output}'[Output file path]:file:' \
-        '(-c --config)'{-c,--config}'[Configuration directory]:dir:' \
-        '(-e --env)'{-e,--env}'[Override environment name]:name:' \
         '1:filter:_files'
 }
 
 _radp_vf_generate() {
     _arguments -s \
         '(-h --help)'{-h,--help}'[Show help]' \
-        '(-c --config)'{-c,--config}'[Configuration directory]:dir:' \
-        '(-e --env)'{-e,--env}'[Override environment name]:name:' \
         '1:output:_files'
 }
 
 _radp_vf_info() {
     _arguments -s \
         '(-h --help)'{-h,--help}'[Show help]' \
-        '(-c --config)'{-c,--config}'[Configuration directory]:dir:' \
-        '(-e --env)'{-e,--env}'[Override environment name]:name:' \
         '*:file:_files'
 }
 
@@ -199,7 +193,7 @@ _radp_vf_init() {
     _arguments -s \
         '(-h --help)'{-h,--help}'[Show help]' \
         '(-t --template)'{-t,--template}'[Use a template (default: base)]:name:' \
-        '(-s --set)'{-s,--set}'[<var>=<value>~ Set template variable (can be repeated)]:var:' \
+        '--set[<var>=<value>~ Set template variable (can be repeated)]:var:' \
         '1:dir:_files'
 }
 
@@ -210,8 +204,6 @@ _radp_vf_list() {
         '(-p --provisions)'{-p,--provisions}'[Show provisions only]' \
         '(-s --synced-folders)'{-s,--synced-folders}'[Show synced folders only]' \
         '(-t --triggers)'{-t,--triggers}'[Show triggers only]' \
-        '(-c --config)'{-c,--config}'[Configuration directory]:dir:' \
-        '(-e --env)'{-e,--env}'[Override environment name]:name:' \
         '1:filter:_files'
 }
 
@@ -219,7 +211,7 @@ _radp_vf_template() {
     local context state state_descr line
     typeset -A opt_args
 
-    _arguments -C \
+    _arguments -C -s \
         '(-h --help)'{-h,--help}'[Show help]' \
         '1: :->command' \
         '*:: :->args'
@@ -258,8 +250,6 @@ _radp_vf_template_show() {
 _radp_vf_validate() {
     _arguments -s \
         '(-h --help)'{-h,--help}'[Show help]' \
-        '(-c --config)'{-c,--config}'[Configuration directory]:dir:' \
-        '(-e --env)'{-e,--env}'[Override environment name]:name:' \
         '*:file:_files'
 }
 
@@ -283,16 +273,17 @@ _radp_vf() {
     local context state state_descr line
     typeset -A opt_args
 
-    _arguments -C \
+    _arguments -C -s \
         '(-h --help)'{-h,--help}'[Show help]' \
         '--version[Show version]' \
-        '-q' \
-        '--quiet' \
+        '(-q --quiet)'{-q,--quiet}'[Enable quiet mode]' \
         '(-v --verbose)'{-v,--verbose}'[Enable verbose output]' \
         '--debug[Enable debug output]' \
-        '--config' \
-        '--all' \
-        '--json' \
+        '--show-config[Show configuration]' \
+        '--all[Show all (with --show-config)]' \
+        '--json[Output as JSON (with --show-config)]' \
+        '(-c --config)'{-c,--config}'[Configuration directory]:dir:' \
+        '(-e --env)'{-e,--env}'[Override environment name]:name:' \
         '1: :->command' \
         '*:: :->args'
 
