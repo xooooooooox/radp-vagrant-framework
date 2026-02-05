@@ -102,8 +102,8 @@ _completion_add_vg_dynamic() {
       print "    if [[ -z \"$config_dir\" ]]; then"
       print "        config_dir=\"${RADP_VAGRANT_CONFIG_DIR:-}\""
       print "    fi"
-      print "    if [[ -z \"$config_dir\" && -d \"./config\" ]]; then"
-      print "        config_dir=\"./config\""
+      print "    if [[ -z \"$config_dir\" && -f \"./vagrant.yaml\" ]]; then"
+      print "        config_dir=\".\""
       print "    fi"
       print "    [[ -n \"$config_dir\" ]] && echo \"$config_dir\""
       print "}"
@@ -311,8 +311,8 @@ _completion_add_vg_dynamic_zsh() {
       print "    if [[ -z \"$config_dir\" ]]; then"
       print "        config_dir=\"${RADP_VAGRANT_CONFIG_DIR:-}\""
       print "    fi"
-      print "    if [[ -z \"$config_dir\" && -d \"./config\" ]]; then"
-      print "        config_dir=\"./config\""
+      print "    if [[ -z \"$config_dir\" && -f \"./vagrant.yaml\" ]]; then"
+      print "        config_dir=\".\""
       print "    fi"
       print "    [[ -n \"$config_dir\" ]] && echo \"$config_dir\""
       print "}"
@@ -451,8 +451,45 @@ _completion_add_vg_dynamic_zsh() {
       print "    fi"
       print "    _describe \"command\" vagrant_cmds"
       print "}"
+      print ""
+      print "# Completion function for machine names (used by list command)"
+      print "_radp_vf_machines() {"
+      print "    local config_dir env_override machines"
+      print "    config_dir=\"$(_radp_vf_comp_config_dir)\""
+      print "    env_override=\"$(_radp_vf_comp_env)\""
+      print "    if [[ -n \"$config_dir\" ]]; then"
+      print "        machines=\"$(_radp_vf_ruby_completion \"$config_dir\" \"$env_override\" \"machines\")\""
+      print "        if [[ -n \"$machines\" ]]; then"
+      print "            local -a machine_array"
+      print "            machine_array=(${(f)machines})"
+      print "            _describe \"filter\" machine_array"
+      print "        fi"
+      print "    fi"
+      print "}"
       next
     }
+
+    # Replace _radp_vf_list function for dynamic completion
+    /^_radp_vf_list\(\) \{$/ {
+      print "_radp_vf_list() {"
+      print "    _arguments -s \\"
+      print "        \047(-h --help)\047{-h,--help}\047[Show help]\047 \\"
+      print "        \047(-a --all)\047{-a,--all}\047[Show all detailed info]\047 \\"
+      print "        \047(-p --provisions)\047{-p,--provisions}\047[Show provisions only]\047 \\"
+      print "        \047(-s --synced-folders)\047{-s,--synced-folders}\047[Show synced folders only]\047 \\"
+      print "        \047(-t --triggers)\047{-t,--triggers}\047[Show triggers only]\047 \\"
+      print "        \047*:filter:_radp_vf_machines\047"
+      print "}"
+      in_list = 1
+      next
+    }
+
+    # Skip original _radp_vf_list body
+    in_list && /^\}$/ {
+      in_list = 0
+      next
+    }
+    in_list { next }
 
     # Replace _radp_vf_vg function
     /^_radp_vf_vg\(\) \{$/ {

@@ -109,9 +109,9 @@ _vf_resolve_config_dir() {
   # Priority 2: Environment variable
   elif [[ -n "${RADP_VAGRANT_CONFIG_DIR:-}" ]]; then
     config_dir="$RADP_VAGRANT_CONFIG_DIR"
-  # Priority 3: ./config directory if it has config file
-  elif [[ -d "./config" ]] && _vf_has_config_file "./config"; then
-    config_dir="$(pwd)/config"
+  # Priority 3: Current directory itself if it has config file
+  elif _vf_has_config_file "."; then
+    config_dir="$(pwd)"
   fi
 
   # Convert to absolute path if relative
