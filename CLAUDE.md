@@ -12,16 +12,35 @@ declarative configuration for VM clusters, networks, storage, and provisioning t
 ### CLI (radp-vf)
 
 ```bash
-radp-vf init myproject # Initialize project
+radp-vf init myproject              # Initialize project
+radp-vf init -c /path/to/config     # Initialize at specific path
 radp-vf init myproject --template k8s-cluster
-radp-vf list # List clusters and guests
-radp-vf validate # Validate YAML
-radp-vf dump-config # Dump merged config
-radp-vf dump-config -f yaml # Output as YAML
-radp-vf generate # Generate standalone Vagrantfile
-radp-vf vg status # Vagrant status
-radp-vf vg up -C my-cluster # Start cluster
-radp-vf vg up -C my-cluster -G 1,2 # Start specific guests
+radp-vf list                        # List clusters and guests
+radp-vf -c /path list               # Use specific config directory
+radp-vf validate                    # Validate YAML
+radp-vf dump-config                 # Dump merged config
+radp-vf dump-config -f yaml         # Output as YAML
+radp-vf generate                    # Generate standalone Vagrantfile
+radp-vf vg status                   # Vagrant status
+radp-vf vg up -C my-cluster         # Start cluster
+radp-vf vg up -C my-cluster -G 1,2  # Start specific guests
+```
+
+### Global Options
+
+Available for all commands:
+
+```bash
+radp-vf -c, --config <dir>   # Configuration directory
+radp-vf -e, --env <name>     # Override environment name
+```
+
+Options can be placed before or after the command:
+
+```bash
+radp-vf -c /path list        # Before command
+radp-vf list -c /path        # After command
+radp-vf -c /path -e dev vg status  # Multiple global options
 ```
 
 ### Vagrant Commands

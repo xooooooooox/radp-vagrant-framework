@@ -1,5 +1,29 @@
 # CHANGELOG
 
+## v0.2.26
+
+### feat
+
+- Add application-level global options via `commands/_globals.sh`
+    - `-c, --config <dir>` - Configuration directory (available for all commands)
+    - `-e, --env <name>` - Override environment name (available for all commands)
+    - Options can be placed before or after the command: `radp-vf -c /path list` or `radp-vf list -c /path`
+- Add `RADP_VF_INIT_RESULT_FILE` environment variable support in `init` command
+    - When set, writes the absolute config directory path to the specified file
+    - Enables callers to get the actual initialized directory path
+- Enhance `init` command to support `-c/--config` global option for specifying target directory
+    - Priority: `-c/--config` > `RADP_VAGRANT_CONFIG_DIR` > positional arg > `.`
+
+### changed
+
+- Migrate per-command `-c/--config` and `-e/--env` options to application-level global options
+    - Variables changed from `opt_config`/`opt_env` to `gopt_config`/`gopt_env`
+    - Affected commands: list, vg, validate, dump-config, generate, info
+
+### fix
+
+- Fix ShellCheck SC2164: Add `|| return 1` to all `cd` commands in `ruby_bridge.sh`
+
 ## v0.2.25
 
 ### feat

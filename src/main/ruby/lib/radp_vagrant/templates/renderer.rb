@@ -23,8 +23,10 @@ module RadpVagrant
 
       # Render template to target directory
       # @param target_dir [String] Target directory path
+      # @param dry_run [Boolean] If true, only show what would be created
+      # @param force [Boolean] If true, overwrite existing files
       # @return [Hash] Result with status and messages
-      def render_to(target_dir)
+      def render_to(target_dir, dry_run: false, force: false)
         # Load template metadata
         @template = Registry.get(template_name)
         unless @template
@@ -45,7 +47,7 @@ module RadpVagrant
         return validation unless validation[:success]
 
         # Render files
-        render_files(source_dir, target_dir, merged_vars)
+        render_files(source_dir, target_dir, merged_vars, dry_run: dry_run, force: force)
       end
 
       private
@@ -86,8 +88,9 @@ module RadpVagrant
         { success: true }
       end
 
-      def render_files(source_dir, target_dir, vars)
+      def render_files(source_dir, target_dir, vars, dry_run: false, force: false)
         files_rendered = []
+        files_skipped = []
 
         # Find all files in source directory
         Dir.glob(File.join(source_dir, '**', '*'), File::FNM_DOTMATCH).each do |source_path|
@@ -102,6 +105,17 @@ module RadpVagrant
 
           # Calculate target path
           target_path = File.join(target_dir, rendered_path)
+
+          # Check if file exists
+          if File.exist?(target_path) && !force
+            files_skipped << rendered_path
+            next
+          end
+
+          if dry_run
+            files_rendered << rendered_path
+            next
+          end
 
           # Create parent directory
           FileUtils.mkdir_p(File.dirname(target_path))
@@ -124,7 +138,7 @@ module RadpVagrant
           files_rendered << rendered_path
         end
 
-        { success: true, files: files_rendered }
+        { success: true, files: files_rendered, skipped: files_skipped }
       end
 
       def substitute(content, vars)

@@ -13,7 +13,7 @@ _vf_ruby_info() {
   local config_dir="${1:-}"
   local env_override="${2:-}"
 
-  cd "${gr_vf_ruby_lib_dir}"
+  cd "${gr_vf_ruby_lib_dir}" || return 1
   ruby -r ./lib/radp_vagrant -e "
     cmd = RadpVagrant::CLI::Info.new(
       '${config_dir}'.empty? ? nil : '${config_dir}',
@@ -45,7 +45,7 @@ _vf_ruby_list() {
   local show_triggers="${6:-false}"
   local filter="${7:-}"
 
-  cd "${gr_vf_ruby_lib_dir}"
+  cd "${gr_vf_ruby_lib_dir}" || return 1
   ruby -r ./lib/radp_vagrant -e "
     cmd = RadpVagrant::CLI::List.new(
       '${config_dir}',
@@ -70,7 +70,7 @@ _vf_ruby_validate() {
   local config_dir="$1"
   local env_override="${2:-}"
 
-  cd "${gr_vf_ruby_lib_dir}"
+  cd "${gr_vf_ruby_lib_dir}" || return 1
   ruby -r ./lib/radp_vagrant -e "
     cmd = RadpVagrant::CLI::Validate.new(
       '${config_dir}',
@@ -96,7 +96,7 @@ _vf_ruby_dump_config() {
   local format="${4:-json}"
   local output="${5:-}"
 
-  cd "${gr_vf_ruby_lib_dir}"
+  cd "${gr_vf_ruby_lib_dir}" || return 1
   ruby -r ./lib/radp_vagrant -e "
     cmd = RadpVagrant::CLI::DumpConfig.new(
       '${config_dir}',
@@ -121,7 +121,7 @@ _vf_ruby_generate() {
   local env_override="${2:-}"
   local output="${3:-}"
 
-  cd "${gr_vf_ruby_lib_dir}"
+  cd "${gr_vf_ruby_lib_dir}" || return 1
   ruby -r ./lib/radp_vagrant -e "
     cmd = RadpVagrant::CLI::Generate.new(
       '${config_dir}',
@@ -142,7 +142,7 @@ _vf_ruby_template() {
   local subcommand="${1:-list}"
   shift || true
 
-  cd "${gr_vf_ruby_lib_dir}"
+  cd "${gr_vf_ruby_lib_dir}" || return 1
   ruby -r ./lib/radp_vagrant -e "
     cmd = RadpVagrant::CLI::Template.new('${subcommand}', ARGV)
     exit cmd.execute
@@ -155,29 +155,37 @@ _vf_ruby_template() {
 #   1 - template name
 #   2 - target directory (absolute path)
 #   3 - variables JSON string
+#   4 - dry_run (true/false)
+#   5 - force (true/false)
 # Returns:
 #   SUCCESS on first line if successful, followed by created files
+#   SKIPPED:<file> for files skipped due to existing
 #   ERROR on first line if failed, followed by error message
 #######################################
 _vf_ruby_init() {
   local template="$1"
   local target_dir="$2"
   local vars_json="$3"
+  local dry_run="${4:-false}"
+  local force="${5:-false}"
 
-  cd "${gr_vf_ruby_lib_dir}"
+  cd "${gr_vf_ruby_lib_dir}" || return 1
   ruby -r ./lib/radp_vagrant -r json -e "
     require_relative 'lib/radp_vagrant/templates/renderer'
 
     template_name = '${template}'
     target_dir = '${target_dir}'
     variables = JSON.parse('${vars_json}')
+    dry_run = ${dry_run}
+    force = ${force}
 
     renderer = RadpVagrant::Templates::Renderer.new(template_name, variables)
-    result = renderer.render_to(target_dir)
+    result = renderer.render_to(target_dir, dry_run: dry_run, force: force)
 
     if result[:success]
       puts 'SUCCESS'
       (result[:files] || []).each { |f| puts f }
+      (result[:skipped] || []).each { |f| puts \"SKIPPED:#{f}\" }
     else
       puts 'ERROR'
       puts result[:error]
@@ -227,7 +235,7 @@ _vf_ruby_resolve() {
     guest_ids_ruby="[]"
   fi
 
-  cd "${gr_vf_ruby_lib_dir}"
+  cd "${gr_vf_ruby_lib_dir}" || return 1
   ruby -r ./lib/radp_vagrant -e "
     cmd = RadpVagrant::CLI::Resolve.new(
       '${config_dir}',
@@ -256,7 +264,7 @@ _vf_ruby_completion() {
   local type="${3:-machines}"
   local cluster="${4:-}"
 
-  cd "${gr_vf_ruby_lib_dir}"
+  cd "${gr_vf_ruby_lib_dir}" || return 1
   ruby -r ./lib/radp_vagrant -e "
     cmd = RadpVagrant::CLI::Completion.new(
       '${config_dir}',
