@@ -1,5 +1,5 @@
 # frozen_string_literal: true
 
 module RadpVagrant
-  VERSION = 'v0.2.30'
+  VERSION = 'v0.2.31'
 end
