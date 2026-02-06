@@ -94,6 +94,10 @@ _radp_vf_ruby_completion() {
         return 1
     fi
     
+    # Expand tilde before processing
+    if [[ "$config_dir" == ~* ]]; then
+        config_dir="${config_dir/#\~/$HOME}"
+    fi
     # Convert relative config_dir to absolute
     if [[ -n "$config_dir" && "$config_dir" != /* ]]; then
         config_dir="$(cd "$config_dir" 2>/dev/null && pwd)" || return 1
