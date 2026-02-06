@@ -367,6 +367,8 @@ _radp_vf() {
             _describe 'command' commands
             ;;
         args)
+            typeset -g _RADP_VF_OPT_CONFIG="${opt_args[-c]:-${opt_args[--config]:-}}"
+            typeset -g _RADP_VF_OPT_ENV="${opt_args[-e]:-${opt_args[--env]:-}}"
             local cmd_func="_radp_vf_${words[1]//-/_}"
             if (( $+functions[$cmd_func] )); then
                 $cmd_func
