@@ -58,7 +58,7 @@ brew install radp-vagrant-framework
 
 ```shell
 curl -fsSL https://raw.githubusercontent.com/xooooooooox/radp-vagrant-framework/main/install.sh
-  | bash
+| bash
 ```
 
 Install from a specific branch or tag:
@@ -202,6 +202,7 @@ radp-vf vg -c /path/to/config status <tab>
 ```
 
 Config resolution for completion (in order):
+
 1. `-c` / `--config` from command line
 2. `RADP_VAGRANT_CONFIG_DIR` environment variable
 3. `./config` directory (if exists)
@@ -380,7 +381,8 @@ See [Templates Guide](docs/user-guide/templates.md) for detailed template creati
 
 ## Related Projects
 
-- [radp-bash-framework](https://github.com/xooooooooox/radp-bash-framework) - Bash CLI framework (dependency)
+- [radp-bash-framework](https://github.com/xooooooooox/radp-bash-framework) - Bash engineering & CLI framework (
+  dependency)
 - [homelabctl](https://github.com/xooooooooox/homelabctl) - Homelab infrastructure CLI (uses this framework)
 
 ## Contributing
