@@ -123,6 +123,24 @@ jobs:
           osc -A "${OBS_API_URL}" ls "${OBS_PROJECT}" >/dev/null
           osc -A "${OBS_API_URL}" ls "${OBS_PROJECT}" "${OBS_PACKAGE}" >/dev/null
 
+      - name: Ensure OBS project config (Preinstall for RHEL_7)
+        if: steps.tag.outputs.should_build == 'true'
+        run: |
+          set -euo pipefail
+          current_conf="$(osc -A "${OBS_API_URL}" meta prjconf "${OBS_PROJECT}")"
+          if echo "$current_conf" | grep -q 'Preinstall:.*perl-Digest-MD5'; then
+            echo "perl-Digest-MD5 already in Preinstall; skipping."
+            exit 0
+          fi
+          {
+            echo "$current_conf"
+            echo ""
+            echo '%if "%_repository" == "RHEL_7"'
+            echo "Preinstall: perl-Digest-MD5"
+            echo "%endif"
+          } | osc -A "${OBS_API_URL}" meta prjconf "${OBS_PROJECT}" -F -
+          echo "Added perl-Digest-MD5 to Preinstall for RHEL_7."
+
       - name: Sync sources to OBS
         if: steps.tag.outputs.should_build == 'true'
         run: |
