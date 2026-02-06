@@ -1,33 +1,18 @@
 # CHANGELOG
 
-## v0.2.29
+## v0.2.30
 
 ### feat
 
 - Add application-level global options via `commands/_globals.sh`
-    - `-c, --config <dir>` - Configuration directory (available for all commands)
-    - `-e, --env <name>` - Override environment name (available for all commands)
-    - Options can be placed before or after the command: `radp-vf -c /path list` or `radp-vf list -c /path`
+  - `-c, --config <dir>` - Configuration directory (available for all commands)
+  - `-e, --env <name>` - Override environment name (available for all commands)
+  - Options can be placed before or after the command: `radp-vf -c /path list` or `radp-vf list -c /path`
 - Add `RADP_VF_INIT_RESULT_FILE` environment variable support in `init` command
-    - When set, writes the absolute config directory path to the specified file
-    - Enables callers to get the actual initialized directory path
+  - When set, writes the absolute config directory path to the specified file
+  - Enables callers to get the actual initialized directory path
 - Enhance `init` command to support `-c/--config` global option for specifying target directory
-    - Priority: `-c/--config` > `RADP_VAGRANT_CONFIG_DIR` > positional arg > `.`
-
-### changed
-
-- Migrate per-command `-c/--config` and `-e/--env` options to application-level global options
-    - Variables changed from `opt_config`/`opt_env` to `gopt_config`/`gopt_env`
-    - Affected commands: list, vg, validate, dump-config, generate, info
-
-### fix
-
-- Fix ShellCheck SC2164: Add `|| return 1` to all `cd` commands in `ruby_bridge.sh`
-
-## v0.2.25
-
-### feat
-
+  - Priority: `-c/--config` > `RADP_VAGRANT_CONFIG_DIR` > positional arg > `.`
 - Add `--cluster` (`-C`) and `--guest-ids` (`-G`) options to `vg` command
   - Specify VMs by cluster name instead of full machine name: `radp-vf vg up -C gitlab-runner`
   - Filter specific guests within a cluster: `radp-vf vg up -C gitlab-runner -G 1,2`
@@ -47,17 +32,17 @@
   - `build-copr-package.yml` - Trigger COPR build
   - `build-obs-package.yml` - Sync to OBS and trigger build
   - `build-portable.yml` - Build portable binary
-- Generates completion script with delegation support via `_RADP_VF_DELEGATED` flag
+- Generate completion script with delegation support via `_RADP_VF_DELEGATED` flag
 - Support `privileged` on builtin or user trigger
 - Add user triggers support with `user:` prefix
-    - User triggers are project-defined triggers under `{config_dir}/triggers/` or `{project_root}/triggers/`
-    - Supports subdirectory paths (e.g., `user:system/cleanup`)
-    - Uses same definition format as builtin triggers
+  - User triggers are project-defined triggers under `{config_dir}/triggers/` or `{project_root}/triggers/`
+  - Supports subdirectory paths (e.g., `user:system/cleanup`)
+  - Uses same definition format as builtin triggers
 - Add triggers directory to project templates (base, single-node, k8s-cluster)
 - Update `radp-vf init` output to show available triggers
 - Add `inline` support for builtin/user provision definitions
-    - Definitions can now use `inline: |...` instead of `script: xxx.sh`
-    - User config can override definition's inline/script
+  - Definitions can now use `inline: |...` instead of `script: xxx.sh`
+  - User config can override definition's inline/script
 - Add support for `config.yaml` as alternative base configuration filename
   - Auto-detection: `vagrant.yaml` (preferred) > `config.yaml`
   - New env var `RADP_VAGRANT_CONFIG_BASE_FILENAME` supports any custom filename
@@ -82,20 +67,27 @@
 - Update shell completion with auto-generation support
 - Consistent CLI args
 
+### changed
+
+- Migrate per-command `-c/--config` and `-e/--env` options to application-level global options
+  - Variables changed from `opt_config`/`opt_env` to `gopt_config`/`gopt_env`
+  - Affected commands: list, vg, validate, dump-config, generate, info
+
 ### fix
 
+- Fix ShellCheck SC2164: Add `|| return 1` to all `cd` commands in `ruby_bridge.sh`
 - Fix shell completion pollution when config loading fails
-    - Completion now silently returns empty results for invalid config paths
-    - Changed error output from stdout to stderr in `base.rb` to prevent pollution
-    - Added `load_config_silent` method in `completion.rb` for silent config loading
+  - Completion now silently returns empty results for invalid config paths
+  - Changed error output from stdout to stderr in `base.rb` to prevent pollution
+  - Added `load_config_silent` method in `completion.rb` for silent config loading
 - Add dynamic completion support for zsh
-    - Previously zsh completion only had static options without Ruby integration
-    - Now supports cluster names, guest IDs, and machine names completion
-    - Works with both direct `radp-vf` and delegated `homelabctl vf` commands
+  - Previously zsh completion only had static options without Ruby integration
+  - Now supports cluster names, guest IDs, and machine names completion
+  - Works with both direct `radp-vf` and delegated `homelabctl vf` commands
 - Regenerate completion scripts
 - Fix verbose mode not being passed to Vagrantfile
-    - `radp-vf -v vg status` now correctly displays both framework and Vagrantfile banners
-    - Changed detection from `opt_verbose` to `GX_RADP_FW_BANNER_MODE`
+  - `radp-vf -v vg status` now correctly displays both framework and Vagrantfile banners
+  - Changed detection from `opt_verbose` to `GX_RADP_FW_BANNER_MODE`
 - Fix banner version
 - Fix radp:yadm/clone
 - Fix if hostname is empty, default to `<guest-id>.<cluster-name>.<env>`
@@ -104,24 +96,24 @@
 ### refactor
 
 - Refactor CLI to use radp-bash-framework (radp-bf) architecture
-    - Entry script reduced from ~1000 lines to ~15 lines
-    - Commands auto-discovered from `src/main/shell/commands/`
-    - Libraries auto-loaded from `src/main/shell/libs/`
-    - Help text auto-generated from command annotations
-    - Requires radp-bash-framework as dependency
+  - Entry script reduced from ~1000 lines to ~15 lines
+  - Commands auto-discovered from `src/main/shell/commands/`
+  - Libraries auto-loaded from `src/main/shell/libs/`
+  - Help text auto-generated from command annotations
+  - Requires radp-bash-framework as dependency
 - Add new directory structure: `src/main/shell/` with commands/, config/, libs/
 - Preserve full backward compatibility for all command interfaces
 - Backup legacy script as `bin/radp-vf.legacy`
 - Remove backward compatibility constraints
-    - Delete `bin/radp-vf.legacy` (legacy monolithic script)
-    - Simplify `commands/completion.sh` from ~330 lines to ~17 lines using framework completion generation
+  - Delete `bin/radp-vf.legacy` (legacy monolithic script)
+  - Simplify `commands/completion.sh` from ~330 lines to ~17 lines using framework completion generation
 - Regenerate shell completions using new CLI structure
 
 ### breaking
 
 - Command options now come AFTER the command name (radp-bf framework convention)
-    - Old: `radp-vf -c /path/to/config list -v`
-    - New: `radp-vf list -c /path/to/config -a`
+  - Old: `radp-vf -c /path/to/config list -v`
+  - New: `radp-vf list -c /path/to/config -a`
 - Change `list -v, --verbose` to `list -a, --all` to avoid conflict with framework's global `-v` verbose option
 - Add explicit short options for list command: `-p` (provisions), `-s` (synced-folders), `-t` (triggers)
 
