@@ -6,22 +6,36 @@
 # Helper: Resolve config directory for completion
 _radp_vf_comp_config_dir() {
     local config_dir=""
-    local i
-    for ((i = 1; i < ${#words[@]}; i++)); do
-        case "${words[i]}" in
-            -c|--config)
-                config_dir="${words[i+1]}"
-                break
-                ;;
-            -c=*|--config=*)
-                config_dir="${words[i]#*=}"
-                break
-                ;;
-        esac
-    done
+    
+    # Priority 1: Check global variable from top-level opt_args
+    # (set by _radp_vf when it processes -c/--config before entering subcommand)
+    if [[ -n "${_RADP_VF_OPT_CONFIG:-}" ]]; then
+        config_dir="$_RADP_VF_OPT_CONFIG"
+    fi
+    
+    # Priority 2: Search words array (for subcommand-level -c/--config)
+    if [[ -z "$config_dir" ]]; then
+        local i
+        for ((i = 1; i < ${#words[@]}; i++)); do
+            case "${words[i]}" in
+                -c|--config)
+                    config_dir="${words[i+1]}"
+                    break
+                    ;;
+                -c=*|--config=*)
+                    config_dir="${words[i]#*=}"
+                    break
+                    ;;
+            esac
+        done
+    fi
+    
+    # Priority 3: Environment variable
     if [[ -z "$config_dir" ]]; then
         config_dir="${RADP_VAGRANT_CONFIG_DIR:-}"
     fi
+    
+    # Priority 4: Current directory if it has vagrant.yaml
     if [[ -z "$config_dir" && -f "./vagrant.yaml" ]]; then
         config_dir="."
     fi
@@ -30,6 +44,13 @@ _radp_vf_comp_config_dir() {
 
 # Helper: Get env override from command line
 _radp_vf_comp_env() {
+    # Priority 1: Check global variable from top-level opt_args
+    if [[ -n "${_RADP_VF_OPT_ENV:-}" ]]; then
+        echo "$_RADP_VF_OPT_ENV"
+        return
+    fi
+    
+    # Priority 2: Search words array (for subcommand-level -e/--env)
     local i
     for ((i = 1; i < ${#words[@]}; i++)); do
         case "${words[i]}" in
@@ -43,6 +64,8 @@ _radp_vf_comp_env() {
                 ;;
         esac
     done
+    
+    # Priority 3: Environment variable
     echo "${RADP_VAGRANT_ENV:-}"
 }
 
@@ -96,7 +119,7 @@ _radp_vf_ruby_completion() {
     fi
     
     # Expand tilde before processing
-    if [[ "$config_dir" == ~* ]]; then
+    if [[ "$config_dir" == '~'* ]]; then
         config_dir="${config_dir/#\~/$HOME}"
     fi
     # Convert relative config_dir to absolute
@@ -308,7 +331,7 @@ _radp_vf() {
         '--show-config[Show configuration]' \
         '--all[Show all (with --show-config)]' \
         '--json[Output as JSON (with --show-config)]' \
-        '(-c --config)'{-c,--config}'[Configuration directory]:dir:' \
+        '(-c --config)'{-c,--config}'[Configuration directory]:dir:_files -/' \
         '(-e --env)'{-e,--env}'[Override environment name]:name:' \
         && return
     fi
@@ -322,7 +345,7 @@ _radp_vf() {
         '--show-config[Show configuration]' \
         '--all[Show all (with --show-config)]' \
         '--json[Output as JSON (with --show-config)]' \
-        '(-c --config)'{-c,--config}'[Configuration directory]:dir:' \
+        '(-c --config)'{-c,--config}'[Configuration directory]:dir:_files -/' \
         '(-e --env)'{-e,--env}'[Override environment name]:name:' \
         '1: :->command' \
         '*:: :->args'

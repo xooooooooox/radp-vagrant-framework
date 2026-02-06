@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## v0.2.29
+
+### fix
+
+- fix completion
+
 ## v0.2.28
 
 ### feat
