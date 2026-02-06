@@ -2,10 +2,10 @@
 # @cmd
 # @desc List clusters and guests from configuration
 # @arg filter Guest ID or machine name filter
-# @option -a, --all Show all detailed info
-# @option -p, --provisions Show provisions only
-# @option -s, --synced-folders Show synced folders only
-# @option -t, --triggers Show triggers only
+# @flag -a, --all Show all detailed info
+# @flag -p, --provisions Show provisions only
+# @flag -s, --synced-folders Show synced folders only
+# @flag -t, --triggers Show triggers only
 # @example list
 # @example list -a
 # @example list -a node-1

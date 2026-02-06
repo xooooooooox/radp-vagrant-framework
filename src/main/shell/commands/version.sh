@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # @cmd
 # @desc Show radp-vagrant-framework version
+# @example version
 
 # Version declaration - parsed by framework for --config and banner display
 # NOTE: This value should be kept in sync with src/main/ruby/lib/radp_vagrant/version.rb
