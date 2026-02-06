@@ -189,7 +189,7 @@ _radp_vf() {
             COMPREPLY=($(compgen -W "--help -c --config -e --env" -- "$cur"))
             ;;
         'init')
-            COMPREPLY=($(compgen -W "--help -c --config -e --env -t --template --set" -- "$cur"))
+            COMPREPLY=($(compgen -W "--help -c --config -e --env -t --template --set --force --dry-run" -- "$cur"))
             ;;
         'list')
             COMPREPLY=($(compgen -W "--help -c --config -e --env -a --all -p --provisions -s --synced-folders -t --triggers" -- "$cur"))

@@ -236,6 +236,8 @@ _radp_vf_init() {
         '(-h --help)'{-h,--help}'[Show help]' \
         '(-t --template)'{-t,--template}'[Use a template (default: base)]:name:' \
         '--set[<var>=<value>~ Set template variable (can be repeated)]:var:' \
+        '--force[Overwrite existing files]' \
+        '--dry-run[Show what would be created without making changes]' \
         '1:dir:_files'
 }
 

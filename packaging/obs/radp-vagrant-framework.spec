@@ -9,7 +9,7 @@
 #----------------------------------------------------------------------------------------------------------------------#
 
 Name:           radp-vagrant-framework
-Version:        0.2.30
+Version:        0.2.31
 Release:        1%{?dist}
 Summary:        YAML-driven framework for managing multi-machine Vagrant environments
 
