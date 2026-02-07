@@ -6,7 +6,7 @@
 # Version declaration - parsed by framework for --config and banner display
 # NOTE: This value should be kept in sync with src/main/ruby/lib/radp_vagrant/version.rb
 # Update this when releasing a new version
-declare -gr gr_app_version="v0.2.31"
+declare -gr gr_app_version="v0.2.32"
 
 cmd_version() {
   # Get version from Ruby (single source of truth)
