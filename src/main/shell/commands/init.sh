@@ -44,13 +44,6 @@ cmd_init() {
   abs_target_dir="$(cd "$target_dir" 2>/dev/null && pwd)" || abs_target_dir="$target_dir"
   local display_dir="${abs_target_dir/#$HOME/~}"
 
-  # Check if config already exists (unless --force)
-  if [[ "$force" != "true" && "$dry_run" != "true" ]] && _vf_has_config_file "$abs_target_dir"; then
-    radp_log_error "Configuration already exists in ${abs_target_dir}"
-    radp_log_error "Use --force to overwrite"
-    return 1
-  fi
-
   # Print header
   if [[ "$orchestrated" == "true" ]]; then
     echo "[vf] ${display_dir}/ (template: ${template})"
