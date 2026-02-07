@@ -33,6 +33,7 @@ cmd_init() {
   local template="${opt_template:-base}"
   local force="${opt_force:-false}"
   local dry_run="${opt_dry_run:-false}"
+  local orchestrated="${RADP_INIT_ORCHESTRATED:-false}"
 
   # Create target directory (unless dry-run)
   if [[ "$dry_run" != "true" ]]; then
@@ -41,6 +42,7 @@ cmd_init() {
 
   local abs_target_dir
   abs_target_dir="$(cd "$target_dir" 2>/dev/null && pwd)" || abs_target_dir="$target_dir"
+  local display_dir="${abs_target_dir/#$HOME/~}"
 
   # Check if config already exists (unless --force)
   if [[ "$force" != "true" && "$dry_run" != "true" ]] && _vf_has_config_file "$abs_target_dir"; then
@@ -49,10 +51,17 @@ cmd_init() {
     return 1
   fi
 
-  echo "Initializing RADP Vagrant Framework configuration..."
-  echo "Template: ${template}"
-  [[ "$dry_run" == "true" ]] && echo "Mode: DRY-RUN"
-  echo ""
+  # Print header
+  if [[ "$orchestrated" == "true" ]]; then
+    echo "[vf] ${display_dir}/ (template: ${template})"
+  else
+    local header="Initializing RADP Vagrant Framework configuration..."
+    [[ "$dry_run" == "true" ]] && header="$header (dry-run)"
+    echo "$header"
+    echo "Template: ${template}"
+    echo ""
+    echo "${display_dir}/"
+  fi
 
   # Build variables hash as JSON for Ruby
   local vars_json="{"
@@ -97,67 +106,123 @@ cmd_init() {
     return 1
   fi
 
-  # Get list of created and skipped files
-  local files skipped_files
-  files=$(echo "$result" | tail -n +2 | grep -v '^SKIPPED:' || true)
+  # Get list of created, overwritten, and skipped files
+  local created_files overwritten_files skipped_files
+  created_files=$(echo "$result" | tail -n +2 | grep -v '^SKIPPED:' | grep -v '^OVERWRITTEN:' || true)
+  overwritten_files=$(echo "$result" | tail -n +2 | grep '^OVERWRITTEN:' | sed 's/^OVERWRITTEN://' || true)
   skipped_files=$(echo "$result" | tail -n +2 | grep '^SKIPPED:' | sed 's/^SKIPPED://' || true)
 
-  if [[ "$dry_run" == "true" ]]; then
-    echo "Would create in ${abs_target_dir}/:"
-  else
-    echo "Configuration initialized successfully!"
+  # Count files
+  local created_count=0 overwritten_count=0 skipped_count=0
+
+  # Print file lines with symbols
+  while IFS= read -r file; do
+    [[ -n "$file" ]] && { echo "  + ${file}"; (( ++created_count )); }
+  done <<< "$created_files"
+
+  while IFS= read -r file; do
+    [[ -n "$file" ]] && { echo "  ! ${file}"; (( ++overwritten_count )); }
+  done <<< "$overwritten_files"
+
+  while IFS= read -r file; do
+    [[ -n "$file" ]] && { echo "  ~ ${file} (exists, use --force)"; (( ++skipped_count )); }
+  done <<< "$skipped_files"
+
+  # Print summary (only when standalone)
+  if [[ "$orchestrated" != "true" ]]; then
     echo ""
-    echo "Created in ${abs_target_dir}/:"
+    echo "$(_vf_init_format_summary "$dry_run" "$created_count" "$overwritten_count" "$skipped_count")"
   fi
-  echo "$files" | while read -r file; do
-    [[ -n "$file" ]] && echo "  - ${file}"
-  done
 
-  if [[ -n "$skipped_files" ]]; then
+  # Print verbose info sections (standalone normal mode only)
+  if [[ "$orchestrated" != "true" && "$dry_run" != "true" ]]; then
     echo ""
-    echo "Skipped (use --force to overwrite):"
-    echo "$skipped_files" | while read -r file; do
-      [[ -n "$file" ]] && echo "  - ${file}"
-    done
+    echo "Framework:"
+    echo "  RADP_VF_HOME: ${gr_vf_home}"
+    echo "  Vagrantfile:  ${gr_vf_ruby_lib_dir}/Vagrantfile"
+    echo ""
+    echo "Provisions:"
+    echo "  - Framework builtin:"
+    echo "      radp:nfs/external-nfs-mount  - Mount external NFS shares"
+    echo "      radp:ssh/host-trust          - Host -> Guest SSH trust"
+    echo "      radp:ssh/cluster-trust       - Guest <-> Guest SSH trust"
+    echo "      radp:time/chrony-sync        - Time synchronization"
+    echo "  - User-defined: user:example (see provisions/definitions/example.yaml)"
+    echo ""
+    echo "Triggers:"
+    echo "  - Framework builtin:"
+    echo "      radp:system/disable-swap     - Disable swap (required for K8s)"
+    echo "      radp:system/disable-selinux  - Disable SELinux"
+    echo "      radp:system/disable-firewalld - Disable firewalld"
+    echo "  - User-defined: user:example (see triggers/definitions/example.yaml)"
+    echo ""
+    echo "Next steps:"
+    echo "  # Option 1: Run from project directory"
+    echo "  cd ${abs_target_dir}"
+    echo "  radp-vf vg status"
+    echo ""
+    echo "  # Option 2: Run from anywhere"
+    echo "  radp-vf -c ${abs_target_dir} vg status"
+    echo ""
+    echo "Edit the config file (vagrant.yaml or config.yaml) to change 'env' and create your own environment file."
+    echo "Add custom provisions in provisions/definitions/ with user: prefix."
+    echo ""
+    echo "Use 'radp-vf template list' to see all available templates."
   fi
-
-  [[ "$dry_run" == "true" ]] && return 0
-
-  echo ""
-  echo "Framework:"
-  echo "  RADP_VF_HOME: ${gr_vf_home}"
-  echo "  Vagrantfile:  ${gr_vf_ruby_lib_dir}/Vagrantfile"
-  echo ""
-  echo "Provisions:"
-  echo "  - Framework builtin:"
-  echo "      radp:nfs/external-nfs-mount  - Mount external NFS shares"
-  echo "      radp:ssh/host-trust          - Host -> Guest SSH trust"
-  echo "      radp:ssh/cluster-trust       - Guest <-> Guest SSH trust"
-  echo "      radp:time/chrony-sync        - Time synchronization"
-  echo "  - User-defined: user:example (see provisions/definitions/example.yaml)"
-  echo ""
-  echo "Triggers:"
-  echo "  - Framework builtin:"
-  echo "      radp:system/disable-swap     - Disable swap (required for K8s)"
-  echo "      radp:system/disable-selinux  - Disable SELinux"
-  echo "      radp:system/disable-firewalld - Disable firewalld"
-  echo "  - User-defined: user:example (see triggers/definitions/example.yaml)"
-  echo ""
-  echo "Next steps:"
-  echo "  # Option 1: Run from project directory"
-  echo "  cd ${abs_target_dir}"
-  echo "  radp-vf vg status"
-  echo ""
-  echo "  # Option 2: Run from anywhere"
-  echo "  radp-vf -c ${abs_target_dir} vg status"
-  echo ""
-  echo "Edit the config file (vagrant.yaml or config.yaml) to change 'env' and create your own environment file."
-  echo "Add custom provisions in provisions/definitions/ with user: prefix."
-  echo ""
-  echo "Use 'radp-vf template list' to see all available templates."
 
   # Write result to file if RADP_VF_INIT_RESULT_FILE is set (for caller integration)
   if [[ -n "${RADP_VF_INIT_RESULT_FILE:-}" ]]; then
-    echo "$abs_target_dir" > "$RADP_VF_INIT_RESULT_FILE"
+    {
+      echo "$abs_target_dir"
+      echo "created:${created_count}"
+      echo "skipped:${skipped_count}"
+      echo "overwritten:${overwritten_count}"
+    } > "$RADP_VF_INIT_RESULT_FILE"
   fi
+}
+
+#######################################
+# Format summary line for VF init
+# Arguments:
+#   1 - dry_run flag
+#   2 - created count
+#   3 - overwritten count
+#   4 - skipped count
+#######################################
+_vf_init_format_summary() {
+  local dry_run="$1"
+  local created="$2"
+  local overwritten="$3"
+  local skipped="$4"
+  local parts=()
+
+  if (( created > 0 )); then
+    local file_word="files"
+    (( created == 1 )) && file_word="file"
+    if [[ "$dry_run" == "true" ]]; then
+      parts+=("${created} ${file_word} to create")
+    else
+      parts+=("${created} ${file_word} created")
+    fi
+  fi
+
+  if (( overwritten > 0 )); then
+    parts+=("${overwritten} overwritten")
+  fi
+
+  if (( skipped > 0 )); then
+    parts+=("${skipped} skipped")
+  fi
+
+  if (( ${#parts[@]} == 0 )); then
+    echo "Nothing to do."
+    return
+  fi
+
+  local result="${parts[0]}"
+  local i
+  for (( i=1; i<${#parts[@]}; i++ )); do
+    result+=", ${parts[$i]}"
+  done
+  echo "${result}."
 }

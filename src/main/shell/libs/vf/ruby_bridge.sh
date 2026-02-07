@@ -185,6 +185,7 @@ _vf_ruby_init() {
     if result[:success]
       puts 'SUCCESS'
       (result[:files] || []).each { |f| puts f }
+      (result[:overwritten] || []).each { |f| puts \"OVERWRITTEN:#{f}\" }
       (result[:skipped] || []).each { |f| puts \"SKIPPED:#{f}\" }
     else
       puts 'ERROR'

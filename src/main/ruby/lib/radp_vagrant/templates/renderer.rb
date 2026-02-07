@@ -89,7 +89,8 @@ module RadpVagrant
       end
 
       def render_files(source_dir, target_dir, vars, dry_run: false, force: false)
-        files_rendered = []
+        files_created = []
+        files_overwritten = []
         files_skipped = []
 
         # Find all files in source directory
@@ -107,13 +108,19 @@ module RadpVagrant
           target_path = File.join(target_dir, rendered_path)
 
           # Check if file exists
-          if File.exist?(target_path) && !force
+          file_exists = File.exist?(target_path)
+
+          if file_exists && !force
             files_skipped << rendered_path
             next
           end
 
           if dry_run
-            files_rendered << rendered_path
+            if file_exists && force
+              files_overwritten << rendered_path
+            else
+              files_created << rendered_path
+            end
             next
           end
 
@@ -135,10 +142,14 @@ module RadpVagrant
             FileUtils.chmod('+x', target_path)
           end
 
-          files_rendered << rendered_path
+          if file_exists
+            files_overwritten << rendered_path
+          else
+            files_created << rendered_path
+          end
         end
 
-        { success: true, files: files_rendered, skipped: files_skipped }
+        { success: true, files: files_created, overwritten: files_overwritten, skipped: files_skipped }
       end
 
       def substitute(content, vars)
