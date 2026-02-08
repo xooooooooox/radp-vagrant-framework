@@ -192,7 +192,7 @@ _radp_vf() {
             COMPREPLY=($(compgen -W "--help -c --config -e --env -t --template --set --force --dry-run" -- "$cur"))
             ;;
         'list')
-            COMPREPLY=($(compgen -W "--help -c --config -e --env -a --all -p --provisions -s --synced-folders -t --triggers" -- "$cur"))
+            COMPREPLY=($(compgen -W "--help -c --config -e --env -a --all -p --provisions -s --synced-folders -t --triggers -S --status" -- "$cur"))
             ;;
         'template')
             COMPREPLY=($(compgen -W "list show  --help" -- "$cur"))
