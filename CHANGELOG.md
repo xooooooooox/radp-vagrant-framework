@@ -1,13 +1,12 @@
 # CHANGELOG
 
-## v0.3.2
+## v0.3.3
 
 ### feat
 
 - Optimize `radp:yadm/clone` builtin provision
-  - Add `YADM_SUBMODULES` option to initialize and update git submodules after clone
-  - Fix `GIT_SSH_COMMAND` not propagated to `yadm decrypt` and `yadm bootstrap` post-clone steps
-  - Refactor `clone_for_user()` to use `run_as_user()` helper for consistent environment handling
+- Add `radp:yadm/submodules` builtin provision
+- Add `radp:yadm/bootstrap` builtin provision
 - Add `--status` (`-S`) flag to `list` command to show Vagrant VM runtime status
   - Displays colored status icons (running/poweroff/saved/not_created) before each machine name
   - Falls back to text badges (`[up]`, `[off]`, `[--]`, etc.) when piped or in non-TTY output
