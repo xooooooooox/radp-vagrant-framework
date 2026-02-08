@@ -243,7 +243,11 @@ build_https_url() {
 }
 
 # Build GIT_SSH_COMMAND with options
+# Args:
+#   $1 - skip_host_overrides: when "true", omit HostName/Port overrides
+#         (used for submodules that may be hosted on different servers)
 build_ssh_command() {
+  local skip_host_overrides="${1:-}"
   local ssh_opts="-o BatchMode=yes"
 
   if [[ "$YADM_SSH_STRICT_HOST_KEY" == "false" ]]; then
@@ -254,12 +258,14 @@ build_ssh_command() {
     ssh_opts="$ssh_opts -i $YADM_SSH_KEY_FILE"
   fi
 
-  if [[ -n "${YADM_SSH_HOST:-}" ]]; then
-    ssh_opts="$ssh_opts -o HostName=$YADM_SSH_HOST"
-  fi
+  if [[ "$skip_host_overrides" != "true" ]]; then
+    if [[ -n "${YADM_SSH_HOST:-}" ]]; then
+      ssh_opts="$ssh_opts -o HostName=$YADM_SSH_HOST"
+    fi
 
-  if [[ -n "${YADM_SSH_PORT:-}" && "$YADM_SSH_PORT" != "22" ]]; then
-    ssh_opts="$ssh_opts -o Port=$YADM_SSH_PORT"
+    if [[ -n "${YADM_SSH_PORT:-}" && "$YADM_SSH_PORT" != "22" ]]; then
+      ssh_opts="$ssh_opts -o Port=$YADM_SSH_PORT"
+    fi
   fi
 
   echo "ssh $ssh_opts"
@@ -341,6 +347,8 @@ clone_for_user() {
   local env_prefix=""
   local clone_opts="--no-bootstrap"  # Always use --no-bootstrap initially
 
+  local env_prefix_base=""  # SSH command without host-specific overrides (for submodules)
+
   if is_ssh_url "$YADM_REPO_URL"; then
     # SSH clone
     local ssh_cmd
@@ -352,6 +360,11 @@ clone_for_user() {
     fi
 
     env_prefix="GIT_SSH_COMMAND=\"$ssh_cmd\""
+
+    # Base SSH command without host-specific overrides (for submodules on different hosts)
+    local ssh_cmd_base
+    ssh_cmd_base=$(build_ssh_command true)
+    env_prefix_base="GIT_SSH_COMMAND=\"$ssh_cmd_base\""
   else
     # HTTPS clone
     repo_url=$(build_https_url "$YADM_REPO_URL")
@@ -368,9 +381,11 @@ clone_for_user() {
   echo "[INFO] yadm clone completed for user '$user'"
 
   # Step 3: Initialize submodules if requested
+  # Uses env_prefix_base (without HostName/Port overrides) because submodules
+  # may be hosted on different servers than the main yadm repository.
   if [[ "$YADM_SUBMODULES" == "true" ]]; then
     echo "[INFO] Initializing yadm submodules for user '$user'..."
-    run_as_user "$user" "$env_prefix" "yadm submodule update --init --recursive" || {
+    run_as_user "$user" "$env_prefix_base" "yadm submodule update --init --recursive" || {
       echo "[WARN] yadm submodule update failed for user '$user'"
     }
   fi

@@ -468,9 +468,10 @@ When `radp:yadm/clone` runs, it performs the following steps in order for each u
 4. **Decrypt** — `yadm decrypt` (if `YADM_DECRYPT=true`)
 5. **Bootstrap** — `yadm bootstrap` (if `YADM_BOOTSTRAP=true`)
 
-Steps 2–5 propagate `GIT_SSH_COMMAND` when using SSH repositories, ensuring SSH key and host
-overrides apply to all git operations (including submodule fetches and bootstrap scripts that pull
-from git).
+Steps 2, 4, and 5 propagate `GIT_SSH_COMMAND` with full SSH options (including `YADM_SSH_HOST`
+and `YADM_SSH_PORT` overrides) when using SSH repositories. Step 3 (submodules) uses a base SSH
+command that excludes host-specific overrides (`HostName`/`Port`), since submodules may be hosted
+on different servers than the main yadm repository.
 
 ## See Also
 
