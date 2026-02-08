@@ -1,0 +1,20 @@
+desc: Initialize and update yadm submodules
+defaults:
+  privileged: false
+  run: once
+  env:
+    required: []
+    optional:
+      # --- SSH Options ---
+      - name: YADM_SSH_KEY_FILE
+        value: ""
+        desc: Path to SSH private key file
+      - name: YADM_SSH_STRICT_HOST_KEY
+        value: "false"
+        desc: Strict host key checking (default false for automation)
+
+      # --- General ---
+      - name: YADM_USERS
+        value: ""
+        desc: "Target users (auto-detected when privileged: false; required when privileged: true)"
+  script: submodules.sh

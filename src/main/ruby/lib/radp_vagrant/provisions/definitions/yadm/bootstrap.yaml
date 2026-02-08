@@ -1,0 +1,12 @@
+desc: Run yadm bootstrap
+defaults:
+  privileged: false
+  run: once
+  env:
+    required: []
+    optional:
+      # --- General ---
+      - name: YADM_USERS
+        value: ""
+        desc: "Target users (auto-detected when privileged: false; required when privileged: true)"
+  script: bootstrap.sh

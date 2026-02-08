@@ -15,6 +15,8 @@ Complete reference for all builtin provisions (`radp:` prefix).
 | `radp:system/expand-lvm`            | Expand LVM partition      | `privileged: true, run: once`   |
 | `radp:time/chrony-sync`             | Configure time sync       | `privileged: true, run: once`   |
 | `radp:yadm/clone`                   | Clone dotfiles with yadm  | `privileged: false, run: once`  |
+| `radp:yadm/bootstrap`              | Run yadm bootstrap        | `privileged: false, run: once`  |
+| `radp:yadm/submodules`              | Init yadm submodules      | `privileged: false, run: once`  |
 
 ## radp:crypto/gpg-import
 
@@ -399,9 +401,7 @@ yadm is a dotfiles manager that wraps around git:
 | Variable                   | Description                               |
 |----------------------------|-------------------------------------------|
 | `YADM_REPO_URL`            | Repository URL (required)                 |
-| `YADM_BOOTSTRAP`           | Run bootstrap (default: false)            |
 | `YADM_DECRYPT`             | Run decrypt (default: false)              |
-| `YADM_SUBMODULES`          | Init submodules after clone (default: false) |
 | `YADM_CLASS`               | Set yadm class                            |
 | `YADM_HTTPS_USER`          | Username for HTTPS                        |
 | `YADM_HTTPS_TOKEN`         | Access token                              |
@@ -422,14 +422,13 @@ provisions:
     env:
       YADM_REPO_URL: "https://github.com/user/dotfiles.git"
 
-# SSH clone with bootstrap
+# SSH clone
 provisions:
   - name: radp:yadm/clone
     enabled: true
     env:
       YADM_REPO_URL: "git@github.com:user/dotfiles.git"
       YADM_SSH_KEY_FILE: "/vagrant/.secrets/id_rsa"
-      YADM_BOOTSTRAP: "true"
 
 # Private GitLab with GPG decryption
 provisions:
@@ -447,15 +446,6 @@ provisions:
       YADM_SSH_HOST: "192.168.20.35"
       YADM_DECRYPT: "true"
 
-# SSH clone with submodules and bootstrap
-provisions:
-  - name: radp:yadm/clone
-    enabled: true
-    env:
-      YADM_REPO_URL: "git@github.com:user/dotfiles.git"
-      YADM_SSH_KEY_FILE: "/vagrant/.secrets/id_rsa"
-      YADM_SUBMODULES: "true"
-      YADM_BOOTSTRAP: "true"
 ```
 
 ### Execution Order
@@ -464,14 +454,122 @@ When `radp:yadm/clone` runs, it performs the following steps in order for each u
 
 1. **Set class** — `yadm config local.class` (if `YADM_CLASS` is set)
 2. **Clone** — `yadm clone --no-bootstrap`
-3. **Submodules** — `yadm submodule update --init --recursive` (if `YADM_SUBMODULES=true`)
-4. **Decrypt** — `yadm decrypt` (if `YADM_DECRYPT=true`)
-5. **Bootstrap** — `yadm bootstrap` (if `YADM_BOOTSTRAP=true`)
+3. **Decrypt** — `yadm decrypt` (if `YADM_DECRYPT=true`)
 
-Steps 2, 4, and 5 propagate `GIT_SSH_COMMAND` with full SSH options (including `YADM_SSH_HOST`
-and `YADM_SSH_PORT` overrides) when using SSH repositories. Step 3 (submodules) uses a base SSH
-command that excludes host-specific overrides (`HostName`/`Port`), since submodules may be hosted
-on different servers than the main yadm repository.
+Step 2 propagates `GIT_SSH_COMMAND` with full SSH options (including `YADM_SSH_HOST`
+and `YADM_SSH_PORT` overrides) when using SSH repositories. Step 3 (decrypt) is a
+local GPG operation and does not use SSH.
+
+> **Note:** Submodule initialization and bootstrap are handled by separate provisions
+> (`radp:yadm/submodules` and `radp:yadm/bootstrap`). This gives you full control over
+> execution order — e.g. running submodules after decrypt, or bootstrap after submodules.
+
+## radp:yadm/bootstrap
+
+Run yadm bootstrap on an already-cloned yadm repository. Extracted as a standalone provision
+so you can control when bootstrap runs — for example, after submodules are initialized.
+
+`yadm bootstrap` executes a local script (`~/.config/yadm/bootstrap`) — it does not perform
+any git/SSH operations itself, so no SSH options are needed.
+
+### Prerequisites
+
+A yadm repository must already be cloned (via `radp:yadm/clone`).
+
+### Environment Variables
+
+| Variable     | Description  |
+|--------------|--------------|
+| `YADM_USERS` | Target users |
+
+### Examples
+
+```yaml
+# Bootstrap after clone
+provisions:
+  - name: radp:yadm/clone
+    enabled: true
+    env:
+      YADM_REPO_URL: "git@github.com:user/dotfiles.git"
+      YADM_SSH_KEY_FILE: "/vagrant/.secrets/id_rsa"
+
+  - name: radp:yadm/bootstrap
+    enabled: true
+
+# Full workflow: clone → decrypt → submodules → bootstrap
+provisions:
+  - name: radp:yadm/clone
+    enabled: true
+    env:
+      YADM_REPO_URL: "git@github.com:user/dotfiles.git"
+      YADM_SSH_KEY_FILE: "/vagrant/.secrets/id_rsa"
+      YADM_DECRYPT: "true"
+
+  - name: radp:yadm/submodules
+    enabled: true
+    env:
+      YADM_SSH_KEY_FILE: "/vagrant/.secrets/id_rsa"
+
+  - name: radp:yadm/bootstrap
+    enabled: true
+```
+
+## radp:yadm/submodules
+
+Initialize and update yadm submodules. Extracted as a standalone provision so you can control
+when submodules run — for example, after `yadm decrypt` when `.gitmodules` depends on decrypted files.
+
+### Prerequisites
+
+A yadm repository must already be cloned (via `radp:yadm/clone`).
+
+### Environment Variables
+
+| Variable                   | Description                               |
+|----------------------------|-------------------------------------------|
+| `YADM_SSH_KEY_FILE`        | Path to SSH key                           |
+| `YADM_SSH_STRICT_HOST_KEY` | Strict host key checking (default: false) |
+| `YADM_USERS`               | Target users                              |
+
+> **Note:** No host overrides (`YADM_SSH_HOST`/`YADM_SSH_PORT`) — submodules may be hosted
+> on different servers than the main yadm repository.
+
+### Examples
+
+```yaml
+# Basic: submodules right after clone
+provisions:
+  - name: radp:yadm/clone
+    enabled: true
+    env:
+      YADM_REPO_URL: "git@github.com:user/dotfiles.git"
+      YADM_SSH_KEY_FILE: "/vagrant/.secrets/id_rsa"
+
+  - name: radp:yadm/submodules
+    enabled: true
+    env:
+      YADM_SSH_KEY_FILE: "/vagrant/.secrets/id_rsa"
+
+# Advanced: submodules after decrypt (when .gitmodules depends on decrypted files)
+provisions:
+  - name: radp:crypto/gpg-import
+    enabled: true
+    env:
+      GPG_SECRET_KEY_FILE: "/vagrant/.secrets/gpg-key.asc"
+      GPG_OWNERTRUST_FILE: "/vagrant/.secrets/ownertrust.txt"
+
+  - name: radp:yadm/clone
+    enabled: true
+    env:
+      YADM_REPO_URL: "git@github.com:user/dotfiles.git"
+      YADM_SSH_KEY_FILE: "/vagrant/.secrets/id_rsa"
+      YADM_DECRYPT: "true"
+
+  - name: radp:yadm/submodules
+    enabled: true
+    env:
+      YADM_SSH_KEY_FILE: "/vagrant/.secrets/id_rsa"
+```
 
 ## See Also
 
