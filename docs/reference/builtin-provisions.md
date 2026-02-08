@@ -12,6 +12,7 @@ Complete reference for all builtin provisions (`radp:` prefix).
 | `radp:nfs/external-nfs-mount`       | Mount external NFS shares | `privileged: true, run: always` |
 | `radp:ssh/host-trust`               | Add host SSH key to guest | `privileged: false, run: once`  |
 | `radp:ssh/cluster-trust`            | SSH trust between VMs     | `privileged: true, run: once`   |
+| `radp:ssh/target-trust`            | SSH trust with ext. target | `privileged: false, run: once` |
 | `radp:system/expand-lvm`            | Expand LVM partition      | `privileged: true, run: once`   |
 | `radp:time/chrony-sync`             | Configure time sync       | `privileged: true, run: once`   |
 | `radp:yadm/clone`                   | Clone dotfiles with yadm  | `privileged: false, run: once`  |
@@ -291,6 +292,113 @@ provisions:
     env:
       CLUSTER_SSH_KEY_DIR: "/vagrant/keys"
       SSH_USERS: "vagrant,root"
+```
+
+## radp:ssh/target-trust
+
+Establish SSH trust between a guest VM and a specified external target (e.g., GitLab server, bastion host, deploy server).
+
+Configures the **guest side** of SSH trust:
+- **Outbound** (guest -> target): deploy private key + SSH config + known_hosts
+- **Inbound** (target -> guest): add target's public key to authorized_keys
+
+Each direction is independently optional.
+
+### Environment Variables
+
+**Required:**
+
+| Variable      | Description                  |
+|---------------|------------------------------|
+| `TARGET_HOST` | Target hostname or IP address |
+
+**Outbound (guest -> target):**
+
+| Variable                    | Description                                                |
+|-----------------------------|------------------------------------------------------------|
+| `TARGET_SSH_PRIVATE_KEY_FILE` | Path to private key file for authenticating to the target |
+| `TARGET_KEY_NAME`           | Custom key name in ~/.ssh/ (default: `id_target_{sanitized_host}`) |
+| `TARGET_SSH_USER`           | Username on the target (for SSH config entry)              |
+| `TARGET_SSH_PORT`           | SSH port on the target                                     |
+| `TARGET_HOST_ALIAS`        | Host alias for SSH config entry (default: `TARGET_HOST`)   |
+
+**Known hosts (choose one):**
+
+| Variable              | Description                                                    |
+|-----------------------|----------------------------------------------------------------|
+| `TARGET_HOST_KEY`     | Target host key content for known_hosts                        |
+| `TARGET_HOST_KEY_FILE` | Path to file containing target host key(s) for known_hosts    |
+| `TARGET_KEYSCAN`      | Attempt ssh-keyscan to fetch target host keys (default: false) |
+
+**Known hosts behavior:**
+
+| Priority | Source               | Behavior                                                          |
+|----------|----------------------|-------------------------------------------------------------------|
+| 1st      | `TARGET_HOST_KEY`    | Add to known_hosts, SSH config -> `StrictHostKeyChecking yes`     |
+| 2nd      | `TARGET_HOST_KEY_FILE` | Append file to known_hosts, SSH config -> `StrictHostKeyChecking yes` |
+| 3rd      | `TARGET_KEYSCAN=true` | Run ssh-keyscan; on success -> strict; on failure -> warn + fallback |
+| Fallback | None of above        | SSH config -> `StrictHostKeyChecking no` + `UserKnownHostsFile /dev/null` |
+
+**Inbound (target -> guest):**
+
+| Variable               | Description                                          |
+|------------------------|------------------------------------------------------|
+| `TARGET_PUBLIC_KEY`    | Target's SSH public key content (for authorized_keys) |
+| `TARGET_PUBLIC_KEY_FILE` | Path to file containing target's SSH public key     |
+
+**General:**
+
+| Variable    | Description                             |
+|-------------|-----------------------------------------|
+| `SSH_USERS` | Target users (default: vagrant)         |
+
+### Examples
+
+```yaml
+# Outbound only: guest can SSH to GitLab
+provisions:
+  - name: radp:ssh/target-trust
+    enabled: true
+    env:
+      TARGET_HOST: "gitlab.example.com"
+      TARGET_SSH_PRIVATE_KEY_FILE: "/vagrant/.secrets/id_rsa_gitlab"
+      TARGET_KEYSCAN: "true"
+
+# Bidirectional: guest <-> deploy server
+provisions:
+  - name: radp:ssh/target-trust
+    enabled: true
+    env:
+      TARGET_HOST: "deploy.example.com"
+      TARGET_SSH_PRIVATE_KEY_FILE: "/vagrant/.secrets/id_rsa_deploy"
+      TARGET_HOST_KEY_FILE: "/vagrant/.secrets/deploy_host_key"
+      TARGET_PUBLIC_KEY_FILE: "/vagrant/.secrets/deploy_user_key.pub"
+      TARGET_SSH_USER: "deployer"
+
+# Inbound only: allow CI server to SSH into guest
+provisions:
+  - name: radp:ssh/target-trust
+    enabled: true
+    env:
+      TARGET_HOST: "ci.example.com"
+      TARGET_PUBLIC_KEY_FILE: "/vagrant/.secrets/ci_user_key.pub"
+
+# Multiple targets (use multiple provision entries)
+provisions:
+  - name: radp:ssh/target-trust
+    enabled: true
+    env:
+      TARGET_HOST: "gitlab.example.com"
+      TARGET_SSH_PRIVATE_KEY_FILE: "/vagrant/.secrets/id_rsa_gitlab"
+      TARGET_HOST_KEY_FILE: "/vagrant/.secrets/gitlab_host_key"
+  - name: radp:ssh/target-trust
+    enabled: true
+    env:
+      TARGET_HOST: "bastion.example.com"
+      TARGET_SSH_PRIVATE_KEY_FILE: "/vagrant/.secrets/id_rsa_bastion"
+      TARGET_SSH_USER: "admin"
+      TARGET_SSH_PORT: "2222"
+      TARGET_KEYSCAN: "true"
 ```
 
 ## radp:system/expand-lvm

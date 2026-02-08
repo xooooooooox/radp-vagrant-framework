@@ -1,0 +1,53 @@
+desc: Establish SSH trust between guest and a specified external target
+defaults:
+  privileged: false
+  run: once
+  env:
+    required: []
+    optional:
+      # Target identification
+      - name: TARGET_HOST
+        value: ""
+        desc: Target hostname or IP address
+      - name: TARGET_SSH_PORT
+        value: ""
+        desc: SSH port on the target
+      - name: TARGET_SSH_USER
+        value: ""
+        desc: Username on the target (for SSH config entry)
+      - name: TARGET_HOST_ALIAS
+        value: ""
+        desc: "Host alias for SSH config entry (default: TARGET_HOST)"
+
+      # Outbound: guest -> target
+      - name: TARGET_SSH_PRIVATE_KEY_FILE
+        value: ""
+        desc: Path to private key file for authenticating to the target
+      - name: TARGET_KEY_NAME
+        value: ""
+        desc: "Custom key name in ~/.ssh/ (default: id_target_{sanitized_host})"
+
+      # Known hosts handling (choose one)
+      - name: TARGET_HOST_KEY
+        value: ""
+        desc: Target host key content for known_hosts
+      - name: TARGET_HOST_KEY_FILE
+        value: ""
+        desc: Path to file containing target host key(s) for known_hosts
+      - name: TARGET_KEYSCAN
+        value: "false"
+        desc: "Attempt ssh-keyscan to fetch target host keys (graceful on failure)"
+
+      # Inbound: target -> guest
+      - name: TARGET_PUBLIC_KEY
+        value: ""
+        desc: "Target's SSH public key content (for authorized_keys)"
+      - name: TARGET_PUBLIC_KEY_FILE
+        value: ""
+        desc: "Path to file containing target's SSH public key (for authorized_keys)"
+
+      # General
+      - name: SSH_USERS
+        value: vagrant
+        desc: Comma-separated list of users to configure
+  script: target-trust.sh
