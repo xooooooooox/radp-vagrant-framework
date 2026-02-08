@@ -401,6 +401,7 @@ yadm is a dotfiles manager that wraps around git:
 | `YADM_REPO_URL`            | Repository URL (required)                 |
 | `YADM_BOOTSTRAP`           | Run bootstrap (default: false)            |
 | `YADM_DECRYPT`             | Run decrypt (default: false)              |
+| `YADM_SUBMODULES`          | Init submodules after clone (default: false) |
 | `YADM_CLASS`               | Set yadm class                            |
 | `YADM_HTTPS_USER`          | Username for HTTPS                        |
 | `YADM_HTTPS_TOKEN`         | Access token                              |
@@ -445,7 +446,31 @@ provisions:
       YADM_SSH_KEY_FILE: "/mnt/ssh/id_rsa_gitlab"
       YADM_SSH_HOST: "192.168.20.35"
       YADM_DECRYPT: "true"
+
+# SSH clone with submodules and bootstrap
+provisions:
+  - name: radp:yadm/clone
+    enabled: true
+    env:
+      YADM_REPO_URL: "git@github.com:user/dotfiles.git"
+      YADM_SSH_KEY_FILE: "/vagrant/.secrets/id_rsa"
+      YADM_SUBMODULES: "true"
+      YADM_BOOTSTRAP: "true"
 ```
+
+### Execution Order
+
+When `radp:yadm/clone` runs, it performs the following steps in order for each user:
+
+1. **Set class** — `yadm config local.class` (if `YADM_CLASS` is set)
+2. **Clone** — `yadm clone --no-bootstrap`
+3. **Submodules** — `yadm submodule update --init --recursive` (if `YADM_SUBMODULES=true`)
+4. **Decrypt** — `yadm decrypt` (if `YADM_DECRYPT=true`)
+5. **Bootstrap** — `yadm bootstrap` (if `YADM_BOOTSTRAP=true`)
+
+Steps 2–5 propagate `GIT_SSH_COMMAND` when using SSH repositories, ensuring SSH key and host
+overrides apply to all git operations (including submodule fetches and bootstrap scripts that pull
+from git).
 
 ## See Also
 

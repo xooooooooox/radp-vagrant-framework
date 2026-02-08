@@ -14,6 +14,9 @@ defaults:
       - name: YADM_DECRYPT
         value: "false"
         desc: Run yadm decrypt after clone (requires GPG key imported)
+      - name: YADM_SUBMODULES
+        value: "false"
+        desc: Initialize and update git submodules after clone (default false)
       - name: YADM_CLASS
         value: ""
         desc: Set yadm class before clone

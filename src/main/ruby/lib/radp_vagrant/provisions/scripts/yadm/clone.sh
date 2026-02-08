@@ -29,6 +29,7 @@ set -euo pipefail
 # yadm options:
 #   YADM_BOOTSTRAP       - Run bootstrap after clone (default false)
 #   YADM_DECRYPT         - Run decrypt after clone (default false, needs GPG)
+#   YADM_SUBMODULES      - Initialize and update submodules after clone (default false)
 #   YADM_CLASS           - Set yadm class before clone
 #
 # HTTPS authentication:
@@ -81,6 +82,16 @@ set -euo pipefail
 #         YADM_SSH_HOST: "192.168.20.35"
 #         YADM_DECRYPT: "true"
 #
+# Example 4: SSH clone with submodules and bootstrap
+#   provisions:
+#     - name: radp:yadm/clone
+#       enabled: true
+#       env:
+#         YADM_REPO_URL: "git@github.com:user/dotfiles.git"
+#         YADM_SSH_KEY_FILE: "/vagrant/.secrets/id_rsa"
+#         YADM_SUBMODULES: "true"
+#         YADM_BOOTSTRAP: "true"
+#
 # ============================================================================
 
 echo "[INFO] Configuring yadm clone..."
@@ -103,6 +114,7 @@ done
 # Default values
 YADM_BOOTSTRAP="${YADM_BOOTSTRAP:-false}"
 YADM_DECRYPT="${YADM_DECRYPT:-false}"
+YADM_SUBMODULES="${YADM_SUBMODULES:-false}"
 YADM_SSH_STRICT_HOST_KEY="${YADM_SSH_STRICT_HOST_KEY:-false}"
 YADM_SSH_PORT="${YADM_SSH_PORT:-22}"
 
@@ -279,6 +291,26 @@ test_ssh_connectivity() {
   fi
 }
 
+# Run a command as a specific user, optionally with an environment prefix
+run_as_user() {
+  local user="$1"
+  local env_prefix="$2"
+  local cmd="$3"
+
+  local full_cmd
+  if [[ -n "$env_prefix" ]]; then
+    full_cmd="$env_prefix $cmd"
+  else
+    full_cmd="$cmd"
+  fi
+
+  if [[ "$CURRENT_USER" == "root" && "$user" != "root" ]]; then
+    su - "$user" -c "$full_cmd"
+  else
+    eval "$full_cmd"
+  fi
+}
+
 # Clone yadm repository for a user
 clone_for_user() {
   local user="$1"
@@ -325,51 +357,38 @@ clone_for_user() {
     repo_url=$(build_https_url "$YADM_REPO_URL")
   fi
 
-  # Set yadm class if specified
+  # Step 1: Set yadm class if specified (no SSH needed)
   if [[ -n "${YADM_CLASS:-}" ]]; then
     echo "[INFO] Setting yadm class to: $YADM_CLASS"
-    if [[ "$CURRENT_USER" == "root" && "$user" != "root" ]]; then
-      su - "$user" -c "yadm config local.class \"$YADM_CLASS\""
-    else
-      yadm config local.class "$YADM_CLASS"
-    fi
+    run_as_user "$user" "" "yadm config local.class \"$YADM_CLASS\""
   fi
 
-  # Execute yadm clone
-  if [[ "$CURRENT_USER" == "root" && "$user" != "root" ]]; then
-    su - "$user" -c "$env_prefix yadm clone $clone_opts \"$repo_url\""
-  else
-    eval "$env_prefix yadm clone $clone_opts \"$repo_url\""
-  fi
-
+  # Step 2: Clone repository (always --no-bootstrap first)
+  run_as_user "$user" "$env_prefix" "yadm clone $clone_opts \"$repo_url\""
   echo "[INFO] yadm clone completed for user '$user'"
 
-  # Run yadm decrypt if requested
-  if [[ "$YADM_DECRYPT" == "true" ]]; then
-    echo "[INFO] Running yadm decrypt for user '$user'..."
-    if [[ "$CURRENT_USER" == "root" && "$user" != "root" ]]; then
-      su - "$user" -c "yadm decrypt" || {
-        echo "[WARN] yadm decrypt failed - ensure GPG key is imported"
-      }
-    else
-      yadm decrypt || {
-        echo "[WARN] yadm decrypt failed - ensure GPG key is imported"
-      }
-    fi
+  # Step 3: Initialize submodules if requested
+  if [[ "$YADM_SUBMODULES" == "true" ]]; then
+    echo "[INFO] Initializing yadm submodules for user '$user'..."
+    run_as_user "$user" "$env_prefix" "yadm submodule update --init --recursive" || {
+      echo "[WARN] yadm submodule update failed for user '$user'"
+    }
   fi
 
-  # Run yadm bootstrap if requested
+  # Step 4: Decrypt if requested
+  if [[ "$YADM_DECRYPT" == "true" ]]; then
+    echo "[INFO] Running yadm decrypt for user '$user'..."
+    run_as_user "$user" "$env_prefix" "yadm decrypt" || {
+      echo "[WARN] yadm decrypt failed - ensure GPG key is imported"
+    }
+  fi
+
+  # Step 5: Bootstrap if requested
   if [[ "$YADM_BOOTSTRAP" == "true" ]]; then
     echo "[INFO] Running yadm bootstrap for user '$user'..."
-    if [[ "$CURRENT_USER" == "root" && "$user" != "root" ]]; then
-      su - "$user" -c "yadm bootstrap" || {
-        echo "[WARN] yadm bootstrap failed or not available"
-      }
-    else
-      yadm bootstrap || {
-        echo "[WARN] yadm bootstrap failed or not available"
-      }
-    fi
+    run_as_user "$user" "$env_prefix" "yadm bootstrap" || {
+      echo "[WARN] yadm bootstrap failed or not available"
+    }
   fi
 
   echo "[OK] yadm setup completed for user '$user'"
