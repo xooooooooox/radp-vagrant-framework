@@ -1,5 +1,15 @@
 # CHANGELOG
 
+## v0.3.0
+
+### feat
+
+- Add `--status` (`-S`) flag to `list` command to show Vagrant VM runtime status
+  - Displays colored status icons (running/poweroff/saved/not_created) before each machine name
+  - Falls back to text badges (`[up]`, `[off]`, `[--]`, etc.) when piped or in non-TTY output
+  - Detailed view (`-a --status`) includes `Status:` line with the raw state value
+  - Gracefully handles missing Vagrant or `.vagrant/` directory
+
 ## v0.2.34
 
 ### feat

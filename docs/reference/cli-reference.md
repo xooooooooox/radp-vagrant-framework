@@ -74,14 +74,29 @@ List clusters and guests from configuration.
 radp-vf list [options] [filter]
 ```
 
-| Option                 | Description              |
-|------------------------|--------------------------|
-| `-c, --config <dir>`   | Configuration directory  |
-| `-e, --env <name>`     | Override environment     |
-| `-a, --all`            | Show all details         |
-| `-p, --provisions`     | Show provisions only     |
-| `-s, --synced-folders` | Show synced folders only |
-| `-t, --triggers`       | Show triggers only       |
+| Option                 | Description                    |
+|------------------------|--------------------------------|
+| `-c, --config <dir>`   | Configuration directory        |
+| `-e, --env <name>`     | Override environment           |
+| `-a, --all`            | Show all details               |
+| `-p, --provisions`     | Show provisions only           |
+| `-s, --synced-folders` | Show synced folders only       |
+| `-t, --triggers`       | Show triggers only             |
+| `-S, --status`         | Show vagrant machine status    |
+
+**Status Icons (`--status`):**
+
+When `--status` is used, a status indicator is shown before each machine name. In a terminal (TTY), colored
+circles are displayed; when piped or redirected, text badges are used instead.
+
+| Vagrant State | TTY    | Piped    | Meaning                  |
+|---------------|--------|----------|--------------------------|
+| `running`     | `●` green  | `[up]`   | VM is running            |
+| `poweroff`    | `●` red    | `[off]`  | VM is powered off        |
+| `aborted`     | `●` red    | `[err]`  | VM was aborted           |
+| `saved`       | `●` yellow | `[save]` | VM state is saved        |
+| `not_created` | `○` gray   | `[--]`   | VM has not been created  |
+| unknown       | `?` gray   | `[??]`   | Status could not be read |
 
 **Examples:**
 
@@ -90,6 +105,8 @@ radp-vf list
 radp-vf list -a
 radp-vf list -a node-1
 radp-vf list -p
+radp-vf list --status
+radp-vf list -a --status
 ```
 
 ### validate

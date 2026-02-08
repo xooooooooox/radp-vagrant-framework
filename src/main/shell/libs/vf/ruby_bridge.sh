@@ -35,6 +35,7 @@ _vf_ruby_info() {
 #   5 - show_synced_folders (true/false)
 #   6 - show_triggers (true/false)
 #   7 - filter (can be empty)
+#   8 - show_status (true/false)
 #######################################
 _vf_ruby_list() {
   local config_dir="$1"
@@ -44,6 +45,9 @@ _vf_ruby_list() {
   local show_synced_folders="${5:-false}"
   local show_triggers="${6:-false}"
   local filter="${7:-}"
+  local show_status="${8:-false}"
+  local vagrant_cwd
+  vagrant_cwd="$(pwd)"
 
   cd "${gr_vf_ruby_lib_dir}" || return 1
   ruby -r ./lib/radp_vagrant -e "
@@ -54,7 +58,9 @@ _vf_ruby_list() {
       show_provisions: ${show_provisions},
       show_synced_folders: ${show_synced_folders},
       show_triggers: ${show_triggers},
-      filter: '${filter}'.empty? ? nil : '${filter}'
+      filter: '${filter}'.empty? ? nil : '${filter}',
+      show_status: ${show_status},
+      vagrant_cwd: '${vagrant_cwd}'
     )
     exit cmd.execute
   "

@@ -16,6 +16,7 @@ radp-vf init myproject              # Initialize project
 radp-vf init -c /path/to/config     # Initialize at specific path
 radp-vf init myproject --template k8s-cluster
 radp-vf list                        # List clusters and guests
+radp-vf list --status               # List with VM runtime status
 radp-vf -c /path list               # Use specific config directory
 radp-vf validate                    # Validate YAML
 radp-vf dump-config                 # Dump merged config

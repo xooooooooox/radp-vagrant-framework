@@ -1,26 +1,33 @@
 # frozen_string_literal: true
 
+require 'open3'
 require_relative 'base'
 
 module RadpVagrant
   module CLI
     # List command - displays clusters and guests from configuration
     class List < Base
-      attr_reader :verbose, :show_provisions, :show_synced_folders, :show_triggers, :filter
+      attr_reader :verbose, :show_provisions, :show_synced_folders, :show_triggers, :filter,
+                  :show_status, :vagrant_cwd
 
       def initialize(config_dir, env_override: nil, verbose: false,
                      show_provisions: false, show_synced_folders: false,
-                     show_triggers: false, filter: nil)
+                     show_triggers: false, filter: nil,
+                     show_status: false, vagrant_cwd: nil)
         super(config_dir, env_override: env_override)
         @verbose = verbose
         @show_provisions = show_provisions
         @show_synced_folders = show_synced_folders
         @show_triggers = show_triggers
         @filter = filter
+        @show_status = show_status
+        @vagrant_cwd = vagrant_cwd
       end
 
       def execute
         return 1 unless load_config
+
+        @status_map = fetch_vagrant_status if show_status
 
         puts "Environment: #{env}"
         puts "Config Dir:  #{config_dir}"
@@ -104,10 +111,16 @@ module RadpVagrant
         mem = guest.dig('provider', 'mem') || '-'
         cpus = guest.dig('provider', 'cpus') || '-'
 
+        status_str = ''
+        if @status_map
+          state = @status_map[machine_name]
+          status_str = "#{status_icon(state)} "
+        end
+
         # Format: name  priv:IP  pub:IP  mem  cpu
         priv_str = "priv:#{priv_ip}".ljust(20)
         pub_str = pub_ip != '-' ? "pub:#{pub_ip}".ljust(18) : ''
-        puts "    #{prefix} #{machine_name.ljust(28)} #{priv_str} #{pub_str} #{mem.to_s.rjust(5)}MB  #{cpus}CPU"
+        puts "    #{prefix} #{status_str}#{machine_name.ljust(28)} #{priv_str} #{pub_str} #{mem.to_s.rjust(5)}MB  #{cpus}CPU"
       end
 
       def display_detailed_view(all_guests)
@@ -117,7 +130,7 @@ module RadpVagrant
 
           puts "#{machine_name}:"
 
-          display_basic_info(guest) if verbose
+          display_basic_info(guest, machine_name) if verbose
           display_network(guest) if verbose
           display_synced_folders_section(guest) if verbose || show_synced_folders
           display_provisions_section(guest) if verbose || show_provisions
@@ -127,7 +140,12 @@ module RadpVagrant
         end
       end
 
-      def display_basic_info(guest)
+      def display_basic_info(guest, machine_name = nil)
+        if @status_map && machine_name
+          state = @status_map[machine_name] || 'unknown'
+          puts "  Status:   #{state}"
+        end
+
         box = guest.dig('box', 'name') || '-'
         mem = guest.dig('provider', 'mem') || '-'
         cpus = guest.dig('provider', 'cpus') || '-'
@@ -199,6 +217,69 @@ module RadpVagrant
         trigs.each_with_index do |t, idx|
           prefix = idx == trigs.size - 1 ? '└──' : '├──'
           puts "    #{prefix} #{t[:name].ljust(35)} #{t[:timing].ljust(6)} #{t[:actions].ljust(12)} #{t[:run_type]}"
+        end
+      end
+
+      def fetch_vagrant_status
+        return {} unless vagrant_cwd
+
+        stdout, _stderr, status = Open3.capture3('vagrant', 'status', '--machine-readable', chdir: vagrant_cwd)
+        unless status.success?
+          warn 'Warning: vagrant status failed, status will not be shown'
+          return {}
+        end
+
+        parse_vagrant_status(stdout)
+      rescue Errno::ENOENT
+        warn 'Warning: vagrant not found, status will not be shown'
+        {}
+      rescue StandardError => e
+        warn "Warning: could not get vagrant status: #{e.message}"
+        {}
+      end
+
+      def parse_vagrant_status(output)
+        result = {}
+        output.each_line do |line|
+          fields = line.strip.split(',', 4)
+          next unless fields.length >= 4
+
+          target = fields[1]
+          type = fields[2]
+          data = fields[3]
+
+          result[target] = data if type == 'state' && !target.empty?
+        end
+        result
+      end
+
+      def status_icon(state)
+        if $stdout.tty?
+          tty_status_icon(state)
+        else
+          text_status_badge(state)
+        end
+      end
+
+      def tty_status_icon(state)
+        case state
+        when 'running'     then "\e[32m●\e[0m"
+        when 'poweroff'    then "\e[31m●\e[0m"
+        when 'aborted'     then "\e[31m●\e[0m"
+        when 'saved'       then "\e[33m●\e[0m"
+        when 'not_created' then "\e[90m○\e[0m"
+        else                    "\e[90m?\e[0m"
+        end
+      end
+
+      def text_status_badge(state)
+        case state
+        when 'running'     then '[up]  '
+        when 'poweroff'    then '[off] '
+        when 'aborted'     then '[err] '
+        when 'saved'       then '[save]'
+        when 'not_created' then '[--]  '
+        else                    '[??]  '
         end
       end
     end
