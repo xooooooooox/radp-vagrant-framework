@@ -6,13 +6,13 @@
 # Helper: Resolve config directory for completion
 _radp_vf_comp_config_dir() {
     local config_dir=""
-
+    
     # Priority 1: Check global variable from top-level opt_args
     # (set by _radp_vf when it processes -c/--config before entering subcommand)
     if [[ -n "${_RADP_VF_OPT_CONFIG:-}" ]]; then
         config_dir="$_RADP_VF_OPT_CONFIG"
     fi
-
+    
     # Priority 2: Search words array (for subcommand-level -c/--config)
     if [[ -z "$config_dir" ]]; then
         local i
@@ -29,12 +29,12 @@ _radp_vf_comp_config_dir() {
             esac
         done
     fi
-
+    
     # Priority 3: Environment variable
     if [[ -z "$config_dir" ]]; then
         config_dir="${RADP_VAGRANT_CONFIG_DIR:-}"
     fi
-
+    
     # Priority 4: Current directory if it has vagrant.yaml
     if [[ -z "$config_dir" && -f "./vagrant.yaml" ]]; then
         config_dir="."
@@ -49,7 +49,7 @@ _radp_vf_comp_env() {
         echo "$_RADP_VF_OPT_ENV"
         return
     fi
-
+    
     # Priority 2: Search words array (for subcommand-level -e/--env)
     local i
     for ((i = 1; i < ${#words[@]}; i++)); do
@@ -64,7 +64,7 @@ _radp_vf_comp_env() {
                 ;;
         esac
     done
-
+    
     # Priority 3: Environment variable
     echo "${RADP_VAGRANT_ENV:-}"
 }
@@ -92,10 +92,10 @@ _radp_vf_ruby_completion() {
     local env_override="$2"
     local type="$3"
     local cluster="${4:-}"
-
+    
     local radp_vf_home="${RADP_VF_HOME:-}"
     local ruby_lib_dir=""
-
+    
     # Auto-detect radp-vf location
     if [[ -z "$radp_vf_home" ]]; then
         local script_path
@@ -108,7 +108,7 @@ _radp_vf_ruby_completion() {
             radp_vf_home="$(cd "$(dirname "$resolved")/.." 2>/dev/null && pwd)"
         fi
     fi
-
+    
     # Detect Ruby lib directory
     if [[ -d "${radp_vf_home}/src/main/ruby/lib/radp_vagrant" ]]; then
         ruby_lib_dir="${radp_vf_home}/src/main/ruby"
@@ -117,7 +117,7 @@ _radp_vf_ruby_completion() {
     else
         return 1
     fi
-
+    
     # Expand tilde before processing
     if [[ "$config_dir" == '~'* ]]; then
         config_dir="${config_dir/#\~/$HOME}"
@@ -126,7 +126,7 @@ _radp_vf_ruby_completion() {
     if [[ -n "$config_dir" && "$config_dir" != /* ]]; then
         config_dir="$(cd "$config_dir" 2>/dev/null && pwd)" || return 1
     fi
-
+    
     (cd "$ruby_lib_dir" && ruby -r ./lib/radp_vagrant -e "
         cmd = RadpVagrant::CLI::Completion.new(
             ARGV[0],
@@ -175,10 +175,10 @@ _radp_vf_vg_args() {
     local config_dir env_override machines
     config_dir="$(_radp_vf_comp_config_dir)"
     env_override="$(_radp_vf_comp_env)"
-
+    
     local -a vagrant_cmds
     vagrant_cmds=(box cloud connect destroy global-status halt help init login package plugin port powershell provision push rdp reload resume rsync rsync-auto serve snapshot ssh ssh-config status suspend up upload validate version winrm winrm-config)
-
+    
     if [[ -n "$config_dir" ]]; then
         machines="$(_radp_vf_ruby_completion "$config_dir" "$env_override" "machines")"
         if [[ -n "$machines" ]]; then
