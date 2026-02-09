@@ -1,5 +1,17 @@
 # CHANGELOG
 
+## v0.3.6
+
+### fix
+
+- Fix missing `-S/--status` flag in Zsh completion for `list` command
+- Add vagrant sub-command argument completion for `vg`
+  - `radp-vf vg up <TAB>` now offers vagrant-specific options (e.g., `--provision`, `--provider`)
+  - Bash: detects vagrant subcommand and delegates to `_vagrant` completion when available
+  - Zsh: uses `_arguments -C` with state delegation to `_vagrant` when available
+  - Falls back to vagrant commands + machine names if `_vagrant` is not loaded
+- Regenerate completion scripts with upstream framework fixes (cmd_path builder, arg_idx, zsh global options)
+
 ## v0.3.5
 
 ### feat

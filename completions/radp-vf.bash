@@ -141,15 +141,24 @@ _radp_vf() {
 
     local i cmd_path=""
 
-    # 构建当前命令路径
+    # Known command paths (generated)
+    local _all_cmds=" completion dump-config generate info init list template template_list template_show validate version vg  "
+
+    # Build cmd_path: skip global option values, validate against known commands
     for ((i = 1; i < cword; i++)); do
         case "${words[i]}" in
-            -*) continue ;;
+            -c|--config|-e|--env)
+                ((i++)) ;;
+            -*) ;;
             *)
+                local _test_path
                 if [[ -z "$cmd_path" ]]; then
-                    cmd_path="${words[i]}"
+                    _test_path="${words[i]}"
                 else
-                    cmd_path="$cmd_path ${words[i]}"
+                    _test_path="$cmd_path ${words[i]}"
+                fi
+                if [[ " $_all_cmds " == *" ${_test_path// /_} "* ]]; then
+                    cmd_path="$_test_path"
                 fi
                 ;;
         esac
@@ -165,6 +174,8 @@ _radp_vf() {
             local arg_idx=0
             for ((i = 1; i < cword; i++)); do
                 case "${words[i]}" in
+                    -c|--config|-e|--env)
+                        ((i++)) ;;
                     -*) ;;
                     *) ((arg_idx++)) ;;
                 esac
@@ -266,6 +277,76 @@ _radp_vf() {
                     ;;
             esac
             
+            # Detect vagrant subcommand position: find the first non-option word after vg
+            local vg_pos=-1 vagrant_subcmd=""
+            for ((i = 1; i < ${#words[@]}; i++)); do
+                case "${words[i]}" in
+                    -c|--config|-e|--env|-C|--cluster|-G|--guest-ids)
+                        ((i++)) ;;
+                    -*) ;;
+                    vg)
+                        vg_pos=$i ;;
+                    *)
+                        if [[ $vg_pos -ge 0 && -z "$vagrant_subcmd" ]]; then
+                            vagrant_subcmd="${words[i]}"
+                        fi
+                        ;;
+                esac
+            done
+            
+            # If a vagrant subcommand was detected, try delegating to vagrant completion
+            if [[ -n "$vagrant_subcmd" ]]; then
+                if type _vagrant &>/dev/null; then
+                    # Build vagrant words: skip framework options, keep vagrant args
+                    local -a vagrant_words=("vagrant")
+                    local skip_next=false
+                    for ((i = vg_pos + 1; i < ${#words[@]}; i++)); do
+                        if $skip_next; then skip_next=false; continue; fi
+                        case "${words[i]}" in
+                            -c|--config|-e|--env|-C|--cluster|-G|--guest-ids) skip_next=true ;;
+                            *) vagrant_words+=("${words[i]}") ;;
+                        esac
+                    done
+                    # Save/restore COMP_* around delegation
+                    local saved_comp_words=("${COMP_WORDS[@]}")
+                    local saved_comp_cword=$COMP_CWORD
+                    local saved_comp_line="$COMP_LINE"
+                    local saved_comp_point=$COMP_POINT
+                    COMP_WORDS=("${vagrant_words[@]}")
+                    COMP_CWORD=$(( ${#vagrant_words[@]} - 1 ))
+                    COMP_LINE="${vagrant_words[*]}"
+                    COMP_POINT=${#COMP_LINE}
+                    _vagrant 2>/dev/null
+                    # Restore COMP_*
+                    COMP_WORDS=("${saved_comp_words[@]}")
+                    COMP_CWORD=$saved_comp_cword
+                    COMP_LINE="$saved_comp_line"
+                    COMP_POINT=$saved_comp_point
+                    # Augment with framework options if completing an option
+                    if [[ "$cur" == -* ]]; then
+                        COMPREPLY+=($(compgen -W "-c --config -e --env -C --cluster -G --guest-ids" -- "$cur"))
+                    elif [[ -n "$config_dir" ]]; then
+                        # Also add machine names
+                        local machines
+                        machines="$(_radp_vf_ruby_completion "$config_dir" "$env_override" "machines")"
+                        if [[ -n "$machines" ]]; then
+                            COMPREPLY+=($(compgen -W "$machines" -- "$cur"))
+                        fi
+                    fi
+                    return
+                fi
+                # Fallback: no _vagrant available, offer framework options + machines
+                if [[ "$cur" == -* ]]; then
+                    COMPREPLY=($(compgen -W "--help -c --config -e --env -C --cluster -G --guest-ids" -- "$cur"))
+                elif [[ -n "$config_dir" ]]; then
+                    local machines
+                    machines="$(_radp_vf_ruby_completion "$config_dir" "$env_override" "machines")"
+                    COMPREPLY=($(compgen -W "$machines" -- "$cur"))
+                fi
+                return
+            fi
+            
+            # No vagrant subcommand yet: complete vg-level options + vagrant commands + machines
             if [[ "$cur" == -* ]]; then
                 COMPREPLY=($(compgen -W "--help -c --config -e --env -C --cluster -G --guest-ids" -- "$cur"))
             else

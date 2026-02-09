@@ -208,12 +208,16 @@ _radp_vf_machines() {
 _radp_vf_completion() {
     _arguments -s \
         '(-h --help)'{-h,--help}'[Show help]' \
+        '(-c --config)'{-c,--config}'[Configuration directory]:dir:_files -/' \
+        '(-e --env)'{-e,--env}'[Override environment name]:name:' \
         '1:shell:(bash zsh)'
 }
 
 _radp_vf_dump_config() {
     _arguments -s \
         '(-h --help)'{-h,--help}'[Show help]' \
+        '(-c --config)'{-c,--config}'[Configuration directory]:dir:_files -/' \
+        '(-e --env)'{-e,--env}'[Override environment name]:name:' \
         '(-f --format)'{-f,--format}'[Output format: json or yaml (default: json)]:type:' \
         '(-o --output)'{-o,--output}'[Output file path]:file:' \
         '1:filter:_files'
@@ -222,18 +226,24 @@ _radp_vf_dump_config() {
 _radp_vf_generate() {
     _arguments -s \
         '(-h --help)'{-h,--help}'[Show help]' \
+        '(-c --config)'{-c,--config}'[Configuration directory]:dir:_files -/' \
+        '(-e --env)'{-e,--env}'[Override environment name]:name:' \
         '1:output:_files'
 }
 
 _radp_vf_info() {
     _arguments -s \
         '(-h --help)'{-h,--help}'[Show help]' \
+        '(-c --config)'{-c,--config}'[Configuration directory]:dir:_files -/' \
+        '(-e --env)'{-e,--env}'[Override environment name]:name:' \
         '*:file:_files'
 }
 
 _radp_vf_init() {
     _arguments -s \
         '(-h --help)'{-h,--help}'[Show help]' \
+        '(-c --config)'{-c,--config}'[Configuration directory]:dir:_files -/' \
+        '(-e --env)'{-e,--env}'[Override environment name]:name:' \
         '(-t --template)'{-t,--template}'[Use a template (default: base)]:name:' \
         '--set[<var>=<value>~ Set template variable (can be repeated)]:var:' \
         '--force[Overwrite existing files]' \
@@ -250,6 +260,7 @@ _radp_vf_list() {
         '(-p --provisions)'{-p,--provisions}'[Show provisions only]' \
         '(-s --synced-folders)'{-s,--synced-folders}'[Show synced folders only]' \
         '(-t --triggers)'{-t,--triggers}'[Show triggers only]' \
+        '(-S --status)'{-S,--status}'[Show VM runtime status]' \
         '*:filter:_radp_vf_machines'
 }
 
@@ -284,35 +295,58 @@ _radp_vf_template() {
 _radp_vf_template_list() {
     _arguments -s \
         '(-h --help)'{-h,--help}'[Show help]' \
+        '(-c --config)'{-c,--config}'[Configuration directory]:dir:_files -/' \
+        '(-e --env)'{-e,--env}'[Override environment name]:name:' \
         '*:file:_files'
 }
 
 _radp_vf_template_show() {
     _arguments -s \
         '(-h --help)'{-h,--help}'[Show help]' \
+        '(-c --config)'{-c,--config}'[Configuration directory]:dir:_files -/' \
+        '(-e --env)'{-e,--env}'[Override environment name]:name:' \
         '1:name:_files'
 }
 
 _radp_vf_validate() {
     _arguments -s \
         '(-h --help)'{-h,--help}'[Show help]' \
+        '(-c --config)'{-c,--config}'[Configuration directory]:dir:_files -/' \
+        '(-e --env)'{-e,--env}'[Override environment name]:name:' \
         '*:file:_files'
 }
 
 _radp_vf_version() {
     _arguments -s \
         '(-h --help)'{-h,--help}'[Show help]' \
+        '(-c --config)'{-c,--config}'[Configuration directory]:dir:_files -/' \
+        '(-e --env)'{-e,--env}'[Override environment name]:name:' \
         '*:file:_files'
 }
 
 _radp_vf_vg() {
-    _arguments -s \
+    local context state state_descr line
+    typeset -A opt_args
+
+    _arguments -C -s \
         '(-h --help)'{-h,--help}'[Show help]' \
         '(-c --config)'{-c,--config}'[Configuration directory]:dir:_files -/' \
         '(-e --env)'{-e,--env}'[Override environment name]:name:' \
         '(-C --cluster)'{-C,--cluster}'[Cluster names (comma-separated for multiple)]:names:_radp_vf_clusters' \
         '(-G --guest-ids)'{-G,--guest-ids}'[Guest IDs (comma-separated, requires --cluster)]:ids:_radp_vf_guests' \
-        '*:args:_radp_vf_vg_args'
+        '*:: :->vagrant_args'
+
+    case "$state" in
+        vagrant_args)
+            if (( $+functions[_vagrant] )); then
+                words=("vagrant" "${words[@]}")
+                ((CURRENT++))
+                _vagrant
+            else
+                _radp_vf_vg_args
+            fi
+            ;;
+    esac
 }
 
 _radp_vf() {
