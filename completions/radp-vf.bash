@@ -141,24 +141,15 @@ _radp_vf() {
 
     local i cmd_path=""
 
-    # Known command paths (generated)
-    local _all_cmds=" completion dump-config generate info init list template template_list template_show validate version vg  "
-
-    # Build cmd_path: skip global option values, validate against known commands
+    # 构建当前命令路径
     for ((i = 1; i < cword; i++)); do
         case "${words[i]}" in
-            -c|--config|-e|--env)
-                ((i++)) ;;
-            -*) ;;
+            -*) continue ;;
             *)
-                local _test_path
                 if [[ -z "$cmd_path" ]]; then
-                    _test_path="${words[i]}"
+                    cmd_path="${words[i]}"
                 else
-                    _test_path="$cmd_path ${words[i]}"
-                fi
-                if [[ " $_all_cmds " == *" ${_test_path// /_} "* ]]; then
-                    cmd_path="$_test_path"
+                    cmd_path="$cmd_path ${words[i]}"
                 fi
                 ;;
         esac
@@ -174,8 +165,6 @@ _radp_vf() {
             local arg_idx=0
             for ((i = 1; i < cword; i++)); do
                 case "${words[i]}" in
-                    -c|--config|-e|--env)
-                        ((i++)) ;;
                     -*) ;;
                     *) ((arg_idx++)) ;;
                 esac
