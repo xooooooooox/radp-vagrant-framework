@@ -1,9 +1,13 @@
 # CHANGELOG
 
-## v0.3.6
+## v0.3.7
 
 ### fix
 
+- Fix Zsh `_radp_vf_vg()` not completing machine names after `_vagrant` delegation
+  - Vagrant's native `_vagrant` does not complete machine names for any subcommand
+  - `_radp_vf_machines` now always runs after `_vagrant`/`_radp_vf_vg_args` in the `vagrant_args` state
+  - Fixes `radp-vf vg provision --provision-with="user:xxx" <TAB>` not showing machine names
 - Fix missing `-S/--status` flag in Zsh completion for `list` command
 - Add vagrant sub-command argument completion for `vg`
   - `radp-vf vg up <TAB>` now offers vagrant-specific options (e.g., `--provision`, `--provider`)

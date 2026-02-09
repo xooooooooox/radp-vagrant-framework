@@ -620,6 +620,8 @@ _completion_add_vg_dynamic_zsh() {
       print "            else"
       print "                _radp_vf_vg_args"
       print "            fi"
+      print "            # Always add machine names — _vagrant does not complete them"
+      print "            _radp_vf_machines"
       print "            ;;"
       print "    esac"
       print "}"
