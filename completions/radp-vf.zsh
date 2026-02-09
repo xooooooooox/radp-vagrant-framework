@@ -208,16 +208,12 @@ _radp_vf_machines() {
 _radp_vf_completion() {
     _arguments -s \
         '(-h --help)'{-h,--help}'[Show help]' \
-        '(-c --config)'{-c,--config}'[Configuration directory]:dir:_files -/' \
-        '(-e --env)'{-e,--env}'[Override environment name]:name:' \
         '1:shell:(bash zsh)'
 }
 
 _radp_vf_dump_config() {
     _arguments -s \
         '(-h --help)'{-h,--help}'[Show help]' \
-        '(-c --config)'{-c,--config}'[Configuration directory]:dir:_files -/' \
-        '(-e --env)'{-e,--env}'[Override environment name]:name:' \
         '(-f --format)'{-f,--format}'[Output format: json or yaml (default: json)]:type:' \
         '(-o --output)'{-o,--output}'[Output file path]:file:' \
         '1:filter:_files'
@@ -226,24 +222,18 @@ _radp_vf_dump_config() {
 _radp_vf_generate() {
     _arguments -s \
         '(-h --help)'{-h,--help}'[Show help]' \
-        '(-c --config)'{-c,--config}'[Configuration directory]:dir:_files -/' \
-        '(-e --env)'{-e,--env}'[Override environment name]:name:' \
         '1:output:_files'
 }
 
 _radp_vf_info() {
     _arguments -s \
         '(-h --help)'{-h,--help}'[Show help]' \
-        '(-c --config)'{-c,--config}'[Configuration directory]:dir:_files -/' \
-        '(-e --env)'{-e,--env}'[Override environment name]:name:' \
         '*:file:_files'
 }
 
 _radp_vf_init() {
     _arguments -s \
         '(-h --help)'{-h,--help}'[Show help]' \
-        '(-c --config)'{-c,--config}'[Configuration directory]:dir:_files -/' \
-        '(-e --env)'{-e,--env}'[Override environment name]:name:' \
         '(-t --template)'{-t,--template}'[Use a template (default: base)]:name:' \
         '--set[<var>=<value>~ Set template variable (can be repeated)]:var:' \
         '--force[Overwrite existing files]' \
@@ -295,32 +285,24 @@ _radp_vf_template() {
 _radp_vf_template_list() {
     _arguments -s \
         '(-h --help)'{-h,--help}'[Show help]' \
-        '(-c --config)'{-c,--config}'[Configuration directory]:dir:_files -/' \
-        '(-e --env)'{-e,--env}'[Override environment name]:name:' \
         '*:file:_files'
 }
 
 _radp_vf_template_show() {
     _arguments -s \
         '(-h --help)'{-h,--help}'[Show help]' \
-        '(-c --config)'{-c,--config}'[Configuration directory]:dir:_files -/' \
-        '(-e --env)'{-e,--env}'[Override environment name]:name:' \
         '1:name:_files'
 }
 
 _radp_vf_validate() {
     _arguments -s \
         '(-h --help)'{-h,--help}'[Show help]' \
-        '(-c --config)'{-c,--config}'[Configuration directory]:dir:_files -/' \
-        '(-e --env)'{-e,--env}'[Override environment name]:name:' \
         '*:file:_files'
 }
 
 _radp_vf_version() {
     _arguments -s \
         '(-h --help)'{-h,--help}'[Show help]' \
-        '(-c --config)'{-c,--config}'[Configuration directory]:dir:_files -/' \
-        '(-e --env)'{-e,--env}'[Override environment name]:name:' \
         '*:file:_files'
 }
 
