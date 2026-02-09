@@ -30,6 +30,10 @@ set -euo pipefail
 #   YADM_DECRYPT         - Run decrypt after clone (default false, needs GPG)
 #   YADM_CLASS           - Set yadm class before clone
 #
+# GPG decryption (when YADM_DECRYPT=true):
+#   YADM_GPG_PASSPHRASE      - GPG passphrase for decrypt
+#   YADM_GPG_PASSPHRASE_FILE - Path to file containing GPG passphrase
+#
 # HTTPS authentication:
 #   YADM_HTTPS_USER      - Username for HTTPS auth
 #   YADM_HTTPS_TOKEN     - Personal access token
@@ -93,7 +97,7 @@ if [[ -z "${YADM_REPO_URL:-}" ]]; then
 fi
 
 # Validate file existence
-for var_name in YADM_SSH_KEY_FILE YADM_HTTPS_TOKEN_FILE; do
+for var_name in YADM_SSH_KEY_FILE YADM_HTTPS_TOKEN_FILE YADM_GPG_PASSPHRASE_FILE; do
   eval "file_path=\${${var_name}:-}"
   if [[ -n "$file_path" && ! -f "$file_path" ]]; then
     echo "[ERROR] File not found for ${var_name}: $file_path"
@@ -300,6 +304,95 @@ run_as_user() {
   fi
 }
 
+# Prepare GPG for non-interactive decrypt
+# Presets passphrase in gpg-agent if YADM_GPG_PASSPHRASE(_FILE) is provided.
+# gpg-agent is per-user, so the presetting must run as the target user (not root).
+prepare_gpg_decrypt() {
+  local user="$1"
+  local home_dir="$2"
+  local gnupg_dir="${home_dir}/.gnupg"
+
+  # --- Resolve passphrase ---
+  local passphrase=""
+  if [[ -n "${YADM_GPG_PASSPHRASE:-}" ]]; then
+    passphrase="$YADM_GPG_PASSPHRASE"
+  elif [[ -n "${YADM_GPG_PASSPHRASE_FILE:-}" && -f "$YADM_GPG_PASSPHRASE_FILE" ]]; then
+    passphrase=$(cat "$YADM_GPG_PASSPHRASE_FILE")
+  fi
+
+  if [[ -z "$passphrase" ]]; then
+    return 0
+  fi
+
+  if [[ ! -d "$gnupg_dir" ]]; then
+    echo "[WARN] GPG directory not found: $gnupg_dir"
+    return 0
+  fi
+
+  # --- Find gpg-preset-passphrase binary ---
+  local gpg_preset_cmd=""
+  local libexecdir
+  libexecdir=$(gpgconf --list-dirs 2>/dev/null | awk -F: '/^libexecdir:/ {print $2}')
+  if [[ -n "$libexecdir" && -x "${libexecdir}/gpg-preset-passphrase" ]]; then
+    gpg_preset_cmd="${libexecdir}/gpg-preset-passphrase"
+  elif command -v gpg-preset-passphrase &>/dev/null; then
+    gpg_preset_cmd="gpg-preset-passphrase"
+  else
+    echo "[WARN] gpg-preset-passphrase not found, cannot preset passphrase"
+    return 0
+  fi
+
+  # --- Configure gpg-agent.conf (as root for file access) ---
+  local agent_conf="${gnupg_dir}/gpg-agent.conf"
+  if [[ ! -f "$agent_conf" ]]; then
+    echo "allow-preset-passphrase" > "$agent_conf"
+    chmod 600 "$agent_conf"
+    chown "${user}:$(id -gn "$user" 2>/dev/null)" "$agent_conf" 2>/dev/null || true
+  elif ! grep -q "^allow-preset-passphrase" "$agent_conf"; then
+    echo "allow-preset-passphrase" >> "$agent_conf"
+  fi
+
+  # --- Write passphrase to secure temp file ---
+  local pass_file
+  pass_file=$(mktemp /tmp/.yadm-gpg-XXXXXX)
+  echo "$passphrase" > "$pass_file"
+  chmod 600 "$pass_file"
+  chown "$user" "$pass_file" 2>/dev/null || chmod 644 "$pass_file"
+
+  # --- Generate temp script to run as target user ---
+  # gpg-agent is per-user; presetting MUST happen in the user's agent context
+  local preset_script
+  preset_script=$(mktemp /tmp/.yadm-preset-XXXXXX.sh)
+  cat > "$preset_script" <<EOFSCRIPT
+#!/usr/bin/env bash
+export GNUPGHOME="$gnupg_dir"
+gpgconf --homedir "$gnupg_dir" --reload gpg-agent 2>/dev/null || \
+  gpgconf --homedir "$gnupg_dir" --launch gpg-agent 2>/dev/null || true
+keygrips=\$(gpg --homedir "$gnupg_dir" --with-keygrip --with-colons --list-secret-keys 2>/dev/null | \
+  awk -F: '/^grp/ {print \$10}')
+count=0
+for kg in \$keygrips; do
+  if "$gpg_preset_cmd" --homedir "$gnupg_dir" --preset "\$kg" < "$pass_file" 2>/dev/null; then
+    count=\$((count + 1))
+  fi
+done
+if [ \$count -gt 0 ]; then
+  echo "[INFO] GPG passphrase preset for \$count keygrip(s)"
+else
+  echo "[WARN] Failed to preset GPG passphrase for any keygrip"
+fi
+EOFSCRIPT
+  chmod 755 "$preset_script"
+
+  # --- Run as target user (critical for correct gpg-agent) ---
+  run_as_user "$user" "" "$preset_script"
+  local rc=$?
+
+  # --- Cleanup ---
+  rm -f "$pass_file" "$preset_script"
+  return $rc
+}
+
 # Clone yadm repository for a user
 clone_for_user() {
   local user="$1"
@@ -358,10 +451,12 @@ clone_for_user() {
 
   # Step 3: Decrypt if requested
   if [[ "$YADM_DECRYPT" == "true" ]]; then
+    prepare_gpg_decrypt "$user" "$home_dir"
     echo "[INFO] Running yadm decrypt for user '$user'..."
-    run_as_user "$user" "HOME=\"$home_dir\"" "yadm decrypt" || {
-      echo "[WARN] yadm decrypt failed - ensure GPG key is imported"
-    }
+    if ! run_as_user "$user" "HOME=\"$home_dir\"" "yadm decrypt"; then
+      echo "[ERROR] yadm decrypt failed for user '$user' - ensure GPG key is imported and passphrase is available"
+      exit 1
+    fi
   fi
 
   echo "[OK] yadm setup completed for user '$user'"

@@ -15,6 +15,14 @@ defaults:
         value: ""
         desc: Set yadm class before clone
 
+      # --- GPG Decryption ---
+      - name: YADM_GPG_PASSPHRASE
+        value: ""
+        desc: GPG passphrase for non-interactive decrypt (used when YADM_DECRYPT is true)
+      - name: YADM_GPG_PASSPHRASE_FILE
+        value: ""
+        desc: Path to file containing GPG passphrase for non-interactive decrypt
+
       # --- HTTPS Authentication ---
       - name: YADM_HTTPS_USER
         value: ""
