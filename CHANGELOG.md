@@ -12,8 +12,6 @@
   - Falls back to vagrant commands + machine names if `_vagrant` is not loaded
 - Regenerate completion scripts with upstream framework fixes (cmd_path builder, arg_idx, zsh global options)
 
-## v0.3.5
-
 ### feat
 
 - Optimize `radp:yadm/clone` builtin provision
