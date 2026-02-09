@@ -56,6 +56,9 @@ set -euo pipefail
 
 echo "[INFO] Configuring yadm submodules..."
 
+# Ensure /usr/local/bin is in PATH (sudoers secure_path may exclude it)
+[[ ":$PATH:" != *":/usr/local/bin:"* ]] && export PATH="/usr/local/bin:$PATH"
+
 # Validate file existence
 if [[ -n "${YADM_SSH_KEY_FILE:-}" && ! -f "$YADM_SSH_KEY_FILE" ]]; then
   echo "[ERROR] File not found for YADM_SSH_KEY_FILE: $YADM_SSH_KEY_FILE"
@@ -115,7 +118,7 @@ run_as_user() {
     full_cmd="$cmd"
   fi
 
-  if [[ "$CURRENT_USER" == "root" && "$user" != "root" ]]; then
+  if [[ "$CURRENT_USER" == "root" ]]; then
     su - "$user" -c "$full_cmd"
   else
     eval "$full_cmd"
@@ -148,13 +151,10 @@ submodules_for_user() {
 
   echo "[INFO] Initializing yadm submodules for user '$user'..."
 
-  # Build SSH environment prefix (only when SSH key is configured)
-  local env_prefix=""
-  if [[ -n "${YADM_SSH_KEY_FILE:-}" ]]; then
-    local ssh_cmd
-    ssh_cmd=$(build_ssh_command)
-    env_prefix="GIT_SSH_COMMAND=\"$ssh_cmd\""
-  fi
+  # Build SSH environment prefix (always set — handles StrictHostKeyChecking and optional key)
+  local ssh_cmd
+  ssh_cmd=$(build_ssh_command)
+  local env_prefix="HOME=\"$home_dir\" GIT_SSH_COMMAND=\"$ssh_cmd\""
 
   run_as_user "$user" "$env_prefix" "yadm submodule update --init --recursive" || {
     echo "[WARN] yadm submodule update failed for user '$user'"

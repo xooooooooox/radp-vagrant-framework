@@ -298,64 +298,128 @@ provisions:
 
 Establish SSH trust between a guest VM and a specified external target (e.g., GitLab server, bastion host, deploy server).
 
-Configures the **guest side** of SSH trust:
-- **Outbound** (guest -> target): deploy private key + SSH config + known_hosts
-- **Inbound** (target -> guest): add target's public key to authorized_keys
+This provision configures the **guest side** of SSH trust in two independently optional directions:
 
-Each direction is independently optional.
+| Direction | What it does | Triggered by |
+|-----------|-------------|--------------|
+| **Outbound** (guest -> target) | Deploy private key + SSH config + known_hosts + add pubkey to authorized_keys | `TARGET_SSH_PRIVATE_KEY_FILE` is set |
+| **Copy identity to target** | Push guest's pubkey to target's `authorized_keys` via SSH | `COPY_IDENTITY_TO_TARGET=true` |
+| **Copy identity from target** | Fetch target's pubkeys to guest's `authorized_keys` via SSH | `COPY_IDENTITY_FROM_TARGET=true` |
+| **Inbound** (target -> guest) | Add target's public key to authorized_keys | `TARGET_PUBLIC_KEY` or `TARGET_PUBLIC_KEY_FILE` is set |
+
+The script auto-detects which direction(s) to configure based on the environment variables you provide.
+If no trust directions are configured, the script warns and exits with no changes.
+
+Execution order per user:
+
+1. **Outbound** — deploy key + known_hosts + SSH config + add pubkey to authorized_keys
+2. **Copy identity to target** — push guest pubkey to target (requires outbound)
+3. **Copy identity from target** — fetch target pubkeys to guest (requires outbound)
+4. **Inbound** — add locally-provided target pubkey
+
+### Trust Directions
+
+**Outbound only** — guest can SSH to the target:
+
+```
+Set TARGET_SSH_PRIVATE_KEY_FILE  -->  outbound enabled
+                                     (+ optional: known_hosts, SSH config)
+```
+
+**Inbound only** — target can SSH into the guest:
+
+```
+Set TARGET_PUBLIC_KEY or TARGET_PUBLIC_KEY_FILE  -->  inbound enabled
+                                                     (adds key to authorized_keys)
+```
+
+**Bidirectional** — both directions:
+
+```
+Set TARGET_SSH_PRIVATE_KEY_FILE                  -->  outbound enabled
+  + TARGET_PUBLIC_KEY or TARGET_PUBLIC_KEY_FILE   -->  inbound enabled
+```
 
 ### Environment Variables
 
 **Required:**
 
-| Variable      | Description                  |
-|---------------|------------------------------|
+| Variable      | Description                   |
+|---------------|-------------------------------|
 | `TARGET_HOST` | Target hostname or IP address |
 
-**Outbound (guest -> target):**
+**Outbound (guest -> target) — set `TARGET_SSH_PRIVATE_KEY_FILE` to enable:**
+
+| Variable                      | Description                                                        |
+|-------------------------------|--------------------------------------------------------------------|
+| `TARGET_SSH_PRIVATE_KEY_FILE` | Path to private key file for authenticating to the target          |
+| `TARGET_KEY_NAME`             | Custom key name in ~/.ssh/ (default: `id_target_{sanitized_host}`) |
+| `TARGET_SSH_USER`             | Username on the target (default: current guest user being configured) |
+| `TARGET_SSH_PORT`             | SSH port on the target                                             |
+| `TARGET_HOST_ALIAS`          | Host alias for SSH config entry (default: `TARGET_HOST`)           |
+| `TARGET_SSH_CONFIG`          | Write SSH config entry for the target (default: `true`)            |
+
+**Known hosts (outbound only, choose one):**
+
+| Variable               | Description                                                    |
+|------------------------|----------------------------------------------------------------|
+| `TARGET_HOST_KEY`      | Target host key content for known_hosts                        |
+| `TARGET_HOST_KEY_FILE` | Path to file containing target host key(s) for known_hosts     |
+| `TARGET_KEYSCAN`       | Attempt ssh-keyscan to fetch target host keys (default: false) |
+
+Known hosts resolution order:
+
+| Priority | Source                | SSH config result                                                 |
+|----------|-----------------------|-------------------------------------------------------------------|
+| 1st      | `TARGET_HOST_KEY`     | Add to known_hosts, `StrictHostKeyChecking yes`                   |
+| 2nd      | `TARGET_HOST_KEY_FILE` | Append file to known_hosts, `StrictHostKeyChecking yes`          |
+| 3rd      | `TARGET_KEYSCAN=true` | Run ssh-keyscan; on success -> strict; on failure -> warn + fallback |
+| Fallback | None of above         | `StrictHostKeyChecking no` + `UserKnownHostsFile /dev/null`      |
+
+**SSH key exchange via SSH — push/fetch keys using a deployed bootstrap key:**
+
+Both features require `TARGET_SSH_PRIVATE_KEY_FILE`. The outbound section runs first to deploy the key
+and configure SSH, then these features use the deployed key to connect to the target. When `TARGET_SSH_USER`
+is omitted, the current guest user being configured is used as the remote username.
 
 | Variable                    | Description                                                |
 |-----------------------------|------------------------------------------------------------|
-| `TARGET_SSH_PRIVATE_KEY_FILE` | Path to private key file for authenticating to the target |
-| `TARGET_KEY_NAME`           | Custom key name in ~/.ssh/ (default: `id_target_{sanitized_host}`) |
-| `TARGET_SSH_USER`           | Username on the target (for SSH config entry)              |
-| `TARGET_SSH_PORT`           | SSH port on the target                                     |
-| `TARGET_HOST_ALIAS`        | Host alias for SSH config entry (default: `TARGET_HOST`)   |
+| `COPY_IDENTITY_TO_TARGET`   | Push guest's pubkey to target's `authorized_keys` via SSH (default: `false`) |
+| `COPY_IDENTITY_FROM_TARGET` | Fetch target's pubkeys to guest's `authorized_keys` via SSH (default: `false`) |
+| `TARGET_SSH_BOOTSTRAP_KEY`  | Path to a different private key for SSH to target (default: `TARGET_SSH_PRIVATE_KEY_FILE`) |
 
-**Known hosts (choose one):**
+**Password authentication (for first-time SSH key exchange):**
 
-| Variable              | Description                                                    |
-|-----------------------|----------------------------------------------------------------|
-| `TARGET_HOST_KEY`     | Target host key content for known_hosts                        |
-| `TARGET_HOST_KEY_FILE` | Path to file containing target host key(s) for known_hosts    |
-| `TARGET_KEYSCAN`      | Attempt ssh-keyscan to fetch target host keys (default: false) |
+When the bootstrap key is not yet in the target's `authorized_keys`, you can use password-based SSH
+(via `sshpass`) for the initial connection. Choose one:
 
-**Known hosts behavior:**
+| Variable                  | Description                              |
+|---------------------------|------------------------------------------|
+| `TARGET_SSH_PASSWORD`      | Password for SSH to target              |
+| `TARGET_SSH_PASSWORD_FILE` | Path to file containing SSH password    |
 
-| Priority | Source               | Behavior                                                          |
-|----------|----------------------|-------------------------------------------------------------------|
-| 1st      | `TARGET_HOST_KEY`    | Add to known_hosts, SSH config -> `StrictHostKeyChecking yes`     |
-| 2nd      | `TARGET_HOST_KEY_FILE` | Append file to known_hosts, SSH config -> `StrictHostKeyChecking yes` |
-| 3rd      | `TARGET_KEYSCAN=true` | Run ssh-keyscan; on success -> strict; on failure -> warn + fallback |
-| Fallback | None of above        | SSH config -> `StrictHostKeyChecking no` + `UserKnownHostsFile /dev/null` |
+> **Note:** `sshpass` must be installed on the guest for password authentication to work.
 
-**Inbound (target -> guest):**
+**Inbound (target -> guest) — set `TARGET_PUBLIC_KEY` or `TARGET_PUBLIC_KEY_FILE` to enable:**
 
-| Variable               | Description                                          |
-|------------------------|------------------------------------------------------|
-| `TARGET_PUBLIC_KEY`    | Target's SSH public key content (for authorized_keys) |
-| `TARGET_PUBLIC_KEY_FILE` | Path to file containing target's SSH public key     |
+| Variable                 | Description                                           |
+|--------------------------|-------------------------------------------------------|
+| `TARGET_PUBLIC_KEY`      | Target's SSH public key content (for authorized_keys) |
+| `TARGET_PUBLIC_KEY_FILE` | Path to file containing target's SSH public key       |
 
 **General:**
 
-| Variable    | Description                             |
-|-------------|-----------------------------------------|
-| `SSH_USERS` | Target users (default: vagrant)         |
+| Variable    | Description                     |
+|-------------|---------------------------------|
+| `SSH_USERS` | Target users (default: vagrant) |
 
 ### Examples
 
+#### Outbound only: guest can SSH to GitLab
+
+The guest VM can `ssh git@gitlab.example.com` (e.g., for git clone/push).
+
 ```yaml
-# Outbound only: guest can SSH to GitLab
 provisions:
   - name: radp:ssh/target-trust
     enabled: true
@@ -363,8 +427,56 @@ provisions:
       TARGET_HOST: "gitlab.example.com"
       TARGET_SSH_PRIVATE_KEY_FILE: "/vagrant/.secrets/id_rsa_gitlab"
       TARGET_KEYSCAN: "true"
+```
 
-# Bidirectional: guest <-> deploy server
+What happens:
+- Deploys `/vagrant/.secrets/id_rsa_gitlab` to `~/.ssh/id_target_gitlab_example_com`
+- Adds matching public key to `authorized_keys` (enables inbound from peers sharing the same key)
+- Runs `ssh-keyscan gitlab.example.com` to populate known_hosts
+- Writes SSH config entry for `gitlab.example.com` with the deployed key
+
+#### Outbound only: guest can SSH to target with custom port and user
+
+```yaml
+provisions:
+  - name: radp:ssh/target-trust
+    enabled: true
+    env:
+      TARGET_HOST: "bastion.example.com"
+      TARGET_SSH_PRIVATE_KEY_FILE: "/vagrant/.secrets/id_rsa_bastion"
+      TARGET_SSH_USER: "admin"
+      TARGET_SSH_PORT: "2222"
+      TARGET_HOST_KEY_FILE: "/vagrant/.secrets/bastion_host_key"
+```
+
+What happens:
+- Deploys private key to `~/.ssh/id_target_bastion_example_com`
+- Adds matching public key to `authorized_keys` (enables inbound from peers sharing the same key)
+- Adds host keys from file to known_hosts (`StrictHostKeyChecking yes`)
+- Writes SSH config: `Host bastion.example.com` with `User admin`, `Port 2222`
+
+#### Inbound only: allow CI server to SSH into guest
+
+The CI server can SSH into the guest VM (e.g., for deployment).
+
+```yaml
+provisions:
+  - name: radp:ssh/target-trust
+    enabled: true
+    env:
+      TARGET_HOST: "ci.example.com"
+      TARGET_PUBLIC_KEY_FILE: "/vagrant/.secrets/ci_user_key.pub"
+```
+
+What happens:
+- Adds the CI server's public key to `~/.ssh/authorized_keys`
+- No outbound config (no private key deployed, no SSH config written)
+
+#### Bidirectional: guest <-> deploy server
+
+The guest can SSH to the deploy server, and the deploy server can SSH back.
+
+```yaml
 provisions:
   - name: radp:ssh/target-trust
     enabled: true
@@ -374,31 +486,75 @@ provisions:
       TARGET_HOST_KEY_FILE: "/vagrant/.secrets/deploy_host_key"
       TARGET_PUBLIC_KEY_FILE: "/vagrant/.secrets/deploy_user_key.pub"
       TARGET_SSH_USER: "deployer"
+```
 
-# Inbound only: allow CI server to SSH into guest
+What happens:
+- **Outbound**: deploys private key, adds pubkey to authorized_keys, adds host keys, writes SSH config with `User deployer`
+- **Inbound**: adds deploy server's public key to authorized_keys
+
+#### Bidirectional via SSH key exchange (bootstrap key already trusted)
+
+The guest's pubkey is pushed to the target, and the target's pubkeys are fetched to the guest.
+This requires a bootstrap key that is already authorized on the target.
+
+```yaml
 provisions:
   - name: radp:ssh/target-trust
     enabled: true
     env:
-      TARGET_HOST: "ci.example.com"
-      TARGET_PUBLIC_KEY_FILE: "/vagrant/.secrets/ci_user_key.pub"
+      TARGET_HOST: "deploy.example.com"
+      TARGET_SSH_PRIVATE_KEY_FILE: "/vagrant/.secrets/id_rsa_deploy"
+      TARGET_SSH_USER: "deployer"
+      TARGET_KEYSCAN: "true"
+      COPY_IDENTITY_TO_TARGET: "true"
+      COPY_IDENTITY_FROM_TARGET: "true"
+```
 
-# Multiple targets (use multiple provision entries)
+What happens:
+- **Outbound**: deploys bootstrap key, adds pubkey to authorized_keys, runs ssh-keyscan, writes SSH config
+- **Copy to target**: reads `id_rsa_deploy.pub`, SSHs to target, appends to target's `authorized_keys`
+- **Copy from target**: SSHs to target, fetches `~/.ssh/*.pub`, appends to guest's `authorized_keys`
+
+#### First-time setup with password auth
+
+When the bootstrap key is not yet trusted on the target, use `sshpass` for the initial connection:
+
+```yaml
+provisions:
+  - name: radp:ssh/target-trust
+    enabled: true
+    env:
+      TARGET_HOST: "new-server.example.com"
+      TARGET_SSH_PRIVATE_KEY_FILE: "/vagrant/.secrets/id_rsa_newserver"
+      TARGET_SSH_USER: "admin"
+      TARGET_KEYSCAN: "true"
+      COPY_IDENTITY_TO_TARGET: "true"
+      TARGET_SSH_PASSWORD_FILE: "/vagrant/.secrets/admin_password"
+```
+
+What happens:
+- **Outbound**: deploys bootstrap key + adds pubkey to authorized_keys + SSH config
+- **Copy to target**: uses `sshpass` with the password to SSH into the target and push the guest's pubkey
+- On subsequent runs, the password is no longer needed (the pubkey is already in `authorized_keys`)
+
+#### Multiple targets
+
+Use separate provision entries for each target:
+
+```yaml
 provisions:
   - name: radp:ssh/target-trust
     enabled: true
     env:
       TARGET_HOST: "gitlab.example.com"
       TARGET_SSH_PRIVATE_KEY_FILE: "/vagrant/.secrets/id_rsa_gitlab"
-      TARGET_HOST_KEY_FILE: "/vagrant/.secrets/gitlab_host_key"
+      TARGET_KEYSCAN: "true"
   - name: radp:ssh/target-trust
     enabled: true
     env:
-      TARGET_HOST: "bastion.example.com"
-      TARGET_SSH_PRIVATE_KEY_FILE: "/vagrant/.secrets/id_rsa_bastion"
-      TARGET_SSH_USER: "admin"
-      TARGET_SSH_PORT: "2222"
-      TARGET_KEYSCAN: "true"
+      TARGET_HOST: "192.168.20.40"
+      TARGET_SSH_PRIVATE_KEY_FILE: "/mnt/ssh/clusters/id_homelab_k8s"
+      TARGET_SSH_USER: "root"
 ```
 
 ## radp:system/expand-lvm

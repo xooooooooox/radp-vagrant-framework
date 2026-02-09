@@ -1,9 +1,7 @@
 #!/usr/bin/env bash
 # @cmd
 # @desc Run vagrant command with framework
-# @arg args~ Vagrant command and arguments
-# @option -C, --cluster <names> Cluster names (comma-separated for multiple)
-# @option -G, --guest-ids <ids> Guest IDs (comma-separated, requires --cluster)
+# @meta passthrough
 # @example vg status
 # @example vg up
 # @example vg ssh node-1
@@ -15,9 +13,36 @@
 # @example vg up -C my-cluster
 # @example vg up -C my-cluster -G 1,2
 # @example vg up -C cluster1,cluster2
+# @example vg provision vm --provision-with 'provisioner'
 # @example vg -- --help
+#
+# Options (extracted before passing remaining args to vagrant):
+#   -C, --cluster <names>    Cluster names (comma-separated for multiple)
+#   -G, --guest-ids <ids>    Guest IDs (comma-separated, requires --cluster)
 
 cmd_vg() {
+  # Manually extract -C/--cluster and -G/--guest-ids from args,
+  # forwarding everything else (including vagrant-specific options) to vagrant.
+  local opt_cluster="" opt_guest_ids=""
+  local vagrant_args=()
+
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      -C|--cluster)       opt_cluster="$2"; shift 2 ;;
+      -C=*|--cluster=*)   opt_cluster="${1#*=}"; shift ;;
+      -G|--guest-ids)     opt_guest_ids="$2"; shift 2 ;;
+      -G=*|--guest-ids=*) opt_guest_ids="${1#*=}"; shift ;;
+      *)                  vagrant_args+=("$1"); shift ;;
+    esac
+  done
+
+  # Restore positional parameters to vagrant_args
+  if [[ ${#vagrant_args[@]} -gt 0 ]]; then
+    set -- "${vagrant_args[@]}"
+  else
+    set --
+  fi
+
   # Handle no arguments - show help (unless --cluster is specified)
   if [[ $# -eq 0 && -z "${opt_cluster:-}" ]]; then
     radp_cli_help_command "vg"

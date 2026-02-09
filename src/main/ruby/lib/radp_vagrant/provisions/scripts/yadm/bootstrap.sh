@@ -47,6 +47,9 @@ set -euo pipefail
 
 echo "[INFO] Configuring yadm bootstrap..."
 
+# Ensure /usr/local/bin is in PATH (sudoers secure_path may exclude it)
+[[ ":$PATH:" != *":/usr/local/bin:"* ]] && export PATH="/usr/local/bin:$PATH"
+
 # Determine target users based on execution context
 CURRENT_USER=$(whoami)
 if [[ "$CURRENT_USER" == "root" ]]; then
@@ -74,7 +77,7 @@ run_as_user() {
   local user="$1"
   local cmd="$2"
 
-  if [[ "$CURRENT_USER" == "root" && "$user" != "root" ]]; then
+  if [[ "$CURRENT_USER" == "root" ]]; then
     su - "$user" -c "$cmd"
   else
     eval "$cmd"
@@ -107,7 +110,7 @@ bootstrap_for_user() {
 
   echo "[INFO] Running yadm bootstrap for user '$user'..."
 
-  run_as_user "$user" "yadm bootstrap" || {
+  run_as_user "$user" "HOME=\"$home_dir\" yadm bootstrap" || {
     echo "[WARN] yadm bootstrap failed or not available"
     return 1
   }

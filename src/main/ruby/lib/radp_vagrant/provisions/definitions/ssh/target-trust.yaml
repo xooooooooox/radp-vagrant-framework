@@ -14,7 +14,10 @@ defaults:
         desc: SSH port on the target
       - name: TARGET_SSH_USER
         value: ""
-        desc: Username on the target (for SSH config entry)
+        desc: "Username on the target (default: current guest user being configured)"
+      - name: TARGET_SSH_CONFIG
+        value: "true"
+        desc: "Write SSH config entry for the target (default: true)"
       - name: TARGET_HOST_ALIAS
         value: ""
         desc: "Host alias for SSH config entry (default: TARGET_HOST)"
@@ -45,6 +48,23 @@ defaults:
       - name: TARGET_PUBLIC_KEY_FILE
         value: ""
         desc: "Path to file containing target's SSH public key (for authorized_keys)"
+
+      # SSH key exchange via SSH
+      - name: COPY_IDENTITY_TO_TARGET
+        value: "false"
+        desc: "Push guest's pubkey to target's authorized_keys via SSH"
+      - name: COPY_IDENTITY_FROM_TARGET
+        value: "false"
+        desc: "Fetch target's pubkeys to guest's authorized_keys via SSH"
+      - name: TARGET_SSH_BOOTSTRAP_KEY
+        value: ""
+        desc: "Path to a different private key for SSH to target (default: TARGET_SSH_PRIVATE_KEY_FILE)"
+      - name: TARGET_SSH_PASSWORD
+        value: ""
+        desc: "Password for SSH to target (used with sshpass, for first-time setup)"
+      - name: TARGET_SSH_PASSWORD_FILE
+        value: ""
+        desc: "Path to file containing SSH password"
 
       # General
       - name: SSH_USERS

@@ -83,6 +83,9 @@ set -euo pipefail
 
 echo "[INFO] Configuring yadm clone..."
 
+# Ensure /usr/local/bin is in PATH (sudoers secure_path may exclude it)
+[[ ":$PATH:" != *":/usr/local/bin:"* ]] && export PATH="/usr/local/bin:$PATH"
+
 # Validate required variables
 if [[ -z "${YADM_REPO_URL:-}" ]]; then
   echo "[ERROR] YADM_REPO_URL is required"
@@ -105,11 +108,13 @@ YADM_SSH_STRICT_HOST_KEY="${YADM_SSH_STRICT_HOST_KEY:-false}"
 # Determine target users based on execution context
 CURRENT_USER=$(whoami)
 if [[ "$CURRENT_USER" == "root" ]]; then
+  SUDO=""
   if [[ -z "${YADM_USERS:-}" ]]; then
     echo "[ERROR] YADM_USERS must be specified when running as root (privileged: true)"
     exit 1
   fi
 else
+  SUDO="sudo"
   if [[ -z "${YADM_USERS:-}" ]]; then
     YADM_USERS="$CURRENT_USER"
     echo "[INFO] YADM_USERS not specified, using current user: $CURRENT_USER"
@@ -132,15 +137,15 @@ install_git() {
 
   echo "[INFO] Installing git (required by yadm)..."
   if command -v apt-get &>/dev/null; then
-    sudo apt-get update -qq && sudo apt-get install -y -qq git
+    ${SUDO} apt-get update -qq && ${SUDO} apt-get install -y -qq git
   elif command -v yum &>/dev/null; then
-    sudo yum install -y -q git
+    ${SUDO} yum install -y -q git
   elif command -v dnf &>/dev/null; then
-    sudo dnf install -y -q git
+    ${SUDO} dnf install -y -q git
   elif command -v apk &>/dev/null; then
-    sudo apk add --quiet git
+    ${SUDO} apk add --quiet git
   elif command -v pacman &>/dev/null; then
-    sudo pacman -S --noconfirm git
+    ${SUDO} pacman -S --noconfirm git
   else
     echo "[ERROR] Unsupported package manager — cannot install git"
     exit 1
@@ -157,31 +162,31 @@ install_yadm() {
   local yadm_url="https://github.com/yadm-dev/yadm/raw/master/yadm"
 
   if command -v apt-get &>/dev/null; then
-    sudo apt-get update -qq && sudo apt-get install -y -qq yadm 2>/dev/null || {
-      sudo curl -fLo /usr/local/bin/yadm "$yadm_url"
-      sudo chmod +x /usr/local/bin/yadm
+    ${SUDO} apt-get update -qq && ${SUDO} apt-get install -y -qq yadm 2>/dev/null || {
+      ${SUDO} curl -fLo /usr/local/bin/yadm "$yadm_url"
+      ${SUDO} chmod +x /usr/local/bin/yadm
     }
   elif command -v yum &>/dev/null; then
     # yadm may not be in default repos, install from GitHub
-    sudo curl -fLo /usr/local/bin/yadm "$yadm_url"
-    sudo chmod +x /usr/local/bin/yadm
+    ${SUDO} curl -fLo /usr/local/bin/yadm "$yadm_url"
+    ${SUDO} chmod +x /usr/local/bin/yadm
   elif command -v dnf &>/dev/null; then
-    sudo dnf install -y -q yadm 2>/dev/null || {
-      sudo curl -fLo /usr/local/bin/yadm "$yadm_url"
-      sudo chmod +x /usr/local/bin/yadm
+    ${SUDO} dnf install -y -q yadm 2>/dev/null || {
+      ${SUDO} curl -fLo /usr/local/bin/yadm "$yadm_url"
+      ${SUDO} chmod +x /usr/local/bin/yadm
     }
   elif command -v apk &>/dev/null; then
-    sudo apk add --quiet yadm 2>/dev/null || {
-      sudo curl -fLo /usr/local/bin/yadm "$yadm_url"
-      sudo chmod +x /usr/local/bin/yadm
+    ${SUDO} apk add --quiet yadm 2>/dev/null || {
+      ${SUDO} curl -fLo /usr/local/bin/yadm "$yadm_url"
+      ${SUDO} chmod +x /usr/local/bin/yadm
     }
   elif command -v pacman &>/dev/null; then
-    sudo pacman -S --noconfirm yadm
+    ${SUDO} pacman -S --noconfirm yadm
   else
     # Fallback: install from GitHub
     echo "[INFO] Installing yadm from GitHub..."
-    sudo curl -fLo /usr/local/bin/yadm "$yadm_url"
-    sudo chmod +x /usr/local/bin/yadm
+    ${SUDO} curl -fLo /usr/local/bin/yadm "$yadm_url"
+    ${SUDO} chmod +x /usr/local/bin/yadm
   fi
 
   if ! command -v yadm &>/dev/null; then
@@ -288,7 +293,7 @@ run_as_user() {
     full_cmd="$cmd"
   fi
 
-  if [[ "$CURRENT_USER" == "root" && "$user" != "root" ]]; then
+  if [[ "$CURRENT_USER" == "root" ]]; then
     su - "$user" -c "$full_cmd"
   else
     eval "$full_cmd"
@@ -322,7 +327,7 @@ clone_for_user() {
 
   # Prepare environment
   local repo_url="$YADM_REPO_URL"
-  local env_prefix=""
+  local env_prefix="HOME=\"$home_dir\""
   local clone_opts="--no-bootstrap"  # Bootstrap handled by radp:yadm/bootstrap
 
   if is_ssh_url "$YADM_REPO_URL"; then
@@ -335,7 +340,7 @@ clone_for_user() {
       return 1
     fi
 
-    env_prefix="GIT_SSH_COMMAND=\"$ssh_cmd\""
+    env_prefix="HOME=\"$home_dir\" GIT_SSH_COMMAND=\"$ssh_cmd\""
   else
     # HTTPS clone
     repo_url=$(build_https_url "$YADM_REPO_URL")
@@ -344,7 +349,7 @@ clone_for_user() {
   # Step 1: Set yadm class if specified (no SSH needed)
   if [[ -n "${YADM_CLASS:-}" ]]; then
     echo "[INFO] Setting yadm class to: $YADM_CLASS"
-    run_as_user "$user" "" "yadm config local.class \"$YADM_CLASS\""
+    run_as_user "$user" "HOME=\"$home_dir\"" "yadm config local.class \"$YADM_CLASS\""
   fi
 
   # Step 2: Clone repository (always --no-bootstrap first)
@@ -354,7 +359,7 @@ clone_for_user() {
   # Step 3: Decrypt if requested
   if [[ "$YADM_DECRYPT" == "true" ]]; then
     echo "[INFO] Running yadm decrypt for user '$user'..."
-    run_as_user "$user" "" "yadm decrypt" || {
+    run_as_user "$user" "HOME=\"$home_dir\"" "yadm decrypt" || {
       echo "[WARN] yadm decrypt failed - ensure GPG key is imported"
     }
   fi
