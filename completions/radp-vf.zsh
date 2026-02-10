@@ -205,15 +205,34 @@ _radp_vf_machines() {
     fi
 }
 
+# Completion function for provision names (used by --provision-with)
+_radp_vf_provisions() {
+    local config_dir env_override provisions
+    config_dir="$(_radp_vf_comp_config_dir)"
+    env_override="$(_radp_vf_comp_env)"
+    if [[ -n "$config_dir" ]]; then
+        provisions="$(_radp_vf_ruby_completion "$config_dir" "$env_override" "provisions")"
+        if [[ -n "$provisions" ]]; then
+            local -a prov_array
+            prov_array=(${(f)provisions})
+            _describe "provision" prov_array
+        fi
+    fi
+}
+
 _radp_vf_completion() {
     _arguments -s \
         '(-h --help)'{-h,--help}'[Show help]' \
+        '(-c --config)'{-c,--config}'[Configuration directory]:dir:_files -/' \
+        '(-e --env)'{-e,--env}'[Override environment name]:name:' \
         '1:shell:(bash zsh)'
 }
 
 _radp_vf_dump_config() {
     _arguments -s \
         '(-h --help)'{-h,--help}'[Show help]' \
+        '(-c --config)'{-c,--config}'[Configuration directory]:dir:_files -/' \
+        '(-e --env)'{-e,--env}'[Override environment name]:name:' \
         '(-f --format)'{-f,--format}'[Output format: json or yaml (default: json)]:type:' \
         '(-o --output)'{-o,--output}'[Output file path]:file:' \
         '1:filter:_files'
@@ -222,18 +241,24 @@ _radp_vf_dump_config() {
 _radp_vf_generate() {
     _arguments -s \
         '(-h --help)'{-h,--help}'[Show help]' \
+        '(-c --config)'{-c,--config}'[Configuration directory]:dir:_files -/' \
+        '(-e --env)'{-e,--env}'[Override environment name]:name:' \
         '1:output:_files'
 }
 
 _radp_vf_info() {
     _arguments -s \
         '(-h --help)'{-h,--help}'[Show help]' \
+        '(-c --config)'{-c,--config}'[Configuration directory]:dir:_files -/' \
+        '(-e --env)'{-e,--env}'[Override environment name]:name:' \
         '*:file:_files'
 }
 
 _radp_vf_init() {
     _arguments -s \
         '(-h --help)'{-h,--help}'[Show help]' \
+        '(-c --config)'{-c,--config}'[Configuration directory]:dir:_files -/' \
+        '(-e --env)'{-e,--env}'[Override environment name]:name:' \
         '(-t --template)'{-t,--template}'[Use a template (default: base)]:name:' \
         '--set[<var>=<value>~ Set template variable (can be repeated)]:var:' \
         '--force[Overwrite existing files]' \
@@ -285,24 +310,32 @@ _radp_vf_template() {
 _radp_vf_template_list() {
     _arguments -s \
         '(-h --help)'{-h,--help}'[Show help]' \
+        '(-c --config)'{-c,--config}'[Configuration directory]:dir:_files -/' \
+        '(-e --env)'{-e,--env}'[Override environment name]:name:' \
         '*:file:_files'
 }
 
 _radp_vf_template_show() {
     _arguments -s \
         '(-h --help)'{-h,--help}'[Show help]' \
+        '(-c --config)'{-c,--config}'[Configuration directory]:dir:_files -/' \
+        '(-e --env)'{-e,--env}'[Override environment name]:name:' \
         '1:name:_files'
 }
 
 _radp_vf_validate() {
     _arguments -s \
         '(-h --help)'{-h,--help}'[Show help]' \
+        '(-c --config)'{-c,--config}'[Configuration directory]:dir:_files -/' \
+        '(-e --env)'{-e,--env}'[Override environment name]:name:' \
         '*:file:_files'
 }
 
 _radp_vf_version() {
     _arguments -s \
         '(-h --help)'{-h,--help}'[Show help]' \
+        '(-c --config)'{-c,--config}'[Configuration directory]:dir:_files -/' \
+        '(-e --env)'{-e,--env}'[Override environment name]:name:' \
         '*:file:_files'
 }
 
@@ -329,6 +362,13 @@ _radp_vf_vg() {
             fi
             # Always add machine names — _vagrant does not complete them
             _radp_vf_machines
+            # Complete provision names for --provision-with
+            if [[ $CURRENT -gt 1 && "${words[CURRENT-1]}" == --provision-with ]]; then
+                _radp_vf_provisions
+            elif [[ "${words[CURRENT]}" == --provision-with=* ]]; then
+                compset -P '*='
+                _radp_vf_provisions
+            fi
             ;;
     esac
 }

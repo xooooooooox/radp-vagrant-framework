@@ -141,15 +141,24 @@ _radp_vf() {
 
     local i cmd_path=""
 
-    # 构建当前命令路径
+    # Known command paths (generated)
+    local _all_cmds=" completion dump-config generate info init list template template_list template_show validate version vg  "
+
+    # Build cmd_path: skip global option values, validate against known commands
     for ((i = 1; i < cword; i++)); do
         case "${words[i]}" in
-            -*) continue ;;
+            -c|--config|-e|--env)
+                ((i++)) ;;
+            -*) ;;
             *)
+                local _test_path
                 if [[ -z "$cmd_path" ]]; then
-                    cmd_path="${words[i]}"
+                    _test_path="${words[i]}"
                 else
-                    cmd_path="$cmd_path ${words[i]}"
+                    _test_path="$cmd_path ${words[i]}"
+                fi
+                if [[ " $_all_cmds " == *" ${_test_path// /_} "* ]]; then
+                    cmd_path="$_test_path"
                 fi
                 ;;
         esac
@@ -165,6 +174,8 @@ _radp_vf() {
             local arg_idx=0
             for ((i = 1; i < cword; i++)); do
                 case "${words[i]}" in
+                    -c|--config|-e|--env)
+                        ((i++)) ;;
                     -*) ;;
                     *) ((arg_idx++)) ;;
                 esac
@@ -235,6 +246,14 @@ _radp_vf() {
                     fi
                     return
                     ;;
+                --provision-with)
+                    if [[ -n "$config_dir" ]]; then
+                        local provisions
+                        provisions="$(_radp_vf_ruby_completion "$config_dir" "$env_override" "provisions")"
+                        COMPREPLY=($(compgen -W "$provisions" -- "$cur"))
+                    fi
+                    return
+                    ;;
                 -c|--config|-e|--env)
                     return
                     ;;
@@ -261,6 +280,16 @@ _radp_vf() {
                         local guest_ids
                         guest_ids="$(_radp_vf_ruby_completion "$config_dir" "$env_override" "guests" "$cluster_val")"
                         COMPREPLY=($(compgen -P "$prefix" -W "$guest_ids" -- "$typed"))
+                    fi
+                    return
+                    ;;
+                --provision-with=*)
+                    if [[ -n "$config_dir" ]]; then
+                        local prefix="${cur%%=*}="
+                        local typed="${cur#*=}"
+                        local provisions
+                        provisions="$(_radp_vf_ruby_completion "$config_dir" "$env_override" "provisions")"
+                        COMPREPLY=($(compgen -P "$prefix" -W "$provisions" -- "$typed"))
                     fi
                     return
                     ;;

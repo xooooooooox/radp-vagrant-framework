@@ -23,6 +23,8 @@ module RadpVagrant
           puts all_cluster_names.join("\n")
         when 'guests'
           puts guests_for_cluster(@cluster_filter).join("\n")
+        when 'provisions'
+          puts all_provision_names.join("\n")
         end
         0
       end
@@ -49,6 +51,18 @@ module RadpVagrant
 
       def all_cluster_names
         clusters.map { |c| c['name'] }
+      end
+
+      def all_provision_names
+        names = []
+        clusters.each do |cluster|
+          (cluster['guests'] || []).each do |guest|
+            (guest['provisions'] || []).each do |p|
+              names << p['name'] if p['name'] && p['enabled'] != false
+            end
+          end
+        end
+        names.uniq
       end
 
       def guests_for_cluster(cluster_name)

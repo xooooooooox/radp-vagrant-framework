@@ -4,6 +4,11 @@
 
 ### fix
 
+- Add `--provision-with` value completion for Bash and Zsh
+  - `radp-vf vg provision --provision-with <TAB>` completes configured provision names
+  - Supports both space-separated (`--provision-with <TAB>`) and equals form (`--provision-with=<TAB>`)
+  - Also works with `up`, `reload`, `resume` and other subcommands that accept `--provision-with`
+  - New `provisions` type in Ruby completion CLI extracts unique enabled provision names from merged config
 - Fix Zsh `_radp_vf_vg()` not completing machine names after `_vagrant` delegation
   - Vagrant's native `_vagrant` does not complete machine names for any subcommand
   - `_radp_vf_machines` now always runs after `_vagrant`/`_radp_vf_vg_args` in the `vagrant_args` state
