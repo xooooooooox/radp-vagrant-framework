@@ -215,6 +215,7 @@ _radp_vf_provisions() {
         if [[ -n "$provisions" ]]; then
             local -a prov_array
             prov_array=(${(f)provisions})
+            prov_array=(${prov_array//:/\\:})
             _describe "provision" prov_array
         fi
     fi

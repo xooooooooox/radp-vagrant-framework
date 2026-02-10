@@ -251,6 +251,7 @@ _radp_vf() {
                         local provisions
                         provisions="$(_radp_vf_ruby_completion "$config_dir" "$env_override" "provisions")"
                         COMPREPLY=($(compgen -W "$provisions" -- "$cur"))
+                        type __ltrim_colon_completions &>/dev/null && __ltrim_colon_completions "$cur"
                     fi
                     return
                     ;;
@@ -290,6 +291,7 @@ _radp_vf() {
                         local provisions
                         provisions="$(_radp_vf_ruby_completion "$config_dir" "$env_override" "provisions")"
                         COMPREPLY=($(compgen -P "$prefix" -W "$provisions" -- "$typed"))
+                        type __ltrim_colon_completions &>/dev/null && __ltrim_colon_completions "$typed"
                     fi
                     return
                     ;;
