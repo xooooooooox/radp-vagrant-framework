@@ -325,7 +325,15 @@ _radp_vf_template_show() {
 }
 
 _radp_vf_upgrade() {
-    _files
+    _arguments -s \
+        '(-h --help)'{-h,--help}'[Show help]' \
+        '(-c --config)'{-c,--config}'[Configuration directory]:dir:_files -/' \
+        '(-e --env)'{-e,--env}'[Override environment name]:name:' \
+        '--check[Only check for updates]' \
+        '--force[Force upgrade even if at latest]' \
+        '(-y --yes)'{-y,--yes}'[Skip confirmation prompt]' \
+        '--version[Target specific version]:version:' \
+        '*:file:_files'
 }
 
 _radp_vf_validate() {

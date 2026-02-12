@@ -215,7 +215,7 @@ _radp_vf() {
             COMPREPLY=($(compgen -W "--help -c --config -e --env" -- "$cur"))
             ;;
         'upgrade')
-            COMPREPLY=($(compgen -W "--help -c --config -e --env" -- "$cur"))
+            COMPREPLY=($(compgen -W "--help -c --config -e --env --check --force -y --yes --version" -- "$cur"))
             ;;
         'validate')
             COMPREPLY=($(compgen -W "--help -c --config -e --env" -- "$cur"))
