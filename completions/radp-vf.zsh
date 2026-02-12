@@ -324,16 +324,16 @@ _radp_vf_template_show() {
         '1:name:_files'
 }
 
+_radp_vf_upgrade() {
+    _files
+}
+
 _radp_vf_validate() {
     _arguments -s \
         '(-h --help)'{-h,--help}'[Show help]' \
         '(-c --config)'{-c,--config}'[Configuration directory]:dir:_files -/' \
         '(-e --env)'{-e,--env}'[Override environment name]:name:' \
         '*:file:_files'
-}
-
-_radp_vf_upgrade() {
-    _files
 }
 
 _radp_vf_version() {
