@@ -11,6 +11,6 @@ if ! command -v radp-bf &>/dev/null; then
 fi
 
 export RADP_APP_NAME="radp-vf"
-export RADP_APP_ROOT="$(radp-bf resolve-root "${BASH_SOURCE[0]}")"
+export RADP_APP_ROOT="$(radp-bf path resolve "${BASH_SOURCE[0]}")"
 # shellcheck source=/dev/null
 source "$(radp-bf path launcher)" "$@"
