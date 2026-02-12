@@ -3,5 +3,7 @@ set -e
 
 echo "xooooooooox/radp-vagrant-framework" > /usr/lib/radp-vagrant-framework/.install-repo
 echo "apt" > /usr/lib/radp-vagrant-framework/.install-method
+pkg_version=$(dpkg-query -W -f='${Version}' radp-vagrant-framework 2>/dev/null || true)
+[ -n "$pkg_version" ] && echo "v${pkg_version}" > /usr/lib/radp-vagrant-framework/.install-version
 
 #DEBHELPER#

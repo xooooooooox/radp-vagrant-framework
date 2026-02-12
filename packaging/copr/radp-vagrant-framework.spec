@@ -68,6 +68,7 @@ cp -a completions/radp-vf.zsh %{buildroot}%{_datadir}/zsh/site-functions/_radp-v
 %post
 echo "xooooooooox/radp-vagrant-framework" > %{_libdir}/radp-vagrant-framework/.install-repo
 echo "rpm" > %{_libdir}/radp-vagrant-framework/.install-method
+echo "v%{version}" > %{_libdir}/radp-vagrant-framework/.install-version
 
 %files
 %license LICENSE

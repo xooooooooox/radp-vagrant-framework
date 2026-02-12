@@ -46,6 +46,7 @@ class RadpVagrantFramework < Formula
   def post_install
     (libexec/".install-repo").write("xooooooooox/radp-vagrant-framework\n")
     (libexec/".install-method").write("homebrew\n")
+    (libexec/".install-version").write("v#{version}\n")
   end
 
   def caveats
