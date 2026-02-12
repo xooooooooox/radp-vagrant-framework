@@ -142,7 +142,7 @@ _radp_vf() {
     local i cmd_path=""
 
     # Known command paths (generated)
-    local _all_cmds=" completion dump-config generate info init list template template_list template_show validate version vg  "
+    local _all_cmds=" completion dump-config generate info init list template template_list template_show upgrade validate version vg  "
 
     # Build cmd_path: skip global option values, validate against known commands
     for ((i = 1; i < cword; i++)); do
@@ -167,7 +167,7 @@ _radp_vf() {
     # Command completions
     case "$cmd_path" in
         '')
-            COMPREPLY=($(compgen -W "completion dump-config generate info init list template validate version vg  -q --quiet -v --verbose --debug --show-config --all --json -c --config -e --env --help --version" -- "$cur"))
+            COMPREPLY=($(compgen -W "completion dump-config generate info init list template upgrade validate version vg  -q --quiet -v --verbose --debug --show-config --all --json -c --config -e --env --help --version" -- "$cur"))
             ;;
         'completion')
             # 计算参数位置（减去命令路径深度）
@@ -216,6 +216,9 @@ _radp_vf() {
             ;;
         'validate')
             COMPREPLY=($(compgen -W "--help -c --config -e --env" -- "$cur"))
+            ;;
+        'upgrade')
+            COMPREPLY=($(compgen -W "--help  --check --force --yes -y --version" -- "$cur"))
             ;;
         'version')
             COMPREPLY=($(compgen -W "--help -c --config -e --env" -- "$cur"))

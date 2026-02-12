@@ -1,6 +1,6 @@
 # CHANGELOG
 
-## v0.3.9
+## v0.3.10
 
 ### fix
 
@@ -31,6 +31,7 @@
   - Falls back to text badges (`[up]`, `[off]`, `[--]`, etc.) when piped or in non-TTY output
   - Detailed view (`-a --status`) includes `Status:` line with the raw state value
   - Gracefully handles missing Vagrant or `.vagrant/` directory
+- Upgrade scaffold
 
 ## v0.2.34
 

@@ -652,7 +652,8 @@ install_manual() {
   find "${install_dir}" -type f -name "*.rb" -exec chmod 0644 {} \;
   find "${install_dir}/src/main/shell" -type f -name "*.sh" -exec chmod 0755 {} \; 2>/dev/null || true
 
-  # Write install method marker for uninstall.sh
+  # Write install metadata
+  echo "${REPO_OWNER}/${REPO_NAME}" >"${install_dir}/.install-repo"
   echo "manual" >"${install_dir}/.install-method"
   echo "${ref}" >"${install_dir}/.install-ref"
 

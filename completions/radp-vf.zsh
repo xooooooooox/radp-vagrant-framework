@@ -332,6 +332,10 @@ _radp_vf_validate() {
         '*:file:_files'
 }
 
+_radp_vf_upgrade() {
+    _files
+}
+
 _radp_vf_version() {
     _arguments -s \
         '(-h --help)'{-h,--help}'[Show help]' \
@@ -421,6 +425,7 @@ _radp_vf() {
                 'init:Initialize a new project with sample configuration'
                 'list:List clusters and guests from configuration'
                 'template:Manage template'
+                'upgrade:Upgrade radp-vf to the latest version'
                 'validate:Validate YAML configuration files'
                 'version:Show radp-vagrant-framework version'
                 'vg:Run vagrant command with framework'

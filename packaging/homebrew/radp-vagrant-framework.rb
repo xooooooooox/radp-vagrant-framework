@@ -43,6 +43,11 @@ class RadpVagrantFramework < Formula
     zsh_completion.install "completions/radp-vf.zsh" => "_radp-vf"
   end
 
+  def post_install
+    (libexec/".install-repo").write("xooooooooox/radp-vagrant-framework\n")
+    (libexec/".install-method").write("homebrew\n")
+  end
+
   def caveats
     <<~EOS
       radp-vagrant-framework requires Vagrant and a provider (e.g., VirtualBox).

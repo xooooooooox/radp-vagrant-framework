@@ -22,6 +22,8 @@ radp-vf validate                    # Validate YAML
 radp-vf dump-config                 # Dump merged config
 radp-vf dump-config -f yaml         # Output as YAML
 radp-vf generate                    # Generate standalone Vagrantfile
+radp-vf upgrade                     # Upgrade radp-vf to the latest version
+radp-vf upgrade --check             # Check for available updates
 radp-vf vg status                   # Vagrant status
 radp-vf vg up -C my-cluster         # Start cluster
 radp-vf vg up -C my-cluster -G 1,2  # Start specific guests
