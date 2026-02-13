@@ -104,14 +104,6 @@ homelabctl vg status
 ```shell
 # 默认模板
 radp-vf init myproject
-
-# 指定模板
-radp-vf init myproject --template k8s-cluster
-
-# 带变量
-radp-vf init myproject --template k8s-cluster \
-  --set cluster_name=homelab \
-  --set worker_count=3
 ```
 
 ### 2. 配置虚拟机

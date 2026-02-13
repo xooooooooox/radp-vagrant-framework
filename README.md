@@ -109,14 +109,6 @@ homelabctl vg status
 ```shell
 # Default template
 radp-vf init myproject
-
-# With specific template
-radp-vf init myproject --template k8s-cluster
-
-# With variables
-radp-vf init myproject --template k8s-cluster \
-  --set cluster_name=homelab \
-  --set worker_count=3
 ```
 
 ### 2. Configure Your VMs
