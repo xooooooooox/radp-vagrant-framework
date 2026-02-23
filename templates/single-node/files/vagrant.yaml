@@ -1,19 +1,71 @@
 radp:
+  # radp.env only takes effect when configured in vagrant.yaml (the main config file).
+  # Setting it in vagrant-<env>.yaml has no effect.
   env: {{env}}
   extend:
     vagrant:
       plugins:
+        # see: https://github.com/devopsgroup-io/vagrant-hostmanager
         - name: vagrant-hostmanager
+          # If required: true, the plugin must be installed
           required: true
           options:
+            # Update hosts file on vagrant up/destroy
             enabled: true
+            # Run as provisioner (mutually exclusive with enabled)
+            # provisioner: enabled
+            # Add VM hostname entries to the host machine's hosts file
             manage_host: true
+            # Add VM hostname entries to each guest's hosts file
             manage_guest: true
+            # Whether to include offline guests
+            include_offline: false
+            # Ignore private network addresses
+            ignore_private_ip: false
+            # When a guest has multiple NICs, use this to resolve the desired IP
+            ip_resolver:
+              enabled: true
+              # Use hostmanager ip_resolver to get the 3rd NIC (public_network) IP
+              execute: "hostname -I | awk '{print $3}'"
+              regex: "^(\\S+)"
+        # see: https://github.com/dotless-de/vagrant-vbguest
+        - name: vagrant-vbguest
+          required: true
+          # WARN: Do not upgrade the box's default GuestAdditions,
+          # as it may cause various issues such as synced_folder becoming unavailable
+          options:
+            # Check/update Guest Additions on startup (default: true)
+            auto_update: false
+            # Only check, do not install
+            no_install: true
+            # Auto-reboot after installation if needed (default: true)
+            auto_reboot: true
+            # Allow installing an older version (default: true)
+            allow_downgrade: true
+            installer_options:
+              allow_kernel_upgrade: false
+        # see: https://github.com/gael-ian/vagrant-bindfs
+        - name: vagrant-bindfs
+          required: true
+          options:
+        # see: https://github.com/sprotheroe/vagrant-disksize
+        - name: vagrant-disksize
+          required: true
       config:
+        # optional: common settings inherited by all guests
         common:
-          # Global settings inherited by all guests
-          # Time synchronization for consistent time across host/guest
+          # synced-folders:
+          # see: https://developer.hashicorp.com/vagrant/docs/synced-folders/basic_usage
+          # support basic, nfs, rsync, smb
+          # basic:
+          #   - enabled: true
+          #     # Use absolute or relative path
+          #     host: /path/on/host
+          #     guest: /mount/to/path/on/guest
+          # see: https://developer.hashicorp.com/vagrant/docs/provisioning/basic_usage
           provisions:
             - name: radp:time/chrony-sync
               enabled: true
-              phase: pre
+              env:
+                NTP_SERVERS: "ntp.aliyun.com,ntp1.aliyun.com"
+                TIMEZONE: "Asia/Shanghai"
