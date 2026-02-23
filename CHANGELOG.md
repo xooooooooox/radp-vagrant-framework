@@ -1,5 +1,19 @@
 # CHANGELOG
 
+## v0.3.14
+
+### feat
+
+- update initial project template
+
+### docs
+
+- remove unimplement feature case
+
+### other
+
+- Fix curl install command line break in README
+
 ## v0.3.13
 
 ### fix
